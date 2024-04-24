@@ -1,0 +1,28 @@
+<odoo>
+  <data>
+    <!-- Crearis Domain Sync -->
+    <record id="crearis_sync_domain" model="res.groups">
+      <field name="name">Sync-User</field>
+      <field name="category_id"
+             ref="base.module_category_website_crearis"/>       
+    </record>
+
+    <!-- Crearis Domain Users -->
+    <record id="crearis_use_domain" model="res.groups">
+      <field name="name">User</field>
+      <field name="category_id"
+             ref="base.module_category_website_crearis"/>      
+      <field name="implied_ids"
+             eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Crearis Domain Managers -->
+    <record id="crearis_manage_domain" model="res.groups">
+      <field name="name">Manager</field>
+      <field name="category_id"
+             ref="base.module_category_website_crearis"/>        
+      <field name="implied_ids"
+             eval="[(4, ref('crearis_sync_domain'))]"/>
+    </record>    
+  </data>
+</odoo>

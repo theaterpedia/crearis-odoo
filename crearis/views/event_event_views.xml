@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<odoo>
+    <record id="view_event_form" model="ir.ui.view">
+        <field name="name">event.event.form</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//label[@for='name']" position="after">
+                <field name="template_code"/>
+                <field class="text-break" name="subtitle" placeholder="Overline"/>
+            </xpath>
+            <xpath expr="//label[@for='name']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='tag_ids']" position="after">
+                <field class="text-break" name="teasertext"/>
+            </xpath>            
+
+        </field>
+    </record>
+
+</odoo>

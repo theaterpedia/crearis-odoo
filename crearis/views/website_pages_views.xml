@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<odoo>
+
+<record id="view_blog_post_form" model="ir.ui.view">
+    <field name="name">blog.post.form</field>
+    <field name="model">blog.post</field>
+    <field name="inherit_id" ref="website_blog.view_blog_post_form"/>
+    <field name="arch" type="xml">
+        <field name="subtitle" position="after">
+            <field name="description" placeholder="Teasertext"/>
+            <field name="homesite_id" options="{'no_create': True}" groups="website.group_multi_website"/>
+        </field>            
+        <field name="subtitle" position="after">
+            <field name="name" position="move"/>
+        </field>
+        <field name="subtitle" position="replace">
+            <field name="subtitle" string="Overline"/>
+        </field>
+    </field>
+</record>
+
+</odoo>
