@@ -9,6 +9,7 @@
     'description': """Episodes and Event-Management on theaterpedia.org""",
     'category': 'Website/Crearis',
     'license': 'LGPL-3',
+    'application': True,
     'author': 'Theaterpedia',
     'website': 'https://theaterpedia.org/',
     'depends': [
@@ -31,6 +32,8 @@
     'data': [
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
+        'views/crearis_menu.xml',
+        'views/crearis_domain_user_views.xml',
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
     ],

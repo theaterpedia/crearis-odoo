@@ -34,13 +34,5 @@ class ResConfigSettings(models.TransientModel):
         string="Domain-Team", 
         readonly=False, 
         related='website_id.domain_team')
-
-    domain_user = fields.Many2many(
-        comodel_name="res.users",
-        relation="crearis_settings_domain_user",
-        column1="domain_id",
-        column2="user_id",
-        string="Domain-Users", 
-        readonly=False, 
-        related='website_id.domain_user')                
+            
 
