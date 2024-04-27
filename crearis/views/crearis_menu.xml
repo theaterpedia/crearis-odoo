@@ -10,6 +10,17 @@
     <field name="view_mode">tree,form</field>
   </record>
 
-  <!-- Menu item to open the Book list -->
+  <!-- Menu item to open the Domain User Config  list -->
   <menuitem id="menu_crearis_domainuser" name="Domain Users" parent="menu_crearis" action="action_crearis_domainuser" />  
+
+  <!-- Action to open the Version list -->
+  <record id="action_crearis_version" model="ir.actions.act_window">
+    <field name="name">Versions</field>
+    <field name="res_model">crearis.version</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+
+  <!-- Menu item to open the Version list -->
+  <menuitem id="menu_crearis_version" name="Versions" parent="menu_crearis" action="action_crearis_version" />  
+
 </odoo> 
