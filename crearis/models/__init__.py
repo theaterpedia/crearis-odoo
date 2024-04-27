@@ -6,7 +6,7 @@ from . import website
 from . import blog
 from . import json_field
 from . import episode
-from . import domain_user
+from . import domainuser
 from . import event
 from . import res_config_settings
 from . import website

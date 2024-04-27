@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <odoo>
-    <record id="view_domain_user_form" model="ir.ui.view">
+    <record id="view_domainuser_form" model="ir.ui.view">
         <field name="name">Domain User Form</field>
-        <field name="model">crearis.domain.user</field>
+        <field name="model">crearis.domainuser</field>
         <field name="arch" type="xml">
             <form string="Domain User">
                 <group>
@@ -18,23 +18,25 @@
             </form>         
         </field>
     </record>
-    <record id="view_tree_domain_user" model="ir.ui.view">
+    <record id="view_tree_domainuser" model="ir.ui.view">
         <field name="name">Domain User List</field>
-        <field name="model">crearis.domain.user</field>
+        <field name="model">crearis.domainuser</field>
         <field name="arch" type="xml">
             <tree>
+                <field name="cid" />
                 <field name="domain_id" />
                 <field name="role" />
                 <field name="name" />
                 <field name="user_id" />
                 <field name="description" />
                 <field name="active" />
+                <field name="version" />
             </tree>
         </field>
     </record>
-    <record id="view_search_domain_user" model="ir.ui.view">
+    <record id="view_search_domainuser" model="ir.ui.view">
         <field name="name">Domain User Filters</field>
-        <field name="model">crearis.domain.user</field>
+        <field name="model">crearis.domainuser</field>
         <field name="arch" type="xml">
             <search>
             <field name="domain_id"/>

@@ -33,7 +33,7 @@
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
         'views/crearis_menu.xml',
-        'views/crearis_domain_user_views.xml',
+        'views/crearis_domainuser_views.xml',
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
     ],

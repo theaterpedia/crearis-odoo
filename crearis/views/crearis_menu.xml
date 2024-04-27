@@ -4,12 +4,12 @@
   <menuitem id="menu_crearis" name="Crearis" />
 
   <!-- Action to open the Domain User Config list -->
-  <record id="action_crearis_domain_user" model="ir.actions.act_window">
+  <record id="action_crearis_domainuser" model="ir.actions.act_window">
     <field name="name">Domain Users</field>
-    <field name="res_model">crearis.domain.user</field>
+    <field name="res_model">crearis.domainuser</field>
     <field name="view_mode">tree,form</field>
   </record>
 
   <!-- Menu item to open the Book list -->
-  <menuitem id="menu_crearis_domain_user" name="Domain Users" parent="menu_crearis" action="action_crearis_domain_user" />  
+  <menuitem id="menu_crearis_domainuser" name="Domain Users" parent="menu_crearis" action="action_crearis_domainuser" />  
 </odoo> 
