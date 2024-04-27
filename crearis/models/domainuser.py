@@ -10,6 +10,7 @@ class DomainUser(models.Model):
         "website",
         required=True, 
         string="Domain",
+        domain=[('domain_code', 'not like', "X_EMPTY")],
         ondelete="cascade",
         help="Domain/Website the chosen user can access to.",
         index=True,
