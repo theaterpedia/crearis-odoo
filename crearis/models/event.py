@@ -16,6 +16,14 @@ class EventEvent(models.Model):
     blocks = fields.Json()
     version = fields.Integer(default=1)  # we tweak this in def write  
 
+    space_id = fields.Many2one(
+        'event.track.location', string='Home-Space', 
+        tracking=True, domain="[('type','in',['space.ms-teams','space.online']),('website','in',domain_ids)]")
+
+    address_id = fields.Many2one(
+        'res.partner', string='Venue', default=lambda self: self.env.company.partner_id.id,
+        tracking=True, domain="[('is_location_provider','=',True),'|',('company_id','=',False),('company_id','=',company_id)]")
+
     @api.depends("template_code", "name")
     def _compute_rectitle(self):
         for event in self:

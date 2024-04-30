@@ -23,4 +23,16 @@
   <!-- Menu item to open the Version list -->
   <menuitem id="menu_crearis_version" name="Versions" parent="menu_crearis" action="action_crearis_version" />  
 
+  <!-- Action to open the Online Spaces list -->
+  <record id="action_crearis_location" model="ir.actions.act_window">
+    <field name="name">Locations</field>
+    <field name="res_model">event.track.location</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+
+  <!-- Menu item to open the Online Spaces list -->
+  <menuitem id="menu_crearis_location" name="Locations" parent="menu_crearis" action="action_crearis_location" />  
+
+
+view_crearis_online_spaces_tree
 </odoo> 
