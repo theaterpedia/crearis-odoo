@@ -32,6 +32,8 @@
     'data': [
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
+        'views/res_company_views.xml',
+        'views/config_template_views.xml',
         'views/event_track_location_views.xml',
         'views/res_partner_views.xml',
         'views/crearis_menu.xml',

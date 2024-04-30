@@ -31,8 +31,16 @@
   </record>
 
   <!-- Menu item to open the Online Spaces list -->
-  <menuitem id="menu_crearis_location" name="Locations" parent="menu_crearis" action="action_crearis_location" />  
+  <menuitem id="menu_crearis_location" name="Locations" parent="menu_crearis" action="action_crearis_location" /> 
 
+  <!-- Action to open the Config Templates list -->
+  <record id="action_crearis_config_template" model="ir.actions.act_window">
+    <field name="name">Locations</field>
+    <field name="res_model">crearis.config.template</field>
+    <field name="view_mode">tree,form</field>
+  </record>
 
-view_crearis_online_spaces_tree
+  <!-- Menu item to open the Config Templates list -->
+  <menuitem id="menu_crearis_config_template" name="Config Templates" parent="menu_crearis" action="action_crearis_config_template" />  
+
 </odoo> 

@@ -3,3 +3,5 @@ access_crearis_domain_user,DomainUser,model_crearis_domainuser,crearis_use_domai
 access_crearis_domain_manager,DomainManager,model_crearis_domainuser,crearis_manage_domain,1,1,1,1
 access_crearis_version_user,DomainUser,model_crearis_version,crearis_use_domain,1,0,0,0
 access_crearis_version_manager,DomainManager,model_crearis_version,crearis_manage_domain,1,1,1,1
+access_crearis_config_template_user,DomainUser,model_crearis_config_template,crearis_use_domain,1,0,0,0
+access_crearis_config_template_manager,DomainManager,model_crearis_config_template,crearis_manage_domain,1,1,1,1

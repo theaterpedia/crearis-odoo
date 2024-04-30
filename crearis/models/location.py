@@ -98,15 +98,14 @@ class Location(models.Model):
     list_id = fields.Char('MS List ID', translate=False)
     drive_id = fields.Char('MS Drive ID', translate=False)
 
-    domain_ids = fields.Many2many(
-        string="Domains",
-        comodel_name="website",
-        relation="crearis_domain_location_rel",
+    company_ids = fields.Many2many(
+        string="Companies",
+        comodel_name="res.company",
+        relation="crearis_company_location_rel",
         column1="loc_id",
-        column2="domain_id",
-        domain=[("domain_code","not like","X_EMPTY")],
+        column2="company_id",
         required=False,
-        help="domains that book this location (are allowed to)",
+        help="Companies that book this location (are allowed to)",
         index=True,
     )
 

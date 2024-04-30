@@ -15,7 +15,7 @@
                         <field name="type"/>
                         <field name="name"/>
                         <field name="description"/>
-                        <field name="domain_ids" widget="many2many_tags"/>
+                        <field name="company_ids" widget="many2many_tags"/>
                         <field name="is_default"/>
                     </group>
                     <group
@@ -39,7 +39,7 @@
                 <field name="provider_id"/>
                 <field name="type"/>
                 <field name="description"/>
-                <field name="domain_ids" widget="many2many_tags"/>
+                <field name="company_ids" widget="many2many_tags"/>
                 <field name="is_default"/>    
                 <field name="site_id" attrs="{'readonly':[('type', 'not in', ['space.ms-teams'])]}"/>
                 <field name="list_id" attrs="{'readonly':[('type', 'not in', ['space.ms-teams'])]}"/>

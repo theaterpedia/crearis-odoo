@@ -18,11 +18,19 @@ class EventEvent(models.Model):
 
     space_id = fields.Many2one(
         'event.track.location', string='Home-Space', 
-        tracking=True, domain="[('type','in',['space.ms-teams','space.online']),('website','in',domain_ids)]")
+        tracking=True, domain="[('type','in',['space.ms-teams','space.online']),('company_ids','in',company_id)]")
 
     address_id = fields.Many2one(
         'res.partner', string='Venue', default=lambda self: self.env.company.partner_id.id,
         tracking=True, domain="[('is_location_provider','=',True),'|',('company_id','=',False),('company_id','=',company_id)]")
+
+    @api.depends("company_id")
+    def _compute_domain_code(self):
+        for event in self:
+            if event.company_id:
+                event.domain_code = event.company_id.domain_code
+            else:
+                event.domain_code = None
 
     @api.depends("template_code", "name")
     def _compute_rectitle(self):
@@ -32,6 +40,7 @@ class EventEvent(models.Model):
             else:
                 event.rectitle = event.name
 
+    domain_code = fields.Many2one('website',compute=_compute_domain_code)
     rectitle = fields.Char(translate=False,compute=_compute_rectitle)
     
     @api.depends("website_id","template_code")
