@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
+<!--  Copyright 2024 Theaterpedia E.V. -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
 <odoo>
     <record id="view_event_form" model="ir.ui.view">
         <field name="name">event.event.form</field>
@@ -10,7 +12,7 @@
                 <field name="template_code"/>
                 <field name="space_id"/>
                 <field name="domain_code" invisible="1"/>
-                <field class="text-break" name="subtitle" placeholder="Overline"/>
+                <field class="text-break" name="subtitle" placeholder="Overline 2"/>
             </xpath>
             <xpath expr="//label[@for='name']" position="attributes">
                 <attribute name="invisible">True</attribute>

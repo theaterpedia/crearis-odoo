@@ -1,7 +1,15 @@
 <?xml version="1.0"?>
+<!--  Copyright 2024 Theaterpedia E.V. -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
 <odoo>
   <!-- Crearis App Menu -->
   <menuitem id="menu_crearis" name="Crearis" />
+
+  <!-- Menu item to open the Domain User Config  list -->
+  <menuitem id="menu_crearis_settings" name="Settings" parent="menu_crearis" />    
+
+  <!-- Menu item to open the Domain User Config  list -->
+  <menuitem id="menu_crearis_systables" name="System Tables" parent="menu_crearis" />  
 
   <!-- Action to open the Domain User Config list -->
   <record id="action_crearis_domainuser" model="ir.actions.act_window">
@@ -11,7 +19,7 @@
   </record>
 
   <!-- Menu item to open the Domain User Config  list -->
-  <menuitem id="menu_crearis_domainuser" name="Domain Users" parent="menu_crearis" action="action_crearis_domainuser" />  
+  <menuitem id="menu_crearis_domainuser" name="Domain Users" parent="menu_crearis_settings" action="action_crearis_domainuser" />  
 
   <!-- Action to open the Version list -->
   <record id="action_crearis_version" model="ir.actions.act_window">
@@ -21,7 +29,7 @@
   </record>
 
   <!-- Menu item to open the Version list -->
-  <menuitem id="menu_crearis_version" name="Versions" parent="menu_crearis" action="action_crearis_version" />  
+  <menuitem id="menu_crearis_version" name="Versions" parent="menu_crearis_systables" action="action_crearis_version" />  
 
   <!-- Action to open the Online Spaces list -->
   <record id="action_crearis_location" model="ir.actions.act_window">
@@ -31,7 +39,7 @@
   </record>
 
   <!-- Menu item to open the Online Spaces list -->
-  <menuitem id="menu_crearis_location" name="Locations" parent="menu_crearis" action="action_crearis_location" /> 
+  <menuitem id="menu_crearis_location" name="Locations" parent="menu_crearis_settings" action="action_crearis_location" /> 
 
   <!-- Action to open the Config Templates list -->
   <record id="action_crearis_config_template" model="ir.actions.act_window">
@@ -41,6 +49,6 @@
   </record>
 
   <!-- Menu item to open the Config Templates list -->
-  <menuitem id="menu_crearis_config_template" name="Config Templates" parent="menu_crearis" action="action_crearis_config_template" />  
+  <menuitem id="menu_crearis_config_template" name="Config Templates" parent="menu_crearis_settings" action="action_crearis_config_template" />  
 
 </odoo> 

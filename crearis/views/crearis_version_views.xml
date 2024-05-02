@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
+<!--  Copyright 2024 Theaterpedia E.V. -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
 <odoo>
     <record id="view_version_form" model="ir.ui.view">
         <field name="name">Version Form</field>
