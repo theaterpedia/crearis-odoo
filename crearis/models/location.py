@@ -13,7 +13,7 @@ class ResPartner(models.Model):
         for partner in self:
             prtn_id = partner.id or -1
             if not partner.website_id:
-                subnetCode = self.env['ir.config_parameter'].sudo().get_param('crearis.subnetCode')
+                subnetCode = self.env['ir.config_parameter'].sudo().get_param('crearis.subnetcode')
                 partner.cid = '{}.partner-{}.{}'.format(subnetCode, partner.company_type, prtn_id)
             else:
                 partner.cid = '{}.partner-{}.{}'.format(partner.website_id.domain_code, partner.company_type, prtn_id)

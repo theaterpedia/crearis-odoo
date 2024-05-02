@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo noupdate="1">
+
+    <record id="crearis_subnetcode" model="ir.config_parameter">
+        <field name="key">crearis_subnetcode</field>
+        <field name="value">_nue</field>
+    </record>
+
+</odoo>

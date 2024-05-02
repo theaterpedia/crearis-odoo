@@ -6,7 +6,7 @@ class Company(models.Model):
 
     domain_code = fields.Many2one(
         'website', string='Domain Code', 
-        required=False, domain="[('domain_code','not like',None),('domain_code','!=','')]")
+        required=False, domain="[('domain_code','!=','')]")
 
     use_channels = fields.Boolean('Use Channels', readonly=False, default=False)
     use_templates = fields.Boolean('Use Templates', readonly=False, default=False)

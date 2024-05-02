@@ -25,11 +25,13 @@
         'event_mail',
         'event_registration_mass_mailing',
         'event_registration_partner_unique',
+        'website_event_track',
         'event_session',
         'partner_event',
         'website_event_questions_by_ticket',
     ],
     'data': [
+        'data/ir_config_parameter_data.xml',
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',
