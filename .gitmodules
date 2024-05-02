@@ -1,6 +1,7 @@
 [submodule ".external/rest-framework"]
 	path = .external/rest-framework
 	url = https://github.com/OCA/rest-framework.git
+	branch = 16.0
 [submodule ".external/vuestorefront-theaterpedia"]
 	path = .external/vuestorefron-theaterpedia
 	url = https://github.com/crearis/vuestorefront-theaterpedia.git
@@ -8,3 +9,4 @@
 [submodule ".external/vuestorefront-extra"]
 	path = .external/vuestorefron-extra
 	url = https://github.com/crearis/vuestorefront-extra.git
+	branch = 16.0
