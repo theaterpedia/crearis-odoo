@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Copyright 2024 Theaterpedia E.V. -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+
+<odoo>
+
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="99"/>
+        <field name="inherit_id" ref="website.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='website_info_settings']" position="after">
+                <h2>Crearis-Integration</h2>                
+                <div class="row o_settings_container" id="crearis_website_settings" attrs="{'invisible': [('website_id', '=', False)]}">
+                    <div class="col-12 col-lg-6 o_setting_box" id="crearis_website_domain_settings">
+                        <div class="o_setting_right_pane">
+                            <div class="row mt8">
+                                <label class="col-lg-3" string="DomainCode" for="domain_code"/>
+                                <field name="domain_code" title="Shortcode for the website-id: Used as prefix for data-ids + subdomain-name"/>
+                            </div>
+                        </div>                   
+                        <div class="o_setting_left_pane mt8">
+                            <field name="is_company_domain" attrs="{'readonly':True}"/>
+                        </div>                        
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="is_company_domain"/>
+                                <div class="text-muted">
+                                    Is checked if this is the default company-domain. Settings of the company-domain will be applied on other websites of this company as well.
+                                </div>
+                              </div>
+                            </div>
+                        </div>                        
+                    </div>
+                    
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="crearis_company_render_settings">
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_channels" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                        </div>                        
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_channels"/>
+                                <div class="text-muted">
+                                    Channels for video-/chat-sessions preconfigured for usage on multiple events. Implementations relies on MS Teams in 2025 (other options later).
+                                </div>
+                              </div>
+                            </div>
+                        </div>
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_templates" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                        </div>                        
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_templates"/>
+                                <div class="text-muted">
+                                    Event-Templates are Event-Codes (like A1, A2 ...) with configurable default-settings and behaviour for each Event-Code.
+                                </div>
+                              </div>
+                            </div>
+                        </div> 
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_tracks" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                        </div>                        
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_tracks"/>
+                                <div class="text-muted">
+                                    Tracks need further configuration and add more steps in the life-cycle of an event. They allow for fine-grained configuration of the development especially for events that span multiple days. For instance to plan for a combination of online- and in-person-events, or usage of different locations or changing group of participants.
+                                </div>
+                              </div>
+                            </div>
+                        </div>
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_products" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                        </div>                        
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_products"/>
+                                <div class="text-muted">
+                                    Usually we sell standalone-events (like workshops) or a series of similar events (course) directly. With products we have a comfortable way to deliver multiple events of different type as combined solutions, deliver addons, updates, gadgets.
+                                </div>
+                              </div>
+                            </div>
+                        </div>
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_overline" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_overline"/>
+                                <div class="text-muted">
+                                    The default-design is Headline + Subline (below headline). Above the headline we display a moderate line of tags and meta-information. With the overline-option (newspaper-style) we don't have a tagline and below the headline we have space for a teasertext.
+                                </div>
+                              </div>
+                            </div>
+                        </div>  
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_teasertext" attrs="{'readonly': True}"/>
+                        </div>                        
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_teasertext"/>
+                                <div class="text-muted">
+                                    To be implemented (default is true). The rendering of teasertext on event-cards is only enabled if the overline-option is set.
+                                </div>
+                              </div>
+                            </div>
+                        </div>                                                                                                                                          
+                    </div>                                                                                          
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
