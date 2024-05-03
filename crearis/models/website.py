@@ -14,7 +14,8 @@ class Website(models.Model):
     _rec_name = "domain_code"
 
     use_channels = fields.Boolean('Use Channels', related='company_id.use_channels', readonly=False, default=False)
-    use_templates = fields.Boolean('Use Templates', related='company_id.use_templates', readonly=False, default=False)
+    use_rooms = fields.Boolean('Use Rooms', related='company_id.use_rooms', readonly=False, default=False)
+    use_company_templates = fields.Boolean('Use Company Templates', related='company_id.use_company_templates', readonly=False, default=False)
     use_tracks = fields.Boolean('Use Tracks', related='company_id.use_tracks', readonly=False, default=False)
     use_products = fields.Boolean('Use Products', related='company_id.use_products', readonly=False, default=False)
     use_overline = fields.Boolean('Use Overline', related='company_id.use_overline', readonly=False, default=False)

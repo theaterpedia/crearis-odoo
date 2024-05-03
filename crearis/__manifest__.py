@@ -24,6 +24,7 @@
         'event',
         'event_mail',
         'event_registration_mass_mailing',
+        'event_registration_qr_code',
         'event_registration_partner_unique',
         'website_event_track',
         'event_session',

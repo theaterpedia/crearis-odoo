@@ -1,26 +1,129 @@
 <?xml version="1.0"?>
 <!--  Copyright 2024 Theaterpedia E.V. -->
 <!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
-<odoo>
+<odoo>  
     <record id="view_event_form" model="ir.ui.view">
         <field name="name">event.event.form</field>
         <field name="model">event.event</field>
+        <field name="priority" eval="50" />
         <field name="inherit_id" ref="event.view_event_form"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//label[@for='name']" position="after">
-                <field name="template_code"/>
-                <field name="space_id"/>
-                <field name="domain_code" invisible="1"/>
-                <field class="text-break" name="subtitle" placeholder="Overline 2"/>
+            <xpath expr="//div[@name='button_box']" position="before">
+                <!--  render-props -->
+                <field name="use_channels" invisible="1" />
+                <field name="use_rooms" invisible="1" />
+                <field name="use_company_templates" invisible="1" />
+                <field name="use_tracks" invisible="1" />
+                <field name="use_products" invisible="1" />
+                <field name="use_overline" invisible="1" />
+                <field name="use_teasertext" invisible="1" />
             </xpath>
+
+
+        <!--  Button-Boxes -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <!--  Products -->
+                <button name="event_products" class="oe_stat_button" icon="fa-microphone" attrs="{'invisible':[('use_products', '=', False)]}">
+                    Products
+                </button>
+                <!--  Channels -->
+                <button name="event_products" class="oe_stat_button" icon="fa-microphone" attrs="{'invisible':[('use_channels', '=', False)]}">
+                    Channels
+                </button>                
+            </xpath>                  
+
+            <!--  Tracks -->
+            <xpath expr="//button[@name='548']" position="attributes">
+                <attribute name="attrs">
+                    {'invisible': [('use_tracks', '=', False)]}
+                </attribute>
+            </xpath>
+
+            <!--  Rooms -->
+            <xpath expr="//button[@name='555']" position="attributes">
+                <attribute name="attrs">
+                    {'invisible': [('use_rooms', '=', False)]}
+                </attribute>
+            </xpath>        
+
+            <!--  Website-Button -->
+            <xpath expr="//field[@widget='website_redirect_button']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+
+            <!--  Teaser -->
+            <xpath expr="//label[@for='name']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='event_type_id']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>            
+
+            <xpath expr="//div[@class='oe_title']" position="before">
+                <xpath expr="//div[@name='event_menu_configuration']" position="move" />
+                <field class="lead" name="event_type_id" placeholder="Domain" />
+                <field name="domain_code" placeholder="Domain" />
+                <field name="space_id" placeholder="Channel" />
+                <field class="lead" name="subtitle" style="position: relative; top: 6px;"  placeholder="Overline" attrs="{'invisible':[('use_overline', '=', False)]}" />   
+            </xpath>            
+
+            <xpath expr="//div[@class='oe_title']" position="after">
+                <field class="lead" name="subtitle" style="position: relative; top: -10px;" placeholder="Subtitle" attrs="{'invisible':[('use_overline', '=', True)]}" />
+            </xpath>  
+            
+            <!--  Teasertext inside left-content -->
+            <xpath expr="//label[@for='date_begin']" position="before">
+                <div class="o_row" colspan="2" attrs="{'invisible':[('use_teasertext', '=', False)]}">
+                    <field name="teasertext" placeholder="Teasertext" nolabel="1" />
+                </div>
+            </xpath>
+
+            <!--  Menu-Configuration -->
+            <xpath expr="//field[@name='use_sessions']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+
+            <xpath expr="//div[@name='event_menu_configuration']" position="inside">
+                <br></br>
+                <label for="use_sessions" />
+                <field name="use_sessions" />
+                <label class="ml8" for="create_partner" />
+                <field name="create_partner" />
+                <label class="ml8" for="forbid_duplicates" />
+                <field name="forbid_duplicates" />                                          
+            </xpath>
+    
+            <!--  Left Content -->
+            <field name="date_tz" class="oe_inline" position="attributes" >
+                <attribute name="invisible">True</attribute>
+            </field>
+
+            <xpath expr="//field[@name='date_tz']" position="before">            
+                <label for="schedule" />
+                <div class="o_row">
+                    <field name="date_tz" class="oe_inline" nolabel="1" />
+                    <field name="date_tz" class="oe_inline" nolabel="1" />
+                </div>
+                <label string="" for="schedule" />
+                <field name="schedule" nolabel="1" />
+            </xpath>
+        <!--  Content 
+
+
+
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="domain_code" attrs="{'readonly':True}" />
+            </xpath>
+
             <xpath expr="//label[@for='name']" position="attributes">
                 <attribute name="invisible">True</attribute>
             </xpath>
 
             <xpath expr="//field[@name='tag_ids']" position="after">
-                <field class="text-break" name="teasertext"/>
-            </xpath>            
+                <field class="text-break" name="teasertext" attrs="{'invisible':[('use_teasertext', '=', False)]}" />
+            </xpath>
+            -->
 
         </field>
     </record>

@@ -10,6 +10,13 @@
         <field name="priority" eval="99"/>
         <field name="inherit_id" ref="website.res_config_settings_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@id='website_info_settings']" position="before">
+                <!-- #TODO: _007 Fix Website-Settings-page -->
+                <!-- the autoload of the current company's website does not fetch the use-props and on-write sets them back to false -->
+                <div class="row mt16 ml16 mb16">
+                    <h1 class="text-danger">USE X-deleted to configure websites</h1>
+                </div>
+            </xpath>
             <xpath expr="//div[@id='website_info_settings']" position="after">
                 <h2>Crearis-Integration</h2>                
                 <div class="row o_settings_container" id="crearis_website_settings" attrs="{'invisible': [('website_id', '=', False)]}">
@@ -44,20 +51,34 @@
                               <div class="row mt8">
                                 <label for="crearis_use_channels"/>
                                 <div class="text-muted">
-                                    Channels for video-/chat-sessions preconfigured for usage on multiple events. Implementations relies on MS Teams in 2025 (other options later).
+                                    Channels for video-/chat-sessions preconfigured for usage on multiple events. Implementations relies on MS Teams. Implementation starts in 2025.
                                 </div>
                               </div>
                             </div>
                         </div>
                         <div class="o_setting_left_pane mt8">
-                            <field name="crearis_use_templates" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                            <field name="crearis_use_rooms" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
                         </div>                        
                         <div class="o_setting_right_pane">
                             <div class="content-group">
                               <div class="row mt8">
-                                <label for="crearis_use_templates"/>
+                                <label for="crearis_use_rooms"/>
                                 <div class="text-muted">
-                                    Event-Templates are Event-Codes (like A1, A2 ...) with configurable default-settings and behaviour for each Event-Code.
+                                    Rooms are default video-/chat-sessions with Jitsi. Implementation starts in 2025.
+                                </div>
+                              </div>
+                            </div>
+                        </div>                        
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_use_company_templates" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_use_company_templates"/>
+                                <div class="text-muted">
+                                    Only use company-templates on this domain-code.
+                                    Event-Templates serve Event-Codes (like A1, A2 ...) each configurable default-settings and workflow-behaviour.
                                 </div>
                               </div>
                             </div>
