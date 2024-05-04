@@ -8,8 +8,8 @@ class Company(models.Model):
         'website', string='Domain Code', 
         required=False, domain="[('domain_code','!=','')]")
 
-    use_spaces = fields.Boolean('Use Spaces', readonly=False, default=False)
-    use_rooms = fields.Boolean('Use Rooms', readonly=False, default=False)
+    use_msteams = fields.Boolean('MS Teams', readonly=False, default=False)
+    use_jitsi = fields.Boolean('Jitsi Rooms', readonly=False, default=False)
     use_template_codes = fields.Boolean('Template Codes', readonly=False, default=False)
     use_tracks = fields.Boolean('Use Tracks', readonly=False, default=False)
     use_products = fields.Boolean('Use Products', readonly=False, default=False)

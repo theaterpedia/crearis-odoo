@@ -11,8 +11,8 @@
 
             <xpath expr="//div[@name='button_box']" position="before">
                 <!--  render-props -->
-                <field name="use_spaces" invisible="1" />
-                <field name="use_rooms" invisible="1" />
+                <field name="use_msteams" invisible="1" />
+                <field name="use_jitsi" invisible="1" />
                 <field name="use_template_codes" invisible="1" />
                 <field name="use_tracks" invisible="1" />
                 <field name="use_products" invisible="1" />
@@ -28,7 +28,7 @@
                     Products
                 </button>
                 <!--  Channels -->
-                <button name="event_products" class="oe_stat_button" icon="fa-microphone" attrs="{'invisible':[('use_spaces', '=', False)]}">
+                <button name="event_products" class="oe_stat_button" icon="fa-microphone" attrs="{'invisible':[('use_msteams', '=', False)]}">
                     Channels
                 </button>                
             </xpath>                  
@@ -43,7 +43,7 @@
             <!--  Rooms -->
             <xpath expr="//button[@name='555']" position="attributes">
                 <attribute name="attrs">
-                    {'invisible': [('use_rooms', '=', False)]}
+                    {'invisible': [('use_jitsi', '=', False)]}
                 </attribute>
             </xpath>        
 

@@ -41,14 +41,14 @@ class EventEvent(models.Model):
     # ----------------------------------
     # Proxy-Fields for Company-based settings
     @api.depends("domain_code")
-    def _compute_use_spaces(self):
+    def _compute_use_msteams(self):
         for event in self:
-            event.use_spaces = event.domain_code.use_spaces
+            event.use_msteams = event.domain_code.use_msteams
 
     @api.depends("domain_code")
-    def _compute_use_rooms(self):
+    def _compute_use_jitsi(self):
         for event in self:
-            event.use_rooms = event.domain_code.use_rooms
+            event.use_jitsi = event.domain_code.use_jitsi
     
     @api.depends("domain_code")
     def _compute_use_template_codes(self):
@@ -77,9 +77,9 @@ class EventEvent(models.Model):
         for event in self:
             event.use_teasertext = event.domain_code.use_overline
     
-    use_spaces = fields.Boolean(compute=_compute_use_spaces)
-    use_rooms = fields.Boolean(compute=_compute_use_rooms)
-    use_template_codes = fields.Boolean(compute=_compute_use_template_codes)
+    use_msteams = fields.Boolean('MS Teams', compute=_compute_use_msteams)
+    use_jitsi = fields.Boolean('Jitsi Rooms', compute=_compute_use_jitsi)
+    use_template_codes = fields.Boolean('Use Codes',compute=_compute_use_template_codes)
     use_tracks = fields.Boolean(compute=_compute_use_tracks)
     use_products = fields.Boolean(compute=_compute_use_products)
     use_overline = fields.Boolean(compute=_compute_use_overline)

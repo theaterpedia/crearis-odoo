@@ -13,8 +13,8 @@ class Website(models.Model):
     domain_code = fields.Char('Domain-Code', help="Subdomain on theaterpedia.org / unique key-prefix for data-keys") 
     _rec_name = "domain_code"
 
-    use_spaces = fields.Boolean('Use Spaces', related='company_id.use_spaces', readonly=False, default=False)
-    use_rooms = fields.Boolean('Use Rooms', related='company_id.use_rooms', readonly=False, default=False)
+    use_msteams = fields.Boolean('MS Teams', related='company_id.use_msteams', readonly=False, default=False)
+    use_jitsi = fields.Boolean('Jitsi Rooms', related='company_id.use_jitsi', readonly=False, default=False)
     use_template_codes = fields.Boolean('Use Template Codes', related='company_id.use_template_codes', readonly=False, default=False)
     use_tracks = fields.Boolean('Use Tracks', related='company_id.use_tracks', readonly=False, default=False)
     use_products = fields.Boolean('Use Products', related='company_id.use_products', readonly=False, default=False)

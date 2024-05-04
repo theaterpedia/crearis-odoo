@@ -44,27 +44,27 @@
                     
                     <div class="col-xs-12 col-md-6 o_setting_box" id="crearis_company_render_settings">
                         <div class="o_setting_left_pane mt8">
-                            <field name="crearis_use_spaces" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                            <field name="crearis_use_msteams" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
                         </div>                        
                         <div class="o_setting_right_pane">
                             <div class="content-group">
                               <div class="row mt8">
-                                <label for="crearis_use_spaces"/>
+                                <label for="crearis_use_msteams"/>
                                 <div class="text-muted">
-                                    Spaces for video-/chat-sessions preconfigured for usage on multiple events. Implementations relies on MS Teams. Implementation starts in 2025.
+                                    Spaces for video-/chat-sessions, files and folders preconfigured for usage on multiple events via MS Teams.
                                 </div>
                               </div>
                             </div>
                         </div>
                         <div class="o_setting_left_pane mt8">
-                            <field name="crearis_use_rooms" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
+                            <field name="crearis_use_jitsi" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
                         </div>                        
                         <div class="o_setting_right_pane">
                             <div class="content-group">
                               <div class="row mt8">
-                                <label for="crearis_use_rooms"/>
+                                <label for="crearis_use_jitsi"/>
                                 <div class="text-muted">
-                                    Rooms are default video-/chat-sessions with Jitsi. Implementation starts in 2025.
+                                    [starts 2025] Provide rooms for video-/chat-sessions via Odoo-Jitsi-Integration.
                                 </div>
                               </div>
                             </div>
