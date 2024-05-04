@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api # type: ignore
 # from json_field import JsonField
 
 class EventEvent(models.Model):
@@ -28,13 +28,13 @@ class EventEvent(models.Model):
 
     @api.depends("event_type_id", "name")
     def _compute_rectitle(self):
-        useTemplates=lambda self: self.env.company.use_template_codes
         for event in self:
-            if useTemplates:
-                typeCode = event.event_type_id.name if event.event_type_id and event.event_type_id.name else 'ERROR'
-                event.rectitle = '{} {}'.format(typeCode, event.name)
+            foreignDomain = event.domain_code.domain_code + ':' if event.domain_code.company_id != self.env.company else ''
+            if event.use_template_codes:
+                typeCode = event.event_type_id.name if event.event_type_id and event.event_type_id.name else 'ERROR '
+                event.rectitle = '{}{} {}'.format(foreignDomain.lower(), typeCode.upper(), event.name)
             else:
-                event.rectitle = '{} {}'.format(event.name)
+                event.rectitle = '{} {}'.format(foreignDomain.lower(), event.name).lstrip()
 
     rectitle = fields.Char(translate=False,compute=_compute_rectitle)
     
@@ -59,6 +59,7 @@ class EventEvent(models.Model):
     def _compute_use_tracks(self):
         for event in self:
             event.use_tracks = event.domain_code.use_tracks
+    
 
     @api.depends("domain_code")
     def _compute_use_products(self):

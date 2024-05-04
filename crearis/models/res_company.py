@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api # type: ignore
 # from json_field import JsonField
 
 class Company(models.Model):
