@@ -18,9 +18,9 @@ class ResConfigSettings(models.TransientModel):
         help="Subdomain on theaterpedia.org / unique key-prefix for data-keys"
     )
 
-    crearis_use_channels = fields.Boolean('Use Channels', related='website_id.use_channels', readonly=False, default=False)
+    crearis_use_spaces = fields.Boolean('Use Spaces', related='website_id.use_spaces', readonly=False, default=False)
     crearis_use_rooms = fields.Boolean('Use Rooms', related='website_id.use_rooms', readonly=False, default=False)
-    crearis_use_company_templates = fields.Boolean('Use Company Templates', related='website_id.use_company_templates', readonly=False, default=False)
+    crearis_use_template_codes = fields.Boolean('Use Template Codes', related='website_id.use_template_codes', readonly=False, default=False)
     crearis_use_tracks = fields.Boolean('Use Tracks', related='website_id.use_tracks', readonly=False, default=False)
     crearis_use_products = fields.Boolean('Use Products', related='website_id.use_products', readonly=False, default=False)
     crearis_use_overline = fields.Boolean('Use Overline', related='website_id.use_overline', readonly=False, default=False)

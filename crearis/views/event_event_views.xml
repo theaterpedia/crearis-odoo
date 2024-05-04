@@ -11,9 +11,9 @@
 
             <xpath expr="//div[@name='button_box']" position="before">
                 <!--  render-props -->
-                <field name="use_channels" invisible="1" />
+                <field name="use_spaces" invisible="1" />
                 <field name="use_rooms" invisible="1" />
-                <field name="use_company_templates" invisible="1" />
+                <field name="use_template_codes" invisible="1" />
                 <field name="use_tracks" invisible="1" />
                 <field name="use_products" invisible="1" />
                 <field name="use_overline" invisible="1" />
@@ -28,7 +28,7 @@
                     Products
                 </button>
                 <!--  Channels -->
-                <button name="event_products" class="oe_stat_button" icon="fa-microphone" attrs="{'invisible':[('use_channels', '=', False)]}">
+                <button name="event_products" class="oe_stat_button" icon="fa-microphone" attrs="{'invisible':[('use_spaces', '=', False)]}">
                     Channels
                 </button>                
             </xpath>                  
@@ -52,34 +52,12 @@
                 <attribute name="invisible">True</attribute>
             </xpath>
 
-            <!--  Teaser -->
-            <xpath expr="//label[@for='name']" position="attributes">
-                <attribute name="invisible">True</attribute>
-            </xpath>
-            <xpath expr="//field[@name='event_type_id']" position="attributes">
-                <attribute name="invisible">True</attribute>
-            </xpath>            
-
+        <!--  Menu-Configuration -->
+            <!--  OBS: the same anchor is used for Teaser!! -->
             <xpath expr="//div[@class='oe_title']" position="before">
                 <xpath expr="//div[@name='event_menu_configuration']" position="move" />
-                <field class="lead" name="event_type_id" placeholder="Domain" />
-                <field name="domain_code" placeholder="Domain" />
-                <field name="space_id" placeholder="Channel" />
-                <field class="lead" name="subtitle" style="position: relative; top: 6px;"  placeholder="Overline" attrs="{'invisible':[('use_overline', '=', False)]}" />   
-            </xpath>            
-
-            <xpath expr="//div[@class='oe_title']" position="after">
-                <field class="lead" name="subtitle" style="position: relative; top: -10px;" placeholder="Subtitle" attrs="{'invisible':[('use_overline', '=', True)]}" />
             </xpath>  
-            
-            <!--  Teasertext inside left-content -->
-            <xpath expr="//label[@for='date_begin']" position="before">
-                <div class="o_row" colspan="2" attrs="{'invisible':[('use_teasertext', '=', False)]}">
-                    <field name="teasertext" placeholder="Teasertext" nolabel="1" />
-                </div>
-            </xpath>
 
-            <!--  Menu-Configuration -->
             <xpath expr="//field[@name='use_sessions']" position="attributes">
                 <attribute name="invisible">True</attribute>
             </xpath>
@@ -91,10 +69,37 @@
                 <label class="ml8" for="create_partner" />
                 <field name="create_partner" />
                 <label class="ml8" for="forbid_duplicates" />
-                <field name="forbid_duplicates" />                                          
+                <field name="forbid_duplicates" />      
+                <hr style="margin-bottom:2em"></hr>                           
+            </xpath>      
+
+        <!--  Teaser -->
+            <xpath expr="//label[@for='name']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='event_type_id']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>            
+
+            <xpath expr="//div[@class='oe_title']" position="before">
+                <field class="lead" name="event_type_id" placeholder="Domain" />
+                <field name="domain_code" placeholder="Domain" />
+                <field name="space_id" placeholder="Channel" />
+                <field class="lead" name="subtitle" style="position: relative; top: 0.4em;"  placeholder="Overline" attrs="{'invisible':[('use_overline', '=', False)]}" />   
+            </xpath>            
+
+            <xpath expr="//div[@class='oe_title']" position="after">
+                <field class="lead" name="subtitle" style="position: relative; top: -1em;" placeholder="Subtitle" attrs="{'invisible':[('use_overline', '=', True)]}" />
+            </xpath>  
+            
+            <!--  Teasertext inside left-content -->
+            <xpath expr="//label[@for='date_begin']" position="before">
+                <div class="o_row" colspan="2" attrs="{'invisible':[('use_teasertext', '=', False)]}">
+                    <field name="teasertext" placeholder="Teasertext" nolabel="1" />
+                </div>
             </xpath>
     
-            <!--  Left Content -->
+        <!--  Left Content -->
             <field name="date_tz" class="oe_inline" position="attributes" >
                 <attribute name="invisible">True</attribute>
             </field>
@@ -108,22 +113,6 @@
                 <label string="" for="schedule" />
                 <field name="schedule" nolabel="1" />
             </xpath>
-        <!--  Content 
-
-
-
-            <xpath expr="//field[@name='name']" position="before">
-                <field name="domain_code" attrs="{'readonly':True}" />
-            </xpath>
-
-            <xpath expr="//label[@for='name']" position="attributes">
-                <attribute name="invisible">True</attribute>
-            </xpath>
-
-            <xpath expr="//field[@name='tag_ids']" position="after">
-                <field class="text-break" name="teasertext" attrs="{'invisible':[('use_teasertext', '=', False)]}" />
-            </xpath>
-            -->
 
         </field>
     </record>

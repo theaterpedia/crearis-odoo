@@ -28,7 +28,7 @@ class EventEvent(models.Model):
 
     @api.depends("event_type_id", "name")
     def _compute_rectitle(self):
-        useTemplates=lambda self: self.env.company.use_templates
+        useTemplates=lambda self: self.env.company.use_template_codes
         for event in self:
             if useTemplates:
                 typeCode = event.event_type_id.name if event.event_type_id and event.event_type_id.name else 'ERROR'
@@ -41,9 +41,9 @@ class EventEvent(models.Model):
     # ----------------------------------
     # Proxy-Fields for Company-based settings
     @api.depends("domain_code")
-    def _compute_use_channels(self):
+    def _compute_use_spaces(self):
         for event in self:
-            event.use_channels = event.domain_code.use_channels
+            event.use_spaces = event.domain_code.use_spaces
 
     @api.depends("domain_code")
     def _compute_use_rooms(self):
@@ -51,9 +51,9 @@ class EventEvent(models.Model):
             event.use_rooms = event.domain_code.use_rooms
     
     @api.depends("domain_code")
-    def _compute_use_company_templates(self):
+    def _compute_use_template_codes(self):
         for event in self:
-            event.use_company_templates = event.domain_code.use_company_templates
+            event.use_template_codes = event.domain_code.use_template_codes
 
     @api.depends("domain_code")
     def _compute_use_tracks(self):
@@ -76,9 +76,9 @@ class EventEvent(models.Model):
         for event in self:
             event.use_teasertext = event.domain_code.use_overline
     
-    use_channels = fields.Boolean(compute=_compute_use_channels)
+    use_spaces = fields.Boolean(compute=_compute_use_spaces)
     use_rooms = fields.Boolean(compute=_compute_use_rooms)
-    use_company_templates = fields.Boolean(compute=_compute_use_company_templates)
+    use_template_codes = fields.Boolean(compute=_compute_use_template_codes)
     use_tracks = fields.Boolean(compute=_compute_use_tracks)
     use_products = fields.Boolean(compute=_compute_use_products)
     use_overline = fields.Boolean(compute=_compute_use_overline)
