@@ -13,3 +13,6 @@
 [submodule ".external/event"]
 	path = .external/event
 	url = https://github.com/crearis/event-theaterpedia.git
+[submodule "_meta"]
+	path = _meta
+	url = https://github.com/theaterpedia/meta
