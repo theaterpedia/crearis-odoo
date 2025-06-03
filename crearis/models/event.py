@@ -16,15 +16,15 @@ class EventEvent(models.Model):
     blocks = fields.Json()
     version = fields.Integer(default=1)  # we tweak this in def write  
 
-    space_id = fields.Many2one(
-        'event.track.location', string='Home-Space', 
-        tracking=True, domain="[('type','in',['space.ms-teams','space.online']),('company_ids','in',company_id)]")
-
     address_id = fields.Many2one(
         'res.partner', string='Venue', default=lambda self: self.env.company.partner_id.id,
         tracking=True, domain="[('is_location_provider','=',True),'|',('company_id','=',False),('company_id','=',company_id)]")
 
     domain_code = fields.Many2one('website', string='Domain', default=lambda self: self.env.company.domain_code, required=True, tracking=True)
+
+    space_id = fields.Many2one(
+        'event.track.location', string='Home-Space', 
+        tracking=True, domain="[('type','in',['space.msteams','space.jitsi']),('company_ids','in',owner_company)]")
 
     @api.depends("event_type_id", "name")
     def _compute_rectitle(self):
@@ -40,6 +40,11 @@ class EventEvent(models.Model):
     
     # ----------------------------------
     # Proxy-Fields for Company-based settings
+    @api.depends("domain_code")
+    def _compute_owner_company(self):
+        for event in self:
+            event.owner_company = event.domain_code.company_id 
+    
     @api.depends("domain_code")
     def _compute_use_msteams(self):
         for event in self:
@@ -77,6 +82,7 @@ class EventEvent(models.Model):
         for event in self:
             event.use_teasertext = event.domain_code.use_overline
     
+    owner_company = fields.Integer('Owner (Company)', compute=_compute_owner_company)
     use_msteams = fields.Boolean('MS Teams', compute=_compute_use_msteams)
     use_jitsi = fields.Boolean('Jitsi Rooms', compute=_compute_use_jitsi)
     use_template_codes = fields.Boolean('Use Codes',compute=_compute_use_template_codes)

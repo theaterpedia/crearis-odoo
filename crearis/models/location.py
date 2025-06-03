@@ -92,7 +92,7 @@ class Location(models.Model):
 
     description = fields.Char('Description', translate=True, help="Short-Description of the space.", default='')
     # active = fields.Boolean("Active?", default=True)
-    type = fields.Selection([("location.venue", "venue"),("location.office", "office"),("location.nature", "nature"),("location.street", "street"),("space.ms-teams", "online (teams)"),("space.online", "online")], default="location.venue", string="Space-Type")
+    type = fields.Selection([("location.venue", "venue"),("location.office", "office"),("location.nature", "nature"),("location.street", "street"),("space.msteams", "online (teams)"),("space.jitsi", "online (jitsi)")], default="location.venue", string="Space-Type")
     is_default = fields.Boolean("Default Space?", help="is it the default space at this address?", default=False)
     site_id = fields.Char('MS Site ID', translate=False)
     list_id = fields.Char('MS List ID', translate=False)

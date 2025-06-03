@@ -11,6 +11,7 @@ from . import version
 from . import location
 from . import event
 from . import config_template
+# from . import event_workflow
 from . import res_config_settings
 from . import res_company
 from . import website
