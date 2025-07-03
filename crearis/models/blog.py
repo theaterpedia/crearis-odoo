@@ -1,5 +1,4 @@
-from odoo import models, fields, api
-import psycopg2
+from odoo import models, fields
 
 class BlogBlog(models.Model):
     _inherit = "blog.blog"

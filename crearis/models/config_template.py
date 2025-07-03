@@ -2,7 +2,7 @@
 # Copyright 2024 theaterpedia E.V.
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
-from odoo import api, models, fields
+from odoo import models, fields
 
 class ConfigTemplates(models.Model):
     _name = "crearis.config.template"
