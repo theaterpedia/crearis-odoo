@@ -12,8 +12,8 @@ class ConfigTemplates(models.Model):
     sequence = fields.Integer(default=10, help='Define the order in which the config-entries will be listed')    
     name = fields.Char('Config-Code', required=True, translate=False, help="Code-Name of the Config-Entry.", default='')
     description = fields.Char('Description', translate=True, help="Short-Description of the space.", default='')
-    json_config = fields.Text('Config-Entry', translate=False, help="Settings (Json or other).", default='{}')
-    html_config = fields.Html('Config-Entry', sanitize=False, help="Settings Html-Logic.", default='{}')
+    json_config = fields.Text('Config-Entry(Json)', translate=False, help="Settings (Json or other).", default='{}')
+    html_config = fields.Html('Config-Entry(Html)', sanitize=False, help="Settings Html-Logic.", default='{}')
     type = fields.Selection([("json.schedule", "schedule"),("test.props", "test comp props")], default="json.schedule", string="Config-Type")
     is_default = fields.Boolean('is default-value', default=False)
 
