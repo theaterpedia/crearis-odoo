@@ -10,7 +10,7 @@
         }
     ],
     "settings": {
-        "odoo.module": "MODULE_NAME",
+        "odoo.module": "crearis",
         "odoo.testTags": "*",
         "odoo.logLevel": "info",
         "odoo.addonsPaths": "./odoo/addons,${workspaceFolder:project}",
@@ -60,7 +60,7 @@
                 ],
                 "presentation": {
                     "reveal": "never",
-                    "close": true,
+                    "close": true
                 }
             },
             {
@@ -76,7 +76,7 @@
                 "presentation": {
                     "reveal": "never",
                     "close": true
-                },
+                }
             },
             {
                 "label": "remove filestore",
@@ -84,12 +84,12 @@
                 "type": "shell",
                 "args": [
                     "-rf",
-                    "~/.local/share/Odoo/filestore/${config:odoo.module}",
+                    "~/.local/share/Odoo/filestore/${config:odoo.module}"
                 ],
                 "presentation": {
                     "reveal": "never",
                     "close": true
-                },
+                }
             },
             {
                 "label": "copy filestore",
@@ -98,12 +98,12 @@
                 "args": [
                     "-r",
                     "~/.local/share/Odoo/filestore/${config:odoo.templateDB}",
-                    "~/.local/share/Odoo/filestore/${config:odoo.module}",
+                    "~/.local/share/Odoo/filestore/${config:odoo.module}"
                 ],
                 "presentation": {
                     "reveal": "never",
                     "close": true
-                },
+                }
             },
             {
                 "label": "~Init DB From Template",
@@ -114,15 +114,15 @@
                     "--init=${config:odoo.module}",
                     "--addons-path=${config:odoo.addonsPaths}",
                     "--stop-after-init",
-                    "--max-cron-threads=1",
+                    "--max-cron-threads=1"
                 ],
                 "dependsOn": [
                     "drop db",
                     "create db from template",
                     "remove filestore",
-                    "copy filestore",
+                    "copy filestore"
                 ],
-                "dependsOrder": "sequence",
+                "dependsOrder": "sequence"
             },
             {
                 "label": "~Init DB",
@@ -132,14 +132,16 @@
                     "--database=${config:odoo.module}",
                     "--init=${config:odoo.module}",
                     "--addons-path=${config:odoo.addonsPaths}",
+                    "--without-demo",
                     "--stop-after-init",
-                    "--max-cron-threads=1",
+                    "--max-cron-threads=1"
                 ],
                 "dependsOn": [
                     "drop db",
-                    "remove filestore",
+                    "remove filestore"
                 ],
                 "dependsOrder": "sequence",
+                "problemMatcher": []
             },
             {
                 "label": "switch to production",
@@ -193,12 +195,12 @@
                 "type": "shell",
                 "args": [
                     "-rf",
-                    "~/.local/share/Odoo/filestore/${config:odoo.module}",
+                    "~/.local/share/Odoo/filestore/${config:odoo.module}"
                 ],
                 "presentation": {
                     "reveal": "never",
                     "close": true
-                },
+                }
             },
             {
                 "label": "init modules",
@@ -209,8 +211,8 @@
                     "--init=${config:odoo.templateAddons}",
                     "--addons-path=${config:odoo.addonsPaths}",
                     "--stop-after-init",
-                    "--max-cron-threads=1",
-                ],
+                    "--max-cron-threads=1"
+                ]
             },
             {
                 "label": "~Init Template DB",
@@ -228,9 +230,10 @@
                     "pull",
                     "drop template db",
                     "remove template filestore",
-                    "init modules",
+                    "init modules"
                 ],
                 "dependsOrder": "sequence",
+                "problemMatcher": []
             },
             {
                 "label": "copy precommit",
@@ -244,8 +247,8 @@
                     "--trust",
                     "--vcs-ref=2.0.0",
                     "git@github.com:odoo-ps/psbe-ps-tech-tools.git",
-                    ".",
-                ],
+                    "."
+                ]
             },
             {
                 "label": "~Init Pre-Commit",
@@ -256,13 +259,13 @@
                 },
                 "args": [
                     "run",
-                    "--all-files",
+                    "--all-files"
                 ],
                 "dependsOn": [
                     "copy precommit",
-                    "~Install Pre-Commit",
+                    "~Install Pre-Commit"
                 ],
-                "dependsOrder": "sequence",
+                "dependsOrder": "sequence"
             },
             {
                 "label": "pip install pre-commit",
@@ -273,9 +276,9 @@
                 },
                 "args": [
                     "install",
-                    "pre-commit",
+                    "pre-commit"
                 ],
-                "dependsOrder": "sequence",
+                "dependsOrder": "sequence"
             },
             {
                 "label": "~Install Pre-Commit",
@@ -285,7 +288,7 @@
                     "cwd": "${workspaceFolder:project}"
                 },
                 "args": [
-                    "install",
+                    "install"
                 ],
                 "dependsOn": [
                     "pip install pre-commit"
@@ -300,8 +303,8 @@
                 },
                 "args": [
                     "run",
-                    "--all-files",
-                ],
+                    "--all-files"
+                ]
             },
             {
                 "label": "update module",
@@ -313,9 +316,9 @@
                     "--addons-path=${config:odoo.addonsPaths}",
                     "--log-level=${config:odoo.logLevel}",
                     "--stop-after-init",
-                    "--max-cron-threads=1",
-                ],
-            },
+                    "--max-cron-threads=1"
+                ]
+            }
         ]
     },
     "launch": {
@@ -368,7 +371,7 @@
                 "args": [
                     "shell",
                     "--database=${config:odoo.module}",
-                    "--update=${config:odoo.module}",
+                    "--update=${config:odoo.module}",                  
                     "--addons-path=${config:odoo.addonsPaths}",
                     "--limit-time-cpu=0",
                     "--limit-time-real=0",

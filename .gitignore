@@ -1,7 +1,6 @@
-*.pyc
+**/*.pyc
 *.idea
 
 _meta/.obsidian
 
 .vscode/.server-controller-port.log
-```
