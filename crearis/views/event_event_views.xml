@@ -34,15 +34,15 @@
                 </button>                
             </xpath>                  
 
-            <!--  Tracks -->
-            <xpath expr="//button[@name='548']" position="attributes">
+            <!--  Tracks - war: 548 -->
+            <xpath expr="//button[@name='330']" position="attributes">
                 <attribute name="attrs">
                     {'invisible': [('use_tracks', '=', False)]}
                 </attribute>
             </xpath>
 
-            <!--  Rooms -->
-            <xpath expr="//button[@name='555']" position="attributes">
+            <!--  Rooms - war: 555-->
+            <xpath expr="//button[@name='330']" position="attributes">
                 <attribute name="attrs">
                     {'invisible': [('use_jitsi', '=', False)]}
                 </attribute>
