@@ -19,3 +19,4 @@
 [submodule ".external/theaterpedia-data"]
 	path = .external/theaterpedia-data
 	url = https://github.com/theaterpedia/theaterpedia-data.git
+	branch = main
