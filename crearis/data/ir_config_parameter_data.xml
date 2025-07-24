@@ -4,7 +4,7 @@
 
     <record id="crearis_subnetcode" model="ir.config_parameter">
         <field name="key">crearis_subnetcode</field>
-        <field name="value">_nue</field>
+        <field name="value">_mue</field>
     </record>
 
 </odoo>

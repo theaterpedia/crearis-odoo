@@ -1,2 +1,3 @@
-"id,""name"",""partner_id"",""sequence"",""currency_id"",""domain_code/id"",""street"",""website"",""city"",""zip"""
-"base.main_company,""Theaterpedia"",""Theaterpedia e.V."",""0"",""EUR"",""website.default_website"",""Vacherstr. 144"",""https://theaterpedia.org"",""Fürth"",""90766"""
+"id","name","sequence","domain_code/id","street","website","city","zip"
+"base.main_company","Theaterpedia","0","website.default_website","Vacherstr. 144","https://my.theaterpedia.org","Fürth","90766"
+"_mue.company__dasei","DAS Ei - Theaterpädagogisches Institut Bayern e.V.","0","","Vacherstr. 144","https://service.dasei.eu","Nürnberg","90429"

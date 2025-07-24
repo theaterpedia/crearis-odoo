@@ -2,7 +2,7 @@
   'summary': "Basic configuration for Theaterpedia with Crearis",
   'author': "Hans Dönitz / Theaterpedia",
   'website': "http://www.theaterpedia.org",
-  'version': '16.0.1.0.0',
+  'version': '16.0.3.0.0',
   'category': 'Website/Crearis',
   'license': 'LGPL-3',
   'application': False,

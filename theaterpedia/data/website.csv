@@ -1,2 +1,2 @@
-"id,""default_lang_id"",""sequence"",""theme_id"",""domain"",""name"""
-"website.default_website,""English (US)"",""10"","""",""https://test1.com"",""My Website"""
+"id","sequence","theme_id","domain","name","domain_code"
+"website.default_website","10","","https://my.theaterpedia.org","Theaterpedia Community","tp"
