@@ -1,0 +1,2 @@
+"id,""name"",""partner_id"",""sequence"",""currency_id"",""domain_code/id"",""street"",""website"",""city"",""zip"""
+"base.main_company,""Theaterpedia"",""Theaterpedia e.V."",""0"",""EUR"",""website.default_website"",""Vacherstr. 144"",""https://theaterpedia.org"",""Fürth"",""90766"""
