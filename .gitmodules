@@ -16,3 +16,6 @@
 [submodule "_meta"]
 	path = _meta
 	url = https://github.com/theaterpedia/meta
+[submodule ".external/theaterpedia-data"]
+	path = .external/theaterpedia-data
+	url = https://github.com/theaterpedia/theaterpedia-data.git
