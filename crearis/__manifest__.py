@@ -19,6 +19,7 @@
         'website_sale_loyalty',
         'website_blog',
         'contacts',
+        'partner_firstname',
         'crm',
         'theme_default',
         'event',

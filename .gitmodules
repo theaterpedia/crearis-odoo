@@ -20,3 +20,8 @@
 	path = .external/theaterpedia-data
 	url = https://github.com/theaterpedia/theaterpedia-data.git
 	branch = main
+[submodule ".external/partner-contact"]
+	path = .external/partner-contact
+	url = https://github.com/OCA/partner-contact
+	branch = 16.0
+	
