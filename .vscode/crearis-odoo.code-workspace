@@ -132,9 +132,9 @@
                     "--database=${config:odoo.module}",
                     "--init=${config:odoo.module}",
                     "--addons-path=${config:odoo.addonsPaths}",
-                    "--without-demo",
                     "--stop-after-init",
-                    "--max-cron-threads=1"
+                    "--max-cron-threads=1",
+                    "--without-demo=all"
                 ],
                 "dependsOn": [
                     "drop db",
