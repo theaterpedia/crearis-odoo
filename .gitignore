@@ -4,3 +4,6 @@
 _meta/.obsidian
 
 .vscode/.server-controller-port.log
+.external/event
+.external/theaterpedia-data
+.external/event
