@@ -31,6 +31,7 @@
         'event_session',
         'partner_event',
         'website_event_questions_by_ticket',
+        'partner_contact_personal_information_page'
     ],
     'data': [
         'data/ir_config_parameter_data.xml',
@@ -41,6 +42,7 @@
         'views/config_template_views.xml',
         'views/event_track_location_views.xml',
         'views/res_partner_views.xml',
+        'views/res_partner.xml',
         'views/crearis_menu.xml',
         'views/crearis_domainuser_views.xml',
         'views/crearis_version_views.xml',
