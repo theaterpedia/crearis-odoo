@@ -97,14 +97,20 @@ class EventEvent(models.Model):
 
     @api.depends("website_id")
     def _compute_cid(self):
-        event_code = 'default'
-        domain_code = 'default'
+        template_code = 'evnt'
+        if self.use_template_codes:
+            template_code = self.event_type_id.name
+
+        domain_code = 'private'
+        if self.website_id:
+            domain_code = self.website_id.domain_code  
+
         for event in self:
             if not event.id:
-                event.cid = '{}.event-{}.{}'.format(domain_code, event_code, "-1")
+                event.cid = '{}.event-{}__{}'.format(domain_code, template_code, "-1")
             else:
-                event.cid = '{}.event-{}.{}'.format(domain_code, event_code, event.id)
-    
+                event.cid = '{}.event-{}__{}'.format(domain_code, template_code, event.id)
+
     cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid)
 
     def write(self, vals):
