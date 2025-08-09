@@ -95,15 +95,14 @@ class EventEvent(models.Model):
     # ----------------------------------
     # crearis-interface
 
-    @api.depends("website_id")
+    @api.depends("domain_code", "event_type_id")
     def _compute_cid(self):
         template_code = 'evnt'
         if self.use_template_codes:
             template_code = self.event_type_id.name
 
-        domain_code = 'private'
-        if self.website_id:
-            domain_code = self.website_id.domain_code  
+        for event in self:
+            domain_code = event.domain_code.domain_code
 
         for event in self:
             if not event.id:
@@ -111,7 +110,7 @@ class EventEvent(models.Model):
             else:
                 event.cid = '{}.event-{}__{}'.format(domain_code, template_code, event.id)
 
-    cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid)
+    cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid, store=True)
 
     def write(self, vals):
         # Code before write: 'self' has the old values

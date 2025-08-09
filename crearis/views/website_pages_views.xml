@@ -9,7 +9,7 @@
         <field name="subtitle" position="after">
             <field name="description" placeholder="Teasertext"/>
             <field name="homesite_id" options="{'no_create': True}" groups="website.group_multi_website"/>
-        </field>            
+        </field>
         <field name="subtitle" position="after">
             <field name="name" position="move"/>
         </field>
