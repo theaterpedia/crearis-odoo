@@ -29,13 +29,26 @@
                         </div>                   
                         <div class="o_setting_left_pane mt8">
                             <field name="is_company_domain" attrs="{'readonly':True}"/>
-                        </div>                        
+                        </div>
                         <div class="o_setting_right_pane">
                             <div class="content-group">
                               <div class="row mt8">
                                 <label for="is_company_domain"/>
                                 <div class="text-muted">
-                                    Is checked if this is the default company-domain. Settings of the company-domain will be applied on other websites of this company as well.
+                                    Configure this under "Users & Companies"! If this is checked it serves as the default company-domain. Settings of the company-domain will be applied on other websites of this company as well.
+                                </div>
+                              </div>
+                            </div>
+                        </div> 
+                        <div class="o_setting_left_pane mt8">
+                            <field name="crearis_is_hubsite"/>
+                        </div>                                                
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                              <div class="row mt8">
+                                <label for="crearis_is_hubsite"/>
+                                <div class="text-muted">
+                                    If we enable this, the website will be treated as a hub site: Published events and posts from all websites will be aggregated here.
                                 </div>
                               </div>
                             </div>

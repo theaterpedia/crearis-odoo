@@ -18,6 +18,7 @@ class ResConfigSettings(models.TransientModel):
         help="Subdomain on theaterpedia.org / unique key-prefix for data-keys"
     )
 
+    crearis_is_hubsite = fields.Boolean('Hubsite', related='website_id.is_hubsite', readonly=False, default=False)
     crearis_use_msteams = fields.Boolean('MS Teams', related='website_id.use_msteams', readonly=False, default=False)
     crearis_use_jitsi = fields.Boolean('Jitsi Rooms', related='website_id.use_jitsi', readonly=False, default=False)
     crearis_use_template_codes = fields.Boolean('Use Codes', related='website_id.use_template_codes', readonly=False, default=False)
