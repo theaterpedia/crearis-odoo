@@ -9,6 +9,18 @@ class BlogPost(models.Model):
     blocks = fields.Json()
     # homesite_id = fields.Integer('Homesite', default=4)
 
+    hero_type = fields.Selection(
+        string='Hero',
+        selection=[("{}", 'Standard (prominent)'), ("{style:'banner'}", 'Banner prominent'), ("{height: 'full'}", 'Cover'), ("{height: 'full', style:'banner'}", 'Cover/Banner'), ("{height: 'small'}", 'minimal')],
+        help="Layout changes the way the event is displayed on Websites.",
+        default="{}")
+
+    hero_format = fields.Text('Hero-Formatierung', translate=False, default='', help="Image placement and background for the hero section")
+
+    cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
+
+    body_md = fields.Text("Body (Markdown)", index=True)
+
     version = fields.Integer(default=1)  # we tweak this in def write 
 
     homesite_id = fields.Many2one(

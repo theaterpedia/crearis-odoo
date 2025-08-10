@@ -8,6 +8,17 @@ class ResPartner(models.Model):
 
     _inherit = "res.partner"
 
+    # HERO-TYPE, FORMAT, CIMG > are develeped and tested in model event
+    hero_type = fields.Selection(
+        string='Hero',
+        selection=[("{}", 'Standard (prominent)'), ("{style:'banner'}", 'Banner prominent'), ("{height: 'full'}", 'Cover'), ("{height: 'full', style:'banner'}", 'Cover/Banner'), ("{height: 'small'}", 'minimal')],
+        help="Layout changes the way the person/company is displayed on Websites.",
+        default="{}")
+
+    hero_format = fields.Text('Hero-Formatierung', translate=False, default='', help="Image placement and background for the hero section")
+
+    cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
+
     body_md = fields.Text("Body (Markdown)", index=True)
     # body_html = fields.Html("Body (HTML)", compute="_compute_body_html", store=True)
 

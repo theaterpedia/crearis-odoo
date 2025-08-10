@@ -31,7 +31,6 @@
         'event_session',
         'partner_event',
         'website_event_questions_by_ticket',
-        'partner_contact_personal_information_page'
     ],
     'data': [
         'data/ir_config_parameter_data.xml',

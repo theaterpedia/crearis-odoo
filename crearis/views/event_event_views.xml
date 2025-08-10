@@ -113,6 +113,15 @@
                 </div>
                 <label string="" for="schedule" />
                 <field name="schedule" nolabel="1" />
+    
+                <field name="hero_type" />
+                <label string="-> Format + Image" for="hero_format" />
+                <div class="o_row">
+                    <field name="hero_format" class="oe_inline" nolabel="1" />
+                    <field name="cimg" class="oe_inline" nolabel="1" />
+                </div>
+                
+                <field name="body_md" />
             </xpath>
 
         </field>

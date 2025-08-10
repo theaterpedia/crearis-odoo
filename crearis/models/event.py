@@ -12,6 +12,19 @@ class EventEvent(models.Model):
         selection=[('locked', 'Locked'), ('blocks', 'edit blocks'), ('content', 'edit content'), ('full', 'edit all')],
         help="Type is used to control the dashboard-editing of the event.",
         default='content')
+
+    hero_type = fields.Selection(
+        string='Hero',
+        selection=[("{}", 'Standard (prominent)'), ("{style:'banner'}", 'Banner prominent'), ("{height: 'full'}", 'Cover'), ("{height: 'full', style:'banner'}", 'Cover/Banner'), ("{height: 'small'}", 'minimal')],
+        help="Layout changes the way the event is displayed on Websites.",
+        default="{}")
+
+    hero_format = fields.Text('Hero-Formatierung', translate=False, default='', help="Image placement and background for the hero section")
+
+    cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
+
+    body_md = fields.Text("Body (Markdown)", index=True)
+
     # blocks = JsonField('Pruvious Blocks', required=False, default=[])   # a json object represented as dict / list / python primitives, see: https://gist.github.com/danmana/5242f37b7d63daf4698de7c61c8b59fc
     blocks = fields.Json()
     version = fields.Integer(default=1)  # we tweak this in def write  

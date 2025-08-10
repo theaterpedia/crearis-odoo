@@ -9,6 +9,16 @@
         <field name="subtitle" position="after">
             <field name="description" placeholder="Teasertext"/>
             <field name="homesite_id" options="{'no_create': True}" groups="website.group_multi_website"/>
+
+            <!--  Crearis-Interface -->
+            <field name="hero_type" />
+            <label string="-> Format + Image" for="hero_format" />
+            <div class="o_row">
+                <field name="hero_format" class="oe_inline" nolabel="1" />
+                <field name="cimg" class="oe_inline" nolabel="1" />
+            </div>
+            <field name="body_md" /> 
+
         </field>
         <field name="subtitle" position="after">
             <field name="name" position="move"/>
