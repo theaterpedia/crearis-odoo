@@ -19,7 +19,7 @@ class BlogPost(models.Model):
 
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
 
-    body_md = fields.Text("Body (Markdown)", index=True)
+    md = fields.Text("Markdown-Content", index=True)
 
     version = fields.Integer(default=1)  # we tweak this in def write 
 

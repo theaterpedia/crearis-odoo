@@ -17,7 +17,7 @@
                 <field name="hero_format" class="oe_inline" nolabel="1" />
                 <field name="cimg" class="oe_inline" nolabel="1" />
             </div>
-            <field name="body_md" /> 
+            <field name="md" /> 
 
         </field>
         <field name="subtitle" position="after">

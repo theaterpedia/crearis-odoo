@@ -18,8 +18,8 @@
                 </div>
             </xpath>
             <xpath expr="//div[@id='website_info_settings']" position="after">
-                <h2>Crearis-Integration</h2>                
-                <div class="row o_settings_container" id="crearis_website_settings" attrs="{'invisible': [('website_id', '=', False)]}">
+                <h2>Crearis-Integration</h2>                               
+                <div class="row o_settings_container" id="crearis_website_settings" attrs="{'invisible': [('website_id', '=', False)]}">                   
                     <div class="col-12 col-lg-6 o_setting_box" id="crearis_website_domain_settings">
                         <div class="o_setting_right_pane">
                             <div class="row mt8">
@@ -39,7 +39,7 @@
                                 </div>
                               </div>
                             </div>
-                        </div>                        
+                        </div>                                                      
                     </div>
                     
                     <div class="col-xs-12 col-md-6 o_setting_box" id="crearis_company_render_settings">
@@ -135,6 +135,24 @@
                             </div>
                         </div>                                                                                                                                          
                     </div>                                                                                          
+                    <div class="content-group">
+                        <div class="row mt8">
+                        <label for="crearis_post_domain_ids"/>
+                        <field name="crearis_post_domain_ids" title="Show Posts from these websites."/>
+                        <div class="text-muted">
+                            These websites will be included in the post feed.
+                        </div>
+                        </div>
+                    </div> 
+                    <div class="content-group">
+                        <div class="row mt8">
+                        <label for="crearis_event_domain_ids"/>
+                        <field name="crearis_event_domain_ids" title="Show Events from these websites."/>
+                        <div class="text-muted">
+                            These websites will be included in the event feed.
+                        </div>
+                        </div>
+                    </div>  
                 </div>
             </xpath>
         </field>

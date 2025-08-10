@@ -27,3 +27,22 @@ class ResConfigSettings(models.TransientModel):
     crearis_use_teasertext = fields.Boolean('Use Teasertext', related='website_id.use_teasertext', readonly=False, default=False)
     is_company_domain = fields.Boolean('is Company Website', related='website_id.is_company_domain', readonly=True)
 
+    crearis_post_domain_ids = fields.Many2many(
+        comodel_name="website",
+        relation="trans_website_post_domains",
+        column1="a_id",
+        column2="b_id",
+        string="Post-Feed",
+        related='website_id.post_domain_ids', 
+        readonly=False
+    )
+
+    crearis_event_domain_ids = fields.Many2many(
+        comodel_name="website",
+        relation="trans_website_event_domains",
+        column1="a_id",
+        column2="b_id",
+        string="Event-Feed",
+        related='website_id.event_domain_ids', 
+        readonly=False
+    )

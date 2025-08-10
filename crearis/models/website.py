@@ -27,3 +27,19 @@ class Website(models.Model):
             website.is_company_domain = website.company_id.domain_code.id == website.id
 
     is_company_domain = fields.Boolean(compute=_compute_is_homedomain)
+
+    post_domain_ids = fields.Many2many(
+        comodel_name="website",
+        relation="website_post_domains",
+        column1="a_id",
+        column2="b_id",
+        string="Post-Domains",
+    )
+
+    event_domain_ids = fields.Many2many(
+        comodel_name="website",
+        relation="website_event_domains",
+        column1="a_id",
+        column2="b_id",
+        string="Event-Domains",
+    )
