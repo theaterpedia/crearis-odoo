@@ -13,14 +13,20 @@ class EventEvent(models.Model):
         help="Type is used to control the dashboard-editing of the event.",
         default='content')
 
-    hero_type = fields.Selection(
-        string='Hero',
-        selection=[("{}", 'Standard (prominent)'), ("{style:'banner'}", 'Banner prominent'), ("{height: 'full'}", 'Cover'), ("{height: 'full', style:'banner'}", 'Cover/Banner'), ("{height: 'small'}", 'minimal')],
-        help="Layout changes the way the event is displayed on Websites.",
-        default="{}")
+    header_type = fields.Selection(
+        string='Header',
+        selection=[("simple", "simple"), ("columns", 'Text-Bild (2 Spalten)'), ("banner", "Banner medium"), ("cover", "Cover Fullsize"), ("bauchbinde", "Bauchbinde")],
+        help="What header-type introduces the event?",
+        default="simple")
 
-    hero_format = fields.Text('Hero-Formatierung', translate=False, default='', help="Image placement and background for the hero section")
+    header_size = fields.Selection(
+        string='Header-Size',
+        selection=[("mini", "minimal"), ("medium", 'Medium'), ("prominent", "prominent"), ("full", "full")],
+        help="How big is the header?",
+        default="mini")
 
+    format_options = fields.Json()
+    
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
 
     body_md = fields.Text("Body (Markdown)", index=True)

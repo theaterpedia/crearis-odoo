@@ -7,12 +7,12 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='vat']" position="before">
-                <field name="hero_type" />
-                <label string="-> Format + Image" for="hero_format" />
+                <label string="Header Type+Size" for="header_type" />
                 <div class="o_row">
-                    <field name="hero_format" class="oe_inline" nolabel="1" />
-                    <field name="cimg" class="oe_inline" nolabel="1" />
+                    <field name="header_type" class="oe_inline" nolabel="1" />
+                    <field name="header_size" class="oe_inline" nolabel="1" />
                 </div>
+                <field name="cimg"/>
                 <field name="body_md" />
             </xpath>
         </field>

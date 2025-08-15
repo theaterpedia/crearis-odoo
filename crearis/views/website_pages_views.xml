@@ -11,10 +11,12 @@
             <field name="homesite_id" options="{'no_create': True}" groups="website.group_multi_website"/>
 
             <!--  Crearis-Interface -->
-            <field name="hero_type" />
-            <label string="-> Format + Image" for="hero_format" />
+            <field name="header_type" />
+            <field name="header_size" />
+            
+            <label string="-> Image" for="cimg" />
             <div class="o_row">
-                <field name="hero_format" class="oe_inline" nolabel="1" />
+                <!-- field name="hero_format" class="oe_inline" nolabel="1" /-->
                 <field name="cimg" class="oe_inline" nolabel="1" />
             </div>
             <field name="md" /> 

@@ -9,13 +9,19 @@ class BlogPost(models.Model):
     blocks = fields.Json()
     # homesite_id = fields.Integer('Homesite', default=4)
 
-    hero_type = fields.Selection(
-        string='Hero',
-        selection=[("{}", 'Standard (prominent)'), ("{style:'banner'}", 'Banner prominent'), ("{height: 'full'}", 'Cover'), ("{height: 'full', style:'banner'}", 'Cover/Banner'), ("{height: 'small'}", 'minimal')],
-        help="Layout changes the way the event is displayed on Websites.",
-        default="{}")
+    header_type = fields.Selection(
+        string='Header',
+        selection=[("simple", "simple"), ("columns", 'Text-Bild (2 Spalten)'), ("banner", "Banner medium"), ("cover", "Cover Fullsize"), ("bauchbinde", "Bauchbinde")],
+        help="What header-type introduces the post?",
+        default="simple")
 
-    hero_format = fields.Text('Hero-Formatierung', translate=False, default='', help="Image placement and background for the hero section")
+    header_size = fields.Selection(
+        string='Header-Size',
+        selection=[("mini", "minimal"), ("medium", 'Medium'), ("prominent", "prominent"), ("full", "full")],
+        help="How big is the header?",
+        default="mini")
+
+    format_options = fields.Json()
 
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
 
