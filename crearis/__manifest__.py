@@ -48,6 +48,11 @@
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'crearis/static/src/js/json_field.js',
+        ],
+    },
     'installable': True,
     'auto_install': False,
     'pre_init_hook': 'pre_init_hook_login_check',

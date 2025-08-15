@@ -1,5 +1,12 @@
 from odoo.fields import Field
 import psycopg2
+import json
+
+# this is nonfunctional / experimental
+# we combine this: https://gist.github.com/danmana/5242f37b7d63daf4698de7c61c8b59fc
+# and this: https://github.com/mkumar-02/odoo-json-field/blob/main/README.md
+# odoo16 has native json-field-support
+
 
 class JsonField(Field):
     """
@@ -17,3 +24,18 @@ class JsonField(Field):
             return None
         else:
             return psycopg2.extras.Json(value)
+
+    def __init__(self, string, **kwargs):
+        self.column_type = ('json', 'json')
+
+        super(JsonField, self).__init__(string= string, **kwargs)
+
+    def convert_to_cache(self, value, record, validate=True):
+        if value and not isinstance(value, dict):
+            return json.loads(value)
+        return value
+
+    def convert_to_record(self, value, record):
+        if value:
+            return json.dumps(value)
+        return value
