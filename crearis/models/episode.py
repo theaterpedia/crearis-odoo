@@ -59,12 +59,14 @@ class BlogPost(models.Model):
             else:
                 post.cid = '{}.blog-{}__{}'.format(domain_code, template_code, post.id)
 
-    cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid, store=True)
+    cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid, store=True)
 
     def write(self, vals):
         # Code before write: 'self' has the old values
         vals['version'] = self.version + 1
-        super().write(vals)
-        # Code after write: 'self' has the new values
+        res = super(BlogPost, self).write(vals)
+        
+        # Invalidate cache to ensure fresh reads after write
+        self.invalidate_recordset()
 
-        return True
+        return res

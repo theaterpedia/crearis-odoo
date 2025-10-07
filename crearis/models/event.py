@@ -29,7 +29,7 @@ class EventEvent(models.Model):
     
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
 
-    body_md = fields.Text("Body (Markdown)", index=True)
+    md = fields.Text("Body (Markdown)", index=True)
 
     # blocks = JsonField('Pruvious Blocks', required=False, default=[])   # a json object represented as dict / list / python primitives, see: https://gist.github.com/danmana/5242f37b7d63daf4698de7c61c8b59fc
     blocks = fields.Json()
@@ -134,7 +134,11 @@ class EventEvent(models.Model):
     def write(self, vals):
         # Code before write: 'self' has the old values
         vals['version'] = self.version + 1
-        super().write(vals)
-        # Code after write: 'self' has the new values
 
-        return True
+        # Perform the write operation
+        res = super(EventEvent, self).write(vals)
+
+        # Invalidate cache to ensure fresh reads after write
+        self.invalidate_recordset()
+
+        return res

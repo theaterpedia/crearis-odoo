@@ -13,7 +13,7 @@
                     <field name="header_size" class="oe_inline" nolabel="1" />
                 </div>
                 <field name="cimg"/>
-                <field name="body_md" />
+                <field name="md" />
             </xpath>
         </field>
     </record>

@@ -41,6 +41,7 @@ class DomainUser(models.Model):
 
     active = fields.Boolean("Active?", default=True)
     description = fields.Char('Description', translate=True, help="Short-Description of title/role of this user on this domain.", default='')
+    md = fields.Text('Markdown Content', translate=False, help="Markdown content for user profile.", default='')
     capabilities = fields.Char('Capabilities', translate=False, help="Pruvious-Capabilities of this user on this domain.", default='')
     settings = fields.Json(default={})
     version = fields.Integer(default=1)  # we tweak this in def write  
@@ -53,7 +54,7 @@ class DomainUser(models.Model):
             else:
                 domainuser.cid = '{}.user-{}.{}'.format(domainuser.domain_id.domain_code, domainuser.role, domainuser.id)
 
-    cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid)
+    cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid)
 
     def json_data_store(self):  # see: from minutes 4:00 https://www.youtube.com/watch?v=MCmzTHcG5ec
         self.settings = {"capabilities":[self.capabilities]}
@@ -63,18 +64,23 @@ class DomainUser(models.Model):
         vals['version'] = self.version + 1
         old_role = self.role
         old_name = self.name
-        super().write(vals)
+        
+        res = super(DomainUser, self).write(vals)
+        
+        # Invalidate cache - try invalidate_recordset() for Odoo 16
+        self.invalidate_recordset()
+
         # Code after write: 'self' has the new values
         new_role = self.role
         new_name = self.name
         if not self.env.context.get("_domainuser_write"): # we check for the flag '_domainuser_write' to prevent endless loops?
             if new_name == old_name and new_role != old_role:
-                switch={
+                switch = {
                     'user': "Teilnehmer:in",
                     'team': "Team",
                     'exec': "Manager:in",
                     'spec': "Special"
-                    }
-                self.with_context(_domainuser_write=True).write({"name": switch.get(self.role,'User')})
-
-        return True
+                }
+                self.with_context(_domainuser_write=True).write({"name": switch.get(self.role, 'User')})
+        
+        return res

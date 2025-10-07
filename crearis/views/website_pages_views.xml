@@ -26,7 +26,7 @@
             <field name="name" position="move"/>
         </field>
         <field name="subtitle" position="replace">
-            <field name="subtitle" string="Overline"/>
+            <field name="subtitle" string="subtitle INAKTIV"/>
         </field>
     </field>
 </record>
