@@ -12,10 +12,6 @@
 [submodule "_meta"]
 	path = _meta
 	url = https://github.com/theaterpedia/meta
-[submodule ".external/theaterpedia-data"]
-	path = .external/theaterpedia-data
-	url = https://github.com/theaterpedia/theaterpedia-data.git
-	branch = main
 [submodule ".external/partner-contact"]
 	path = .external/partner-contact
 	url = https://github.com/OCA/partner-contact
@@ -24,3 +20,7 @@
 [submodule ".external/vuestorefront-theaterpedia"]
 	path = .external/vuestorefront-theaterpedia
 	url = https://github.com/crearis/vuestorefront-theaterpedia.git
+[submodule ".external/theaterpedia-data"]
+	path = .external/theaterpedia-data
+	url = https://github.com/theaterpedia/theaterpedia-data.git
+	branch = main
