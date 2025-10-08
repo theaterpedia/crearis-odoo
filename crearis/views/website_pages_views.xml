@@ -16,10 +16,37 @@
             
             <label string="-> Image" for="cimg" />
             <div class="o_row">
-                <!-- field name="hero_format" class="oe_inline" nolabel="1" /-->
                 <field name="cimg" class="oe_inline" nolabel="1" />
             </div>
-            <field name="md" /> 
+            <field name="md" />
+            
+            <!-- Format Options Section (from web.options.abstract) -->
+            <separator string="Format Options" />
+            <group>
+                <group string="Page-Props">
+                    <field name="page_prop1" placeholder="Enter value for prop1"/>
+                    <field name="page_prop2" placeholder="val1, val2, val3"/>
+                </group>
+                <group string="Hero-Options">
+                    <field name="hero_prop3" />
+                </group>
+            </group>
+            <div class="oe_button_box" name="format_options_actions">
+                <button 
+                    name="action_save_format_options" 
+                    type="object" 
+                    string="Save Format Options" 
+                    class="btn-primary"
+                    icon="fa-save"
+                    help="Save the format options to the database"/>
+            </div>
+            
+            <!-- Debug view of raw format_options (optional) -->
+            <group string="Raw Format Options (Debug)" groups="base.group_no_one">
+                <field name="format_options" widget="json"/>
+                <field name="hero_options" widget="json" readonly="1"/>
+                <field name="page_options" widget="json" readonly="1"/>
+            </group>
 
         </field>
         <field name="subtitle" position="after">

@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis',
-    'version': '16.0.1.0.3',
+    'version': '16.0.1.0.4',
     'summary': 'Episodes and Event-Management',
     'description': """Episodes and Event-Management on theaterpedia.org""",
     'category': 'Website/Crearis',

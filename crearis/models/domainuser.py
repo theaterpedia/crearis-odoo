@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 class DomainUser(models.Model):
     _name = "crearis.domainuser"
@@ -56,8 +57,31 @@ class DomainUser(models.Model):
 
     cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid)
 
-    def json_data_store(self):  # see: from minutes 4:00 https://www.youtube.com/watch?v=MCmzTHcG5ec
-        self.settings = {"capabilities":[self.capabilities]}
+    def json_data_store(self):
+        """Store capabilities string as JSON array in settings field."""
+        for record in self:
+            if not record.capabilities:
+                raise UserError("Capabilities field is empty. Please enter capabilities before saving.")
+            
+            # Split capabilities by comma and clean whitespace
+            capabilities_list = [cap.strip() for cap in record.capabilities.split(',') if cap.strip()]
+            
+            # Update settings, preserving other keys if they exist
+            current_settings = record.settings or {}
+            current_settings['capabilities'] = capabilities_list
+            
+            record.settings = current_settings
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Success',
+                'message': 'Capabilities saved to settings.',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
 
     def write(self, vals):
         # Code before write: 'self' has the old values
