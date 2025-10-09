@@ -22,15 +22,55 @@
             
             <!-- Format Options Section (from web.options.abstract) -->
             <separator string="Format Options" />
+            
+            <!-- Contextual Help Display -->
+            <div class="alert alert-info" role="status" style="margin-bottom: 16px; padding: 12px;">
+                <div style="font-size: 13px; color: #555;">
+                    <strong>Quick Help:</strong> Hover over any field label to see its description.
+                </div>
+                <div style="font-size: 11px; color: #888; margin-top: 4px;">
+                    <em>Detailed information:</em> Each option controls specific aspects of page rendering. 
+                    Selection fields offer predefined choices, while text fields accept custom configurations.
+                    Changes are saved when you click "Save Format Options" or save the entire record.
+                    Empty fields will not override website defaults.
+                </div>
+            </div>
+            
+            <!-- Page + Aside Options Block -->
             <group>
-                <group string="Page-Props">
-                    <field name="page_prop1" placeholder="Enter value for prop1"/>
-                    <field name="page_prop2" placeholder="val1, val2, val3"/>
+                <group string="Page Options">
+                    <field name="page_background" />
+                    <field name="page_cssvars" widget="text" />
+                    <field name="page_navigation" widget="text" />
+                    <field name="page_options_text" />
                 </group>
-                <group string="Hero-Options">
-                    <field name="hero_prop3" />
+                <group string="Aside Options">
+                    <field name="aside_postit" widget="text" />
+                    <field name="aside_toc" widget="text" />
+                    <field name="aside_list" />
+                    <field name="aside_context" widget="text" />
+                    <field name="aside_options_text" />
                 </group>
             </group>
+            
+            <!-- Header + Footer Options Block -->
+            <group>
+                <group string="Header Options">
+                    <field name="header_alert" widget="text" />
+                    <field name="header_postit" widget="text" />
+                    <field name="header_options_text" />
+                </group>
+                <group string="Footer Options">
+                    <field name="footer_gallery" />
+                    <field name="footer_postit" widget="text" />
+                    <field name="footer_slider" />
+                    <field name="footer_repeat" widget="text" />
+                    <field name="footer_sitemap" />
+                    <field name="footer_options_text" />
+                </group>
+            </group>
+            
+            <!-- Save Button -->
             <div class="oe_button_box" name="format_options_actions">
                 <button 
                     name="action_save_format_options" 
@@ -38,14 +78,16 @@
                     string="Save Format Options" 
                     class="btn-primary"
                     icon="fa-save"
-                    help="Save the format options to the database"/>
+                    help="Save all format options to the database"/>
             </div>
             
             <!-- Debug view of raw format_options (optional) -->
             <group string="Raw Format Options (Debug)" groups="base.group_no_one">
                 <field name="format_options" widget="json"/>
-                <field name="hero_options" widget="json" readonly="1"/>
                 <field name="page_options" widget="json" readonly="1"/>
+                <field name="aside_options" widget="json" readonly="1"/>
+                <field name="header_options" widget="json" readonly="1"/>
+                <field name="footer_options" widget="json" readonly="1"/>
             </group>
 
         </field>
