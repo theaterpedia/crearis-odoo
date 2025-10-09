@@ -12,7 +12,7 @@ class WebOptionsAbstract(models.AbstractModel):
     
     Structure:
     {
-        "page": {"background": "primary", "cssvars": "...", "navigation": "...", "options": "..."},
+        "page": {"background": "primary", "cssvars": "...", "navigation": "...", "options": "...", "prop2": ["val1", "val2"], "prop3": true},
         "aside": {"postit": "...", "toc": "...", "list": "alike", "context": "...", "options": "..."},
         "header": {"alert": "...", "postit": "...", "options": "..."},
         "footer": {"gallery": "alike", "postit": "...", "slider": "events", "repeat": "...", "sitemap": "medium", "options": "..."}
@@ -26,29 +26,29 @@ class WebOptionsAbstract(models.AbstractModel):
         help='JSON structure containing page, aside, header, and footer options'
     )
 
-    # Computed properties for each section
-    page_options = fields.Json(
-        compute='_compute_page_options',
+    # Computed properties for each section (Json fields for accessing entire sections)
+    page_options_json = fields.Json(
+        compute='_compute_page_options_json',
         store=False,
-        string='Page Options'
+        string='Page Options (JSON)'
     )
     
-    aside_options = fields.Json(
-        compute='_compute_aside_options',
+    aside_options_json = fields.Json(
+        compute='_compute_aside_options_json',
         store=False,
-        string='Aside Options'
+        string='Aside Options (JSON)'
     )
     
-    header_options = fields.Json(
-        compute='_compute_header_options',
+    header_options_json = fields.Json(
+        compute='_compute_header_options_json',
         store=False,
-        string='Header Options'
+        string='Header Options (JSON)'
     )
     
-    footer_options = fields.Json(
-        compute='_compute_footer_options',
+    footer_options_json = fields.Json(
+        compute='_compute_footer_options_json',
         store=False,
-        string='Footer Options'
+        string='Footer Options (JSON)'
     )
 
     # ==================== PAGE OPTIONS ====================
@@ -95,6 +95,23 @@ class WebOptionsAbstract(models.AbstractModel):
         store=False,
         translate=False,
         help='Additional page options | Miscellaneous page-level options as key-value pairs or JSON for controlling layout, spacing, and other page behaviors'
+    )
+
+    # Example properties (demonstrating array and boolean types)
+    page_prop2 = fields.Char(
+        string='Example Property 2 (Array)',
+        compute='_compute_page_prop2',
+        inverse='_inverse_page_prop2',
+        store=False,
+        help='Example array property | Demonstrates how to store array values as comma-separated strings'
+    )
+    
+    page_prop3 = fields.Boolean(
+        string='Example Property 3 (Boolean)',
+        compute='_compute_page_prop3',
+        inverse='_inverse_page_prop3',
+        store=False,
+        help='Example boolean property | Demonstrates how to store boolean values'
     )
 
     # ==================== ASIDE OPTIONS ====================
@@ -258,43 +275,43 @@ class WebOptionsAbstract(models.AbstractModel):
         help='Additional footer options | Miscellaneous footer options as key-value pairs or JSON for controlling footer layout, columns, and styling'
     )
 
-    # ==================== COMPUTE METHODS ====================
+    # ==================== COMPUTE METHODS FOR JSON SECTIONS ====================
 
     @api.depends('format_options')
-    def _compute_page_options(self):
+    def _compute_page_options_json(self):
         """Extract page options from format_options JSON."""
         for record in self:
             if record.format_options and isinstance(record.format_options, dict):
-                record.page_options = record.format_options.get('page', {})
+                record.page_options_json = record.format_options.get('page', {})
             else:
-                record.page_options = {}
+                record.page_options_json = {}
 
     @api.depends('format_options')
-    def _compute_aside_options(self):
+    def _compute_aside_options_json(self):
         """Extract aside options from format_options JSON."""
         for record in self:
             if record.format_options and isinstance(record.format_options, dict):
-                record.aside_options = record.format_options.get('aside', {})
+                record.aside_options_json = record.format_options.get('aside', {})
             else:
-                record.aside_options = {}
+                record.aside_options_json = {}
 
     @api.depends('format_options')
-    def _compute_header_options(self):
+    def _compute_header_options_json(self):
         """Extract header options from format_options JSON."""
         for record in self:
             if record.format_options and isinstance(record.format_options, dict):
-                record.header_options = record.format_options.get('header', {})
+                record.header_options_json = record.format_options.get('header', {})
             else:
-                record.header_options = {}
+                record.header_options_json = {}
 
     @api.depends('format_options')
-    def _compute_footer_options(self):
+    def _compute_footer_options_json(self):
         """Extract footer options from format_options JSON."""
         for record in self:
             if record.format_options and isinstance(record.format_options, dict):
-                record.footer_options = record.format_options.get('footer', {})
+                record.footer_options_json = record.format_options.get('footer', {})
             else:
-                record.footer_options = {}
+                record.footer_options_json = {}
 
     # ==================== PAGE COMPUTE/INVERSE ====================
 
@@ -345,6 +362,40 @@ class WebOptionsAbstract(models.AbstractModel):
                 record.set_option('page', 'options', record.page_options_text)
             else:
                 record.remove_option('page', 'options')
+
+    @api.depends('format_options')
+    def _compute_page_prop2(self):
+        """Compute page_prop2 from format_options (array as comma-separated string)."""
+        for record in self:
+            prop2_value = record.get_option('page', 'prop2', [])
+            if isinstance(prop2_value, list):
+                record.page_prop2 = ', '.join(str(v) for v in prop2_value)
+            else:
+                record.page_prop2 = str(prop2_value) if prop2_value else ''
+
+    def _inverse_page_prop2(self):
+        """Store page_prop2 back to format_options (parse comma-separated to array)."""
+        for record in self:
+            if record.page_prop2:
+                # Split by comma and clean whitespace
+                value_list = [v.strip() for v in record.page_prop2.split(',') if v.strip()]
+                record.set_option('page', 'prop2', value_list)
+            else:
+                record.remove_option('page', 'prop2')
+
+    @api.depends('format_options')
+    def _compute_page_prop3(self):
+        """Compute page_prop3 from format_options."""
+        for record in self:
+            record.page_prop3 = record.get_option('page', 'prop3', False)
+
+    def _inverse_page_prop3(self):
+        """Store page_prop3 back to format_options."""
+        for record in self:
+            if record.page_prop3:
+                record.set_option('page', 'prop3', record.page_prop3)
+            else:
+                record.remove_option('page', 'prop3')
 
     # ==================== ASIDE COMPUTE/INVERSE ====================
 

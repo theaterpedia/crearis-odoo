@@ -22,19 +22,7 @@
             
             <!-- Format Options Section (from web.options.abstract) -->
             <separator string="Format Options" />
-            
-            <!-- Contextual Help Display -->
-            <div class="alert alert-info" role="status" style="margin-bottom: 16px; padding: 12px;">
-                <div style="font-size: 13px; color: #555;">
-                    <strong>Quick Help:</strong> Hover over any field label to see its description.
-                </div>
-                <div style="font-size: 11px; color: #888; margin-top: 4px;">
-                    <em>Detailed information:</em> Each option controls specific aspects of page rendering. 
-                    Selection fields offer predefined choices, while text fields accept custom configurations.
-                    Changes are saved when you click "Save Format Options" or save the entire record.
-                    Empty fields will not override website defaults.
-                </div>
-            </div>
+
             
             <!-- Page + Aside Options Block -->
             <group>
@@ -84,10 +72,13 @@
             <!-- Debug view of raw format_options (optional) -->
             <group string="Raw Format Options (Debug)" groups="base.group_no_one">
                 <field name="format_options" widget="json"/>
-                <field name="page_options" widget="json" readonly="1"/>
-                <field name="aside_options" widget="json" readonly="1"/>
-                <field name="header_options" widget="json" readonly="1"/>
-                <field name="footer_options" widget="json" readonly="1"/>
+                <field name="page_options_json" widget="json" readonly="1"/>
+                <field name="aside_options_json" widget="json" readonly="1"/>
+                <field name="header_options_json" widget="json" readonly="1"/>
+                <field name="footer_options_json" widget="json" readonly="1"/>
+                <separator string="Example Properties"/>
+                <field name="page_prop2" placeholder="val1, val2, val3"/>
+                <field name="page_prop3" />
             </group>
 
         </field>
