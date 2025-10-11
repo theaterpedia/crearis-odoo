@@ -28,7 +28,7 @@ class ResPartner(models.Model):
 
     def _write_category_id(self):
         for partner in self:
-            partner.is_location_provider = True if 8 in partner.category_id.ids else False
+            partner.is_location_provider = True if 60 in partner.category_id.ids else False
 
     category_id = fields.Many2many('res.partner.category', column1='partner_id',
                                     column2='category_id', string='Tags', default=_default_category, inverse='_write_category_id')
