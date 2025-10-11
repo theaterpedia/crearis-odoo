@@ -1,7 +1,7 @@
 [submodule ".external/rest-framework"]
-        path = .external/rest-framework
-        url = https://github.com/OCA/rest-framework.git
-        branch = 16.0
+	path = .external/rest-framework
+	url = https://github.com/OCA/rest-framework.git
+	branch = 16.0
 [submodule ".external/vuestorefront-extra"]
 	path = .external/vuestorefront-extra
 	url = https://github.com/crearis/vuestorefront-extra.git
@@ -13,12 +13,12 @@
         path = _meta
         url = https://github.com/theaterpedia/meta
 [submodule ".external/partner-contact"]
-        path = .external/partner-contact
-        url = https://github.com/OCA/partner-contact
-        branch = 16.0
+	path = .external/partner-contact
+	url = https://github.com/OCA/partner-contact
+	branch = 16.0
 [submodule ".external/vuestorefront-theaterpedia"]
-        path = .external/vuestorefront-theaterpedia
-        url = https://github.com/crearis/vuestorefront-theaterpedia.git
+	path = .external/vuestorefront-theaterpedia
+	url = https://github.com/crearis/vuestorefront-theaterpedia.git
 [submodule ".external/theaterpedia-data"]
         path = .external/theaterpedia-data
         url = https://github.com/theaterpedia/theaterpedia-data.git
