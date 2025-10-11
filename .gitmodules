@@ -26,4 +26,5 @@
 	branch = main
 [submodule ".external/graphql_theaterpedia"]
 	path = .external/graphql_theaterpedia
-	url = https://github.com/crearis/vuestorefront-theaterpedia
+	url = https://github.com/theaterpedia/graphql-theaterpedia.git
+	branch = theaterpedia/16.0
