@@ -6,9 +6,6 @@
 	path = .external/vuestorefront-extra
 	url = https://github.com/crearis/vuestorefront-extra.git
 	branch = 16.0
-[submodule ".external/event"]
-        path = .external/event
-        url = https://github.com/crearis/event-theaterpedia.git
 [submodule ".external/partner-contact"]
 	path = .external/partner-contact
 	url = https://github.com/OCA/partner-contact
@@ -23,3 +20,6 @@
 [submodule "_meta"]
 	path = _meta
 	url = https://github.com/theaterpedia/meta
+[submodule ".external/event"]
+	path = .external/event
+	url = https://github.com/crearis/event-theaterpedia.git
