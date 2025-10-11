@@ -7,52 +7,98 @@ from odoo import models, fields, api
 
 class WebOptionsAbstract(models.AbstractModel):
     """
-    Abstract model for managing format_options with page, aside, header, and footer options.
+    Abstract model for managing web options with separate JSON fields for page, aside, header, and footer.
     Can be inherited by any model that needs these capabilities.
-    
-    Structure:
-    {
-        "page": {"background": "primary", "cssvars": "...", "navigation": "...", "options": "...", "prop2": ["val1", "val2"], "prop3": true},
-        "aside": {"postit": "...", "toc": "...", "list": "alike", "context": "...", "options": "..."},
-        "header": {"alert": "...", "postit": "...", "options": "..."},
-        "footer": {"gallery": "alike", "postit": "...", "slider": "events", "repeat": "...", "sitemap": "medium", "options": "..."}
-    }
     """
     _name = 'web.options.abstract'
     _description = 'Web Options Abstract Model'
 
-    format_options = fields.Json(
-        string='Format Options',
-        help='JSON structure containing page, aside, header, and footer options'
+    # ==================== JSON FIELDS FOR EACH SECTION ====================
+    
+    page_options = fields.Json(
+        string='Page Options',
+        help='JSON structure containing page options: background, cssvars, navigation, etc.',
+        default=False
+    )
+    
+    aside_options = fields.Json(
+        string='Aside Options',
+        help='JSON structure containing aside/sidebar options: postit, toc, list, context, etc.',
+        default=False
+    )
+    
+    header_options = fields.Json(
+        string='Header Options',
+        help='JSON structure containing header options: alert, postit, etc.',
+        default=False
+    )
+    
+    footer_options = fields.Json(
+        string='Footer Options',
+        help='JSON structure containing footer options: gallery, slider, sitemap, etc.',
+        default=False
     )
 
-    # Computed properties for each section (Json fields for accessing entire sections)
-    page_options_json = fields.Json(
-        compute='_compute_page_options_json',
-        store=False,
-        string='Page Options (JSON)'
+    # ==================== BUTTON STATE COMPUTED FIELDS ====================
+    
+    page_has_content = fields.Boolean(
+        string='Page Has Content',
+        compute='_compute_page_has_content',
+        store=True,  # Changed from False to True
+        help='Whether page_options has any content'
     )
     
-    aside_options_json = fields.Json(
-        compute='_compute_aside_options_json',
-        store=False,
-        string='Aside Options (JSON)'
+    aside_has_content = fields.Boolean(
+        string='Aside Has Content',
+        compute='_compute_aside_has_content',
+        store=True,  # Changed from False to True
+        help='Whether aside_options has any content'
     )
     
-    header_options_json = fields.Json(
-        compute='_compute_header_options_json',
-        store=False,
-        string='Header Options (JSON)'
+    header_has_content = fields.Boolean(
+        string='Header Has Content',
+        compute='_compute_header_has_content',
+        store=True,  # Changed from False to True
+        help='Whether header_options has any content'
     )
     
-    footer_options_json = fields.Json(
-        compute='_compute_footer_options_json',
-        store=False,
-        string='Footer Options (JSON)'
+    footer_has_content = fields.Boolean(
+        string='Footer Has Content',
+        compute='_compute_footer_has_content',
+        store=True,  # Changed from False to True
+        help='Whether footer_options has any content'
     )
 
-    # ==================== PAGE OPTIONS ====================
+    # ==================== CHANGE DETECTION COMPUTED FIELDS ====================
     
+    page_has_changes = fields.Boolean(
+        string='Page Has Unsaved Changes',
+        compute='_compute_page_has_changes',
+        store=False
+    )
+    
+    aside_has_changes = fields.Boolean(
+        string='Aside Has Unsaved Changes',
+        compute='_compute_aside_has_changes',
+        store=False
+    )
+    
+    header_has_changes = fields.Boolean(
+        string='Header Has Unsaved Changes',
+        compute='_compute_header_has_changes',
+        store=False
+    )
+    
+    footer_has_changes = fields.Boolean(
+        string='Footer Has Unsaved Changes',
+        compute='_compute_footer_has_changes',
+        store=False
+    )
+
+    # ==================== INDIVIDUAL FIELD ACCESSORS ====================
+    # These provide backward compatibility and easy access to individual options
+
+    # PAGE OPTIONS
     page_background = fields.Selection(
         string='Background',
         selection=[
@@ -66,72 +112,43 @@ class WebOptionsAbstract(models.AbstractModel):
         ],
         compute='_compute_page_background',
         inverse='_inverse_page_background',
-        store=False,
-        help='Background color scheme | Sets the primary background color theme for the entire page, affecting overall visual hierarchy and mood'
+        store=False
     )
     
     page_cssvars = fields.Text(
         string='CSS Variables',
         compute='_compute_page_cssvars',
         inverse='_inverse_page_cssvars',
-        store=False,
-        translate=False,
-        help='Custom CSS variables | Define custom CSS variables for page-level styling. Format: --variable-name: value; (one per line)'
+        store=False
     )
     
     page_navigation = fields.Text(
         string='Navigation',
         compute='_compute_page_navigation',
         inverse='_inverse_page_navigation',
-        store=False,
-        translate=False,
-        help='Navigation configuration | JSON or text configuration for page navigation behavior, including menu items, breadcrumbs, and navigation style'
+        store=False
     )
     
     page_options_text = fields.Text(
         string='Options (Page)',
         compute='_compute_page_options_text',
         inverse='_inverse_page_options_text',
-        store=False,
-        translate=False,
-        help='Additional page options | Miscellaneous page-level options as key-value pairs or JSON for controlling layout, spacing, and other page behaviors'
+        store=False
     )
 
-    # Example properties (demonstrating array and boolean types)
-    page_prop2 = fields.Char(
-        string='Example Property 2 (Array)',
-        compute='_compute_page_prop2',
-        inverse='_inverse_page_prop2',
-        store=False,
-        help='Example array property | Demonstrates how to store array values as comma-separated strings'
-    )
-    
-    page_prop3 = fields.Boolean(
-        string='Example Property 3 (Boolean)',
-        compute='_compute_page_prop3',
-        inverse='_inverse_page_prop3',
-        store=False,
-        help='Example boolean property | Demonstrates how to store boolean values'
-    )
-
-    # ==================== ASIDE OPTIONS ====================
-    
+    # ASIDE OPTIONS
     aside_postit = fields.Text(
         string='Post-it (Aside)',
         compute='_compute_aside_postit',
         inverse='_inverse_aside_postit',
-        store=False,
-        translate=False,
-        help='Sticky note content | Content for a sticky note or callout box in the sidebar, useful for highlighting important information'
+        store=False
     )
     
     aside_toc = fields.Text(
         string='Table of Contents',
         compute='_compute_aside_toc',
         inverse='_inverse_aside_toc',
-        store=False,
-        translate=False,
-        help='TOC configuration | Configuration for automatic table of contents generation in the sidebar, including heading levels and styling'
+        store=False
     )
     
     aside_list = fields.Selection(
@@ -147,59 +164,46 @@ class WebOptionsAbstract(models.AbstractModel):
         ],
         compute='_compute_aside_list',
         inverse='_inverse_aside_list',
-        store=False,
-        help='Sidebar list type | Type of content list to display in the sidebar (e.g., related posts, upcoming events, featured products)'
+        store=False
     )
     
     aside_context = fields.Text(
         string='Context',
         compute='_compute_aside_context',
         inverse='_inverse_aside_context',
-        store=False,
-        translate=False,
-        help='Contextual information | Additional context or metadata to display in the sidebar, such as author info, tags, or related categories'
+        store=False
     )
     
     aside_options_text = fields.Text(
         string='Options (Aside)',
         compute='_compute_aside_options_text',
         inverse='_inverse_aside_options_text',
-        store=False,
-        translate=False,
-        help='Additional aside options | Miscellaneous sidebar options as key-value pairs or JSON for controlling sidebar behavior and appearance'
+        store=False
     )
 
-    # ==================== HEADER OPTIONS ====================
-    
+    # HEADER OPTIONS
     header_alert = fields.Text(
         string='Alert',
         compute='_compute_header_alert',
         inverse='_inverse_header_alert',
-        store=False,
-        translate=False,
-        help='Header alert message | Display an alert or notification banner at the top of the page, useful for announcements or warnings'
+        store=False
     )
     
     header_postit = fields.Text(
         string='Post-it (Header)',
         compute='_compute_header_postit',
         inverse='_inverse_header_postit',
-        store=False,
-        translate=False,
-        help='Header note content | Sticky note or callout content within the header area, for highlighting key messages or CTAs'
+        store=False
     )
     
     header_options_text = fields.Text(
         string='Options (Header)',
         compute='_compute_header_options_text',
         inverse='_inverse_header_options_text',
-        store=False,
-        translate=False,
-        help='Additional header options | Miscellaneous header options as key-value pairs or JSON for controlling header layout, sticky behavior, and styling'
+        store=False
     )
 
-    # ==================== FOOTER OPTIONS ====================
-    
+    # FOOTER OPTIONS
     footer_gallery = fields.Selection(
         string='Gallery Type',
         selection=[
@@ -213,17 +217,14 @@ class WebOptionsAbstract(models.AbstractModel):
         ],
         compute='_compute_footer_gallery',
         inverse='_inverse_footer_gallery',
-        store=False,
-        help='Footer gallery type | Type of content gallery to display in the footer area (e.g., partner logos, recent posts, media gallery)'
+        store=False
     )
     
     footer_postit = fields.Text(
         string='Post-it (Footer)',
         compute='_compute_footer_postit',
         inverse='_inverse_footer_postit',
-        store=False,
-        translate=False,
-        help='Footer note content | Sticky note or callout content within the footer area, useful for disclaimers or calls-to-action'
+        store=False
     )
     
     footer_slider = fields.Selection(
@@ -239,17 +240,14 @@ class WebOptionsAbstract(models.AbstractModel):
         ],
         compute='_compute_footer_slider',
         inverse='_inverse_footer_slider',
-        store=False,
-        help='Footer slider type | Type of content slider/carousel to display in the footer (e.g., testimonials, featured content, sponsors)'
+        store=False
     )
     
     footer_repeat = fields.Text(
         string='Repeat',
         compute='_compute_footer_repeat',
         inverse='_inverse_footer_repeat',
-        store=False,
-        translate=False,
-        help='Repeating content | Configuration for repeating content or patterns in the footer, such as newsletter signup or social links'
+        store=False
     )
     
     footer_sitemap = fields.Selection(
@@ -262,60 +260,88 @@ class WebOptionsAbstract(models.AbstractModel):
         ],
         compute='_compute_footer_sitemap',
         inverse='_inverse_footer_sitemap',
-        store=False,
-        help='Sitemap size | Size and detail level of the footer sitemap/navigation menu (none, small, medium, or large)'
+        store=False
     )
     
     footer_options_text = fields.Text(
         string='Options (Footer)',
         compute='_compute_footer_options_text',
         inverse='_inverse_footer_options_text',
-        store=False,
-        translate=False,
-        help='Additional footer options | Miscellaneous footer options as key-value pairs or JSON for controlling footer layout, columns, and styling'
+        store=False
     )
 
-    # ==================== COMPUTE METHODS FOR JSON SECTIONS ====================
+    # ==================== HAS CONTENT COMPUTE METHODS ====================
 
-    @api.depends('format_options')
-    def _compute_page_options_json(self):
-        """Extract page options from format_options JSON."""
+    @api.depends('page_options')
+    def _compute_page_has_content(self):
         for record in self:
-            if record.format_options and isinstance(record.format_options, dict):
-                record.page_options_json = record.format_options.get('page', {})
-            else:
-                record.page_options_json = {}
+            record.page_has_content = bool(record.page_options and isinstance(record.page_options, dict) and record.page_options)
 
-    @api.depends('format_options')
-    def _compute_aside_options_json(self):
-        """Extract aside options from format_options JSON."""
+    @api.depends('aside_options')
+    def _compute_aside_has_content(self):
         for record in self:
-            if record.format_options and isinstance(record.format_options, dict):
-                record.aside_options_json = record.format_options.get('aside', {})
-            else:
-                record.aside_options_json = {}
+            record.aside_has_content = bool(record.aside_options and isinstance(record.aside_options, dict) and record.aside_options)
 
-    @api.depends('format_options')
-    def _compute_header_options_json(self):
-        """Extract header options from format_options JSON."""
+    @api.depends('header_options')
+    def _compute_header_has_content(self):
         for record in self:
-            if record.format_options and isinstance(record.format_options, dict):
-                record.header_options_json = record.format_options.get('header', {})
-            else:
-                record.header_options_json = {}
+            record.header_has_content = bool(record.header_options and isinstance(record.header_options, dict) and record.header_options)
 
-    @api.depends('format_options')
-    def _compute_footer_options_json(self):
-        """Extract footer options from format_options JSON."""
+    @api.depends('footer_options')
+    def _compute_footer_has_content(self):
         for record in self:
-            if record.format_options and isinstance(record.format_options, dict):
-                record.footer_options_json = record.format_options.get('footer', {})
-            else:
-                record.footer_options_json = {}
+            record.footer_has_content = bool(record.footer_options and isinstance(record.footer_options, dict) and record.footer_options)
 
-    # ==================== PAGE COMPUTE/INVERSE ====================
+    # ==================== CHANGE DETECTION COMPUTE METHODS ====================
 
-    @api.depends('format_options')
+    @api.depends('page_options')
+    def _compute_page_has_changes(self):
+        for record in self:
+            if not record.id:
+                record.page_has_changes = False
+                continue
+            # Compare current with database value
+            db_record = record.browse(record.id)
+            old_value = db_record.page_options or {}
+            new_value = record.page_options or {}
+            record.page_has_changes = old_value != new_value
+
+    @api.depends('aside_options')
+    def _compute_aside_has_changes(self):
+        for record in self:
+            if not record.id:
+                record.aside_has_changes = False
+                continue
+            db_record = record.browse(record.id)
+            old_value = db_record.aside_options or {}
+            new_value = record.aside_options or {}
+            record.aside_has_changes = old_value != new_value
+
+    @api.depends('header_options')
+    def _compute_header_has_changes(self):
+        for record in self:
+            if not record.id:
+                record.header_has_changes = False
+                continue
+            db_record = record.browse(record.id)
+            old_value = db_record.header_options or {}
+            new_value = record.header_options or {}
+            record.header_has_changes = old_value != new_value
+
+    @api.depends('footer_options')
+    def _compute_footer_has_changes(self):
+        for record in self:
+            if not record.id:
+                record.footer_has_changes = False
+                continue
+            db_record = record.browse(record.id)
+            old_value = db_record.footer_options or {}
+            new_value = record.footer_options or {}
+            record.footer_has_changes = old_value != new_value
+
+    # ==================== PAGE FIELD COMPUTE/INVERSE ====================
+
+    @api.depends('page_options')
     def _compute_page_background(self):
         for record in self:
             record.page_background = record.get_option('page', 'background', False)
@@ -327,7 +353,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('page', 'background')
 
-    @api.depends('format_options')
+    @api.depends('page_options')
     def _compute_page_cssvars(self):
         for record in self:
             record.page_cssvars = record.get_option('page', 'cssvars', '')
@@ -339,7 +365,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('page', 'cssvars')
 
-    @api.depends('format_options')
+    @api.depends('page_options')
     def _compute_page_navigation(self):
         for record in self:
             record.page_navigation = record.get_option('page', 'navigation', '')
@@ -351,7 +377,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('page', 'navigation')
 
-    @api.depends('format_options')
+    @api.depends('page_options')
     def _compute_page_options_text(self):
         for record in self:
             record.page_options_text = record.get_option('page', 'options', '')
@@ -363,43 +389,9 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('page', 'options')
 
-    @api.depends('format_options')
-    def _compute_page_prop2(self):
-        """Compute page_prop2 from format_options (array as comma-separated string)."""
-        for record in self:
-            prop2_value = record.get_option('page', 'prop2', [])
-            if isinstance(prop2_value, list):
-                record.page_prop2 = ', '.join(str(v) for v in prop2_value)
-            else:
-                record.page_prop2 = str(prop2_value) if prop2_value else ''
+    # ==================== ASIDE FIELD COMPUTE/INVERSE ====================
 
-    def _inverse_page_prop2(self):
-        """Store page_prop2 back to format_options (parse comma-separated to array)."""
-        for record in self:
-            if record.page_prop2:
-                # Split by comma and clean whitespace
-                value_list = [v.strip() for v in record.page_prop2.split(',') if v.strip()]
-                record.set_option('page', 'prop2', value_list)
-            else:
-                record.remove_option('page', 'prop2')
-
-    @api.depends('format_options')
-    def _compute_page_prop3(self):
-        """Compute page_prop3 from format_options."""
-        for record in self:
-            record.page_prop3 = record.get_option('page', 'prop3', False)
-
-    def _inverse_page_prop3(self):
-        """Store page_prop3 back to format_options."""
-        for record in self:
-            if record.page_prop3:
-                record.set_option('page', 'prop3', record.page_prop3)
-            else:
-                record.remove_option('page', 'prop3')
-
-    # ==================== ASIDE COMPUTE/INVERSE ====================
-
-    @api.depends('format_options')
+    @api.depends('aside_options')
     def _compute_aside_postit(self):
         for record in self:
             record.aside_postit = record.get_option('aside', 'postit', '')
@@ -411,7 +403,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('aside', 'postit')
 
-    @api.depends('format_options')
+    @api.depends('aside_options')
     def _compute_aside_toc(self):
         for record in self:
             record.aside_toc = record.get_option('aside', 'toc', '')
@@ -423,7 +415,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('aside', 'toc')
 
-    @api.depends('format_options')
+    @api.depends('aside_options')
     def _compute_aside_list(self):
         for record in self:
             record.aside_list = record.get_option('aside', 'list', False)
@@ -435,7 +427,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('aside', 'list')
 
-    @api.depends('format_options')
+    @api.depends('aside_options')
     def _compute_aside_context(self):
         for record in self:
             record.aside_context = record.get_option('aside', 'context', '')
@@ -447,7 +439,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('aside', 'context')
 
-    @api.depends('format_options')
+    @api.depends('aside_options')
     def _compute_aside_options_text(self):
         for record in self:
             record.aside_options_text = record.get_option('aside', 'options', '')
@@ -459,9 +451,9 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('aside', 'options')
 
-    # ==================== HEADER COMPUTE/INVERSE ====================
+    # ==================== HEADER FIELD COMPUTE/INVERSE ====================
 
-    @api.depends('format_options')
+    @api.depends('header_options')
     def _compute_header_alert(self):
         for record in self:
             record.header_alert = record.get_option('header', 'alert', '')
@@ -473,7 +465,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('header', 'alert')
 
-    @api.depends('format_options')
+    @api.depends('header_options')
     def _compute_header_postit(self):
         for record in self:
             record.header_postit = record.get_option('header', 'postit', '')
@@ -485,7 +477,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('header', 'postit')
 
-    @api.depends('format_options')
+    @api.depends('header_options')
     def _compute_header_options_text(self):
         for record in self:
             record.header_options_text = record.get_option('header', 'options', '')
@@ -497,9 +489,9 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('header', 'options')
 
-    # ==================== FOOTER COMPUTE/INVERSE ====================
+    # ==================== FOOTER FIELD COMPUTE/INVERSE ====================
 
-    @api.depends('format_options')
+    @api.depends('footer_options')
     def _compute_footer_gallery(self):
         for record in self:
             record.footer_gallery = record.get_option('footer', 'gallery', False)
@@ -511,7 +503,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('footer', 'gallery')
 
-    @api.depends('format_options')
+    @api.depends('footer_options')
     def _compute_footer_postit(self):
         for record in self:
             record.footer_postit = record.get_option('footer', 'postit', '')
@@ -523,7 +515,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('footer', 'postit')
 
-    @api.depends('format_options')
+    @api.depends('footer_options')
     def _compute_footer_slider(self):
         for record in self:
             record.footer_slider = record.get_option('footer', 'slider', False)
@@ -535,7 +527,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('footer', 'slider')
 
-    @api.depends('format_options')
+    @api.depends('footer_options')
     def _compute_footer_repeat(self):
         for record in self:
             record.footer_repeat = record.get_option('footer', 'repeat', '')
@@ -547,7 +539,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('footer', 'repeat')
 
-    @api.depends('format_options')
+    @api.depends('footer_options')
     def _compute_footer_sitemap(self):
         for record in self:
             record.footer_sitemap = record.get_option('footer', 'sitemap', False)
@@ -559,7 +551,7 @@ class WebOptionsAbstract(models.AbstractModel):
             else:
                 record.remove_option('footer', 'sitemap')
 
-    @api.depends('format_options')
+    @api.depends('footer_options')
     def _compute_footer_options_text(self):
         for record in self:
             record.footer_options_text = record.get_option('footer', 'options', '')
@@ -574,100 +566,106 @@ class WebOptionsAbstract(models.AbstractModel):
     # ==================== HELPER METHODS ====================
 
     def get_option(self, section, option_name, default=None):
-        """
-        Helper method to get a specific option value from any section.
-        
-        Args:
-            section (str): Section name ('page', 'aside', 'header', 'footer')
-            option_name (str): Name of the option
-            default: Default value if option doesn't exist
-            
-        Returns:
-            The option value or default
-            
-        Usage:
-            record.get_option('page', 'background', False)
-            record.get_option('footer', 'sitemap', False)
-        """
+        """Get a specific option value from a section."""
         self.ensure_one()
-        if not self.format_options or not isinstance(self.format_options, dict):
+        section_field = f'{section}_options'
+        options = getattr(self, section_field, None)
+        if not options or not isinstance(options, dict):
             return default
-        section_options = self.format_options.get(section, {})
-        return section_options.get(option_name, default)
+        return options.get(option_name, default)
 
     def set_option(self, section, option_name, value):
-        """
-        Helper method to set a specific option value in any section.
-        Only sets the value if it's not empty/False.
-        
-        Args:
-            section (str): Section name ('page', 'aside', 'header', 'footer')
-            option_name (str): Name of the option
-            value: Value to set
-            
-        Usage:
-            record.set_option('page', 'background', 'primary')
-            record.set_option('footer', 'sitemap', 'medium')
-        """
+        """Set a specific option value in a section."""
         self.ensure_one()
-        if not value:  # Don't set empty values
+        if not value:
             return
             
-        current_options = self.format_options or {}
-        if section not in current_options:
-            current_options[section] = {}
-        current_options[section][option_name] = value
-        self.format_options = current_options
+        section_field = f'{section}_options'
+        current_options = getattr(self, section_field, None) or {}
+        current_options[option_name] = value
+        setattr(self, section_field, current_options)
 
     def remove_option(self, section, option_name):
-        """
-        Helper method to remove a specific option from a section.
-        Also removes empty sections to keep format_options clean.
-        
-        Args:
-            section (str): Section name ('page', 'aside', 'header', 'footer')
-            option_name (str): Name of the option to remove
-            
-        Usage:
-            record.remove_option('page', 'background')
-            record.remove_option('footer', 'sitemap')
-        """
+        """Remove a specific option from a section."""
         self.ensure_one()
-        if not self.format_options or not isinstance(self.format_options, dict):
+        section_field = f'{section}_options'
+        current_options = getattr(self, section_field, None)
+        if not current_options or not isinstance(current_options, dict):
             return
             
-        current_options = self.format_options.copy()
-        if section in current_options and option_name in current_options[section]:
-            del current_options[section][option_name]
-            
-            # Remove empty section
-            if not current_options[section]:
-                del current_options[section]
-                
-            self.format_options = current_options
+        if option_name in current_options:
+            del current_options[option_name]
+            # If section is now empty, set to False instead of empty dict
+            setattr(self, section_field, current_options if current_options else False)
 
-    def action_save_format_options(self):
-        """
-        Save the current format_options to the database.
-        The inverse functions already update format_options, 
-        but this method provides explicit feedback.
-        
-        Returns:
-            dict: Action to display success notification
-        """
+    # ==================== BUTTON ACTION METHODS ====================
+
+    def action_create_page_options(self):
+        """Create page_options with default values."""
         self.ensure_one()
-        
-        # The inverse functions have already updated format_options
-        # We just need to trigger a write to save it
-        self.write({'format_options': self.format_options})
-        
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Success',
-                'message': 'Format options saved successfully.',
-                'type': 'success',
-                'sticky': False,
-            }
+        self.page_options = {
+            'background': 'primary',
+            'cssvars': '',
+            'navigation': '',
+            'options': ''
         }
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_delete_page_options(self):
+        """Delete all page_options content."""
+        self.ensure_one()
+        self.page_options = False
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_create_aside_options(self):
+        """Create aside_options with default values."""
+        self.ensure_one()
+        self.aside_options = {
+            'postit': '',
+            'toc': '',
+            'list': False,
+            'context': '',
+            'options': ''
+        }
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_delete_aside_options(self):
+        """Delete all aside_options content."""
+        self.ensure_one()
+        self.aside_options = False
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_create_header_options(self):
+        """Create header_options with default values."""
+        self.ensure_one()
+        self.header_options = {
+            'alert': '',
+            'postit': '',
+            'options': ''
+        }
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_delete_header_options(self):
+        """Delete all header_options content."""
+        self.ensure_one()
+        self.header_options = False
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_create_footer_options(self):
+        """Create footer_options with default values."""
+        self.ensure_one()
+        self.footer_options = {
+            'gallery': False,
+            'postit': '',
+            'slider': False,
+            'repeat': '',
+            'sitemap': 'medium',
+            'options': ''
+        }
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_delete_footer_options(self):
+        """Delete all footer_options content."""
+        self.ensure_one()
+        self.footer_options = False
+        return {'type': 'ir.actions.act_window_close'}

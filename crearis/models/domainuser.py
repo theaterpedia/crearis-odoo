@@ -1,8 +1,14 @@
+# -*- coding: utf-8 -*-
+# Copyright 2024 theaterpedia.org
+# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+
 class DomainUser(models.Model):
     _name = "crearis.domainuser"
+    _inherit = ['web.options.abstract']
     _description = "Domain-Users"
     _order = "domain_id, role, user_id" 
     _rec_name = "cid"      
@@ -16,6 +22,15 @@ class DomainUser(models.Model):
         help="Domain/Website the chosen user can access to.",
         index=True,
     )
+    
+    domain_code = fields.Char(
+        string='Domain Code',
+        related='domain_id.domain_code',
+        readonly=True,
+        store=False,
+        help='Domain code from the website'
+    )
+    
     user_id = fields.Many2one(
         "res.users",
         required=True, 
@@ -34,18 +49,214 @@ class DomainUser(models.Model):
     
     def _default_title(self):
         if self.role:
-            return self.role.description
+            return dict(self._fields['role'].selection).get(self.role, "Teilnehmer:in")
         else:
             return "Teilnehmer:in"
 
-    name = fields.Char('Title', translate=False, default=_default_title, required=True)
+    name = fields.Char('Title', translate=True, default=_default_title, required=True)
 
     active = fields.Boolean("Active?", default=True)
-    description = fields.Char('Description', translate=True, help="Short-Description of title/role of this user on this domain.", default='')
-    md = fields.Text('Markdown Content', translate=False, help="Markdown content for user profile.", default='')
-    capabilities = fields.Char('Capabilities', translate=False, help="Pruvious-Capabilities of this user on this domain.", default='')
-    settings = fields.Json(default={})
-    version = fields.Integer(default=1)  # we tweak this in def write  
+    description = fields.Text(
+        'Description', 
+        translate=True, 
+        help="Kurzbeschreibung / Teasertext / Suchmaschine",
+        default=''
+    )
+
+    # Domain-user specific header fields (not in options JSON)
+    header_type = fields.Selection(
+        string='Header',
+        selection=[
+            ("simple", "simple"),
+            ("columns", 'Text-Bild (2 Spalten)'),
+            ("banner", "Banner medium"),
+            ("cover", "Cover Fullsize"),
+            ("bauchbinde", "Bauchbinde")
+        ],
+        help="What header-type introduces the role?",
+        default="simple"
+    )
+
+    header_size = fields.Selection(
+        string='Header-Size',
+        selection=[
+            ("mini", "minimal"),
+            ("medium", 'Medium'),
+            ("prominent", "prominent"),
+            ("full", "full")
+        ],
+        help="How big is the header?",
+        default="mini"
+    )
+    
+    cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
+    md = fields.Text('Markdown Content', translate=True, help="Custom Markdown body for the user on this domain.", default='')
+
+    settings = fields.Json(
+        string='Settings',
+        help='JSON structure containing security and content settings',
+        default={}
+    )
+    version = fields.Integer(default=1)
+
+    # ==================== SECURITY SECTION ====================
+    
+    capabilities = fields.Char(
+        string='Capabilities',
+        compute='_compute_capabilities',
+        inverse='_inverse_capabilities',
+        store=False,
+        help='User capabilities | Comma-separated list of capabilities/permissions for this user on this domain'
+    )
+
+    # ==================== CONTENT SECTION ====================
+    
+    custom_md = fields.Boolean(
+        string='Custom Markdown',
+        compute='_compute_custom_md',
+        inverse='_inverse_custom_md',
+        store=False,
+        help='Enable custom markdown | Allow custom markdown content for this domain user'
+    )
+    
+    content_options = fields.Text(
+        string='Content Options',
+        compute='_compute_content_options',
+        inverse='_inverse_content_options',
+        store=False,
+        translate=False,
+        help='Additional content options | Miscellaneous content-related options as key-value pairs or JSON'
+    )
+
+    # ==================== COMPUTE METHODS ====================
+
+    @api.depends('settings')
+    def _compute_capabilities(self):
+        """Compute capabilities from settings JSON."""
+        for record in self:
+            capabilities = record.get_setting('security', 'capabilities', [])
+            if isinstance(capabilities, list):
+                record.capabilities = ', '.join(str(v) for v in capabilities)
+            else:
+                record.capabilities = str(capabilities) if capabilities else ''
+
+    def _inverse_capabilities(self):
+        """Store capabilities back to settings JSON."""
+        for record in self:
+            if record.capabilities:
+                value_list = [v.strip() for v in record.capabilities.split(',') if v.strip()]
+                record.set_setting('security', 'capabilities', value_list)
+            else:
+                record.remove_setting('security', 'capabilities')
+
+    @api.depends('settings')
+    def _compute_custom_md(self):
+        """Compute custom_md from settings JSON."""
+        for record in self:
+            record.custom_md = record.get_setting('content', 'custom_md', False)
+
+    def _inverse_custom_md(self):
+        """Store custom_md back to settings JSON and clear md field if False."""
+        for record in self:
+            if record.custom_md:
+                record.set_setting('content', 'custom_md', record.custom_md)
+            else:
+                record.remove_setting('content', 'custom_md')
+                record.write({'md': ''})
+
+    @api.depends('settings')
+    def _compute_content_options(self):
+        """Compute content_options from settings JSON."""
+        for record in self:
+            record.content_options = record.get_setting('content', 'options', '')
+
+    def _inverse_content_options(self):
+        """Store content_options back to settings JSON."""
+        for record in self:
+            if record.content_options:
+                record.set_setting('content', 'options', record.content_options)
+            else:
+                record.remove_setting('content', 'options')
+
+    # ==================== OVERRIDE CUSTOM HEADER INVERSE ====================
+    
+    def _inverse_custom_header(self):
+        """Override to also clear domainuser-specific header fields."""
+        # Call parent method to handle format_options
+        super()._inverse_custom_header()
+        
+        # Additionally clear domainuser-specific header fields if custom_header is False
+        for record in self:
+            if not record.custom_header:
+                record.write({
+                    'header_type': 'simple',
+                    'header_size': 'mini',
+                    'cimg': ''
+                })
+
+    # ==================== HELPER METHODS FOR SETTINGS ====================
+
+    def get_setting(self, section, option_name, default=None):
+        """
+        Helper method to get a specific setting value from any section.
+        
+        Args:
+            section (str): Section name ('security', 'content')
+            option_name (str): Name of the setting
+            default: Default value if setting doesn't exist
+            
+        Returns:
+            The setting value or default
+        """
+        self.ensure_one()
+        if not self.settings or not isinstance(self.settings, dict):
+            return default
+        section_settings = self.settings.get(section, {})
+        return section_settings.get(option_name, default)
+
+    def set_setting(self, section, option_name, value):
+        """
+        Helper method to set a specific setting value in any section.
+        Only sets the value if it's not empty/False.
+        
+        Args:
+            section (str): Section name ('security', 'content')
+            option_name (str): Name of the setting
+            value: Value to set
+        """
+        self.ensure_one()
+        if not value and not isinstance(value, bool):
+            return
+            
+        current_settings = self.settings or {}
+        if section not in current_settings:
+            current_settings[section] = {}
+        current_settings[section][option_name] = value
+        self.settings = current_settings
+
+    def remove_setting(self, section, option_name):
+        """
+        Helper method to remove a specific setting from a section.
+        Also removes empty sections to keep settings clean.
+        
+        Args:
+            section (str): Section name ('security', 'content')
+            option_name (str): Name of the setting to remove
+        """
+        self.ensure_one()
+        if not self.settings or not isinstance(self.settings, dict):
+            return
+            
+        current_settings = self.settings.copy()
+        if section in current_settings and option_name in current_settings[section]:
+            del current_settings[section][option_name]
+            
+            if not current_settings[section]:
+                del current_settings[section]
+                
+            self.settings = current_settings
+
+    # ==================== EXISTING METHODS ====================
     
     @api.depends("domain_id","role")
     def _compute_cid(self):
@@ -57,47 +268,17 @@ class DomainUser(models.Model):
 
     cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid)
 
-    def json_data_store(self):
-        """Store capabilities string as JSON array in settings field."""
-        for record in self:
-            if not record.capabilities:
-                raise UserError("Capabilities field is empty. Please enter capabilities before saving.")
-            
-            # Split capabilities by comma and clean whitespace
-            capabilities_list = [cap.strip() for cap in record.capabilities.split(',') if cap.strip()]
-            
-            # Update settings, preserving other keys if they exist
-            current_settings = record.settings or {}
-            current_settings['capabilities'] = capabilities_list
-            
-            record.settings = current_settings
-        
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Success',
-                'message': 'Capabilities saved to settings.',
-                'type': 'success',
-                'sticky': False,
-            }
-        }
-
     def write(self, vals):
-        # Code before write: 'self' has the old values
         vals['version'] = self.version + 1
         old_role = self.role
         old_name = self.name
         
         res = super(DomainUser, self).write(vals)
-        
-        # Invalidate cache - try invalidate_recordset() for Odoo 16
         self.invalidate_recordset()
 
-        # Code after write: 'self' has the new values
         new_role = self.role
         new_name = self.name
-        if not self.env.context.get("_domainuser_write"): # we check for the flag '_domainuser_write' to prevent endless loops?
+        if not self.env.context.get("_domainuser_write"):
             if new_name == old_name and new_role != old_role:
                 switch = {
                     'user': "Teilnehmer:in",
