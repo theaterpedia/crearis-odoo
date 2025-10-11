@@ -24,3 +24,6 @@
 	path = .external/theaterpedia-data
 	url = https://github.com/theaterpedia/theaterpedia-data.git
 	branch = main
+[submodule ".external/graphql_theaterpedia"]
+	path = .external/graphql_theaterpedia
+	url = https://github.com/crearis/vuestorefront-theaterpedia
