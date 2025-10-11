@@ -81,19 +81,6 @@
             <xpath expr="//field[@name='event_type_id']" position="attributes">
                 <attribute name="invisible">True</attribute>
             </xpath>            
-
-            <!-- remove Overline/Subline
-            <xpath expr="//div[@class='oe_title']" position="before">
-                <field class="lead" name="event_type_id" placeholder="Domain" />
-                <field name="domain_code" placeholder="Domain" />
-                <field name="space_id" placeholder="Home-Space (Online)" />
-                <field class="lead" name="subtitle" style="position: relative; top: 0.4em;"  placeholder="Overline" attrs="{'invisible':[('use_overline', '=', False)]}" />   
-            </xpath>            
-
-            <xpath expr="//div[@class='oe_title']" position="after">
-                <field class="lead" name="subtitle" style="position: relative; top: -1em;" placeholder="Subtitle" attrs="{'invisible':[('use_overline', '=', True)]}" />
-            </xpath>  
-            -->
             
             <!--  Teasertext inside left-content -->
             <xpath expr="//label[@for='date_begin']" position="before">
@@ -122,9 +109,165 @@
                     <field name="header_size" class="oe_inline" nolabel="1" />
                 </div>
                 <field name="cimg"/>
-                <field name="format_options" widget="json"/>
 
                 <field name="md" />
+            </xpath>
+
+            <!-- Add new Website tab as first tab in notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Website" name="web_options">
+                    
+                    <!-- Hidden fields for computed states -->
+                    <field name="page_options" invisible="1"/>
+                    <field name="aside_options" invisible="1"/>
+                    <field name="header_options" invisible="1"/>
+                    <field name="footer_options" invisible="1"/>
+                    <field name="page_has_content" invisible="1"/>
+                    <field name="aside_has_content" invisible="1"/>
+                    <field name="header_has_content" invisible="1"/>
+                    <field name="footer_has_content" invisible="1"/>
+                    <field name="page_has_changes" invisible="1"/>
+                    <field name="aside_has_changes" invisible="1"/>
+                    <field name="header_has_changes" invisible="1"/>
+                    <field name="footer_has_changes" invisible="1"/>
+                    
+                    <!-- Custom Content Sections with Toggle Buttons -->
+                    <separator string="Custom Content Sections"/>
+                    
+                    <!-- All four button groups in one row -->
+                    <group col="4">
+                        <div>
+                            <button name="action_delete_page_options" 
+                                    type="object" 
+                                    string="Delete Page Options"
+                                    class="btn-danger"
+                                    icon="fa-times"
+                                    attrs="{'invisible': [('page_has_content', '=', False)]}"
+                                    confirm="Are you sure you want to delete all page options?"/>
+                            
+                            <button name="action_create_page_options" 
+                                    type="object" 
+                                    string="Create Page Options"
+                                    class="btn-primary"
+                                    icon="fa-plus"
+                                    attrs="{'invisible': [('page_has_content', '=', True)]}"/>
+                        </div>
+                        
+                        <div>
+                            <button name="action_delete_aside_options" 
+                                    type="object" 
+                                    string="Delete Aside Options"
+                                    class="btn-danger"
+                                    icon="fa-times"
+                                    attrs="{'invisible': [('aside_has_content', '=', False)]}"
+                                    confirm="Are you sure you want to delete all aside options?"/>
+                            
+                            <button name="action_create_aside_options" 
+                                    type="object" 
+                                    string="Create Aside Options"
+                                    class="btn-primary"
+                                    icon="fa-plus"
+                                    attrs="{'invisible': [('aside_has_content', '=', True)]}"/>
+                        </div>
+                        
+                        <div>
+                            <button name="action_delete_header_options" 
+                                    type="object" 
+                                    string="Delete Header Options"
+                                    class="btn-danger"
+                                    icon="fa-times"
+                                    attrs="{'invisible': [('header_has_content', '=', False)]}"
+                                    confirm="Are you sure you want to delete all header options?"/>
+                            
+                            <button name="action_create_header_options" 
+                                    type="object" 
+                                    string="Create Header Options"
+                                    class="btn-primary"
+                                    icon="fa-plus"
+                                    attrs="{'invisible': [('header_has_content', '=', True)]}"/>
+                        </div>
+                        
+                        <div>
+                            <button name="action_delete_footer_options" 
+                                    type="object" 
+                                    string="Delete Footer Options"
+                                    class="btn-danger"
+                                    icon="fa-times"
+                                    attrs="{'invisible': [('footer_has_content', '=', False)]}"
+                                    confirm="Are you sure you want to delete all footer options?"/>
+                            
+                            <button name="action_create_footer_options" 
+                                    type="object" 
+                                    string="Create Footer Options"
+                                    class="btn-primary"
+                                    icon="fa-plus"
+                                    attrs="{'invisible': [('footer_has_content', '=', True)]}"/>
+                        </div>
+                    </group>
+
+                    <!-- Page Options Section -->
+                    <div attrs="{'invisible': [('page_has_content', '=', False)]}">
+                        <separator string="Page Options"/>
+                        <group string="Page Configuration">
+                            <group>
+                                <field name="page_background"/>
+                                <field name="page_cssvars" widget="text"/>
+                            </group>
+                            <group>
+                                <field name="page_navigation" widget="text"/>
+                                <field name="page_options_text" widget="text"/>
+                            </group>
+                        </group>
+                    </div>
+
+                    <!-- Aside Options Section -->
+                    <div attrs="{'invisible': [('aside_has_content', '=', False)]}">
+                        <separator string="Aside Options"/>
+                        <group string="Aside Configuration">
+                            <group>
+                                <field name="aside_postit" widget="text"/>
+                                <field name="aside_toc" widget="text"/>
+                            </group>
+                            <group>
+                                <field name="aside_list"/>
+                                <field name="aside_context" widget="text"/>
+                                <field name="aside_options_text" widget="text"/>
+                            </group>
+                        </group>
+                    </div>
+
+                    <!-- Header Options Section -->
+                    <div attrs="{'invisible': [('header_has_content', '=', False)]}">
+                        <separator string="Header Options"/>
+                        <group string="Header Configuration">
+                            <group>
+                                <field name="header_alert" widget="text"/>
+                            </group>
+                            <group>
+                                <field name="header_postit" widget="text"/>
+                                <field name="header_options_text" widget="text"/>
+                            </group>
+                        </group>
+                    </div>
+
+                    <!-- Footer Options Section -->
+                    <div attrs="{'invisible': [('footer_has_content', '=', False)]}">
+                        <separator string="Footer Options"/>
+                        <group string="Footer Configuration">
+                            <group>
+                                <field name="footer_gallery"/>
+                                <field name="footer_postit" widget="text"/>
+                                <field name="footer_slider"/>
+                            </group>
+                            <group>
+                                <field name="footer_repeat" widget="text"/>
+                                <field name="footer_sitemap"/>
+                                <field name="footer_options_text" widget="text"/>
+                            </group>
+                        </group>
+                    </div>
+                    
+                </page>
             </xpath>
 
         </field>

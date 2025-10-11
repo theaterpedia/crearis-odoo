@@ -1,8 +1,8 @@
 from odoo import models, fields, api # type: ignore
-# from json_field import JsonField
 
 class EventEvent(models.Model):
-    _inherit = "event.event"
+    _name = 'event.event'  # Add this line - it was missing!
+    _inherit = ["event.event", "web.options.abstract"]
     _rec_name = "rectitle"
 
     teasertext = fields.Text('Teasertext', translate=True, default='')
@@ -24,16 +24,12 @@ class EventEvent(models.Model):
         selection=[("mini", "minimal"), ("medium", 'Medium'), ("prominent", "prominent"), ("full", "full")],
         help="How big is the header?",
         default="mini")
-
-    format_options = fields.Json()
     
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
-
     md = fields.Text('Markdown Content', translate=True, help="Markdown body of the event.", default='')
 
-    # blocks = JsonField('Pruvious Blocks', required=False, default=[])   # a json object represented as dict / list / python primitives, see: https://gist.github.com/danmana/5242f37b7d63daf4698de7c61c8b59fc
     blocks = fields.Json()
-    version = fields.Integer(default=1)  # we tweak this in def write  
+    version = fields.Integer(default=1)
 
     address_id = fields.Many2one(
         'res.partner', string='Venue', default=lambda self: self.env.company.partner_id.id,
@@ -55,7 +51,7 @@ class EventEvent(models.Model):
             else:
                 event.rectitle = '{} {}'.format(foreignDomain.lower(), event.name).lstrip()
 
-    rectitle = fields.Char(translate=False,compute=_compute_rectitle)
+    rectitle = fields.Char(translate=False, compute=_compute_rectitle)
     
     # ----------------------------------
     # Proxy-Fields for Company-based settings
@@ -83,7 +79,6 @@ class EventEvent(models.Model):
     def _compute_use_tracks(self):
         for event in self:
             event.use_tracks = event.domain_code.use_tracks
-    
 
     @api.depends("domain_code")
     def _compute_use_products(self):
@@ -95,7 +90,6 @@ class EventEvent(models.Model):
         for event in self:
             event.use_overline = event.domain_code.use_overline
     
-    #TODO: _009 implement use_teasertext
     @api.depends("domain_code")
     def _compute_use_teasertext(self):
         for event in self:
@@ -104,12 +98,11 @@ class EventEvent(models.Model):
     owner_company = fields.Integer('Owner (Company)', compute=_compute_owner_company)
     use_msteams = fields.Boolean('MS Teams', compute=_compute_use_msteams)
     use_jitsi = fields.Boolean('Jitsi Rooms', compute=_compute_use_jitsi)
-    use_template_codes = fields.Boolean('Use Codes',compute=_compute_use_template_codes)
+    use_template_codes = fields.Boolean('Use Codes', compute=_compute_use_template_codes)
     use_tracks = fields.Boolean(compute=_compute_use_tracks)
     use_products = fields.Boolean(compute=_compute_use_products)
     use_overline = fields.Boolean(compute=_compute_use_overline)
     use_teasertext = fields.Boolean(compute=_compute_use_teasertext)
-
 
     # ----------------------------------
     # crearis-interface
@@ -129,7 +122,7 @@ class EventEvent(models.Model):
             else:
                 event.cid = '{}.event-{}__{}'.format(domain_code, template_code, event.id)
 
-    cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid, store=True)
+    cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid, store=True)
 
     def write(self, vals):
         # Code before write: 'self' has the old values
