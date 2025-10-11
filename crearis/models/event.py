@@ -29,7 +29,7 @@ class EventEvent(models.Model):
     
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
 
-    md = fields.Text("Body (Markdown)", index=True)
+    md = fields.Text('Markdown Content', translate=True, help="Markdown body of the event.", default='')
 
     # blocks = JsonField('Pruvious Blocks', required=False, default=[])   # a json object represented as dict / list / python primitives, see: https://gist.github.com/danmana/5242f37b7d63daf4698de7c61c8b59fc
     blocks = fields.Json()

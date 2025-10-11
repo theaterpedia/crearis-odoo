@@ -25,7 +25,7 @@ class ResPartner(models.Model):
     
     cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
 
-    md = fields.Text("Body (Markdown)", index=True)
+    md = fields.Text('Markdown Content', translate=True, help="Markdown content for partner profile.", default='')
     # body_html = fields.Html("Body (HTML)", compute="_compute_body_html", store=True)
 
     # @api.depends("body_md")

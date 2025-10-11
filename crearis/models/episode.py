@@ -44,7 +44,7 @@ class BlogPost(models.Model):
         help="public url for the hero-image"
     )
 
-    md = fields.Text("Markdown-Content", index=True)
+    md = fields.Text('Markdown Content', translate=True, help="Markdown body of the post.", default='')
 
     version = fields.Integer(default=1)
 
