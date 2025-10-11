@@ -1,3 +1,6 @@
 {
-  "python.languageServer": "None"
+  "python.languageServer": "None",
+  "git.detectSubmodules": false,
+  "git.autoRepositoryDetection": "openEditors",
+  "scm.repositories.visible": 4  
 }
