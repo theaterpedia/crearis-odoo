@@ -3,9 +3,9 @@
         url = https://github.com/OCA/rest-framework.git
         branch = 16.0
 [submodule ".external/vuestorefront-extra"]
-        path = .external/vuestorefront-extra
-        url = https://github.com/crearis/vuestorefront-extra.git
-        branch = 16.0
+	path = .external/vuestorefront-extra
+	url = https://github.com/crearis/vuestorefront-extra.git
+	branch = 16.0
 [submodule ".external/event"]
         path = .external/event
         url = https://github.com/crearis/event-theaterpedia.git
