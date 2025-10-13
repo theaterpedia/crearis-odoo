@@ -6,7 +6,7 @@ from odoo import models, fields, api
 
 
 class BlogPost(models.Model):
-    _inherit = ['blog.post', 'web.options.abstract']
+    _inherit = ['blog.post', 'web.options.abstract', "demo.data.mixin"]
     _name = 'blog.post'
 
     description = fields.Char('Teasertext', translate=True, default='')

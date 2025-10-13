@@ -51,6 +51,7 @@
     'assets': {
         'web.assets_backend': [
             'crearis/static/src/js/json_field.js',
+            'crearis/static/src/scss/demo_ribbon.scss',
         ],
     },
     'installable': True,

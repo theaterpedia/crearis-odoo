@@ -266,6 +266,10 @@ class DomainUserQuery(graphene.ObjectType):
         domain_id=graphene.Int(),
         role=graphene.String(),
         active=graphene.Boolean(),
+        include_demo=graphene.Boolean(
+            required=False,
+            description="Include demo data records. If not specified, uses system config parameter."
+        ),
     )
 
     @staticmethod
@@ -290,7 +294,7 @@ class DomainUserQuery(graphene.ObjectType):
         return domainuser
 
     @staticmethod
-    def resolve_domainusers(self, info, current_page, page_size, domain_id=None, role=None, active=None):
+    def resolve_domainusers(self, info, current_page, page_size, domain_id=None, role=None, active=None, include_demo=None):
         env = info.context["env"]
         DomainUserModel = env['crearis.domainuser'].sudo()
 
@@ -300,7 +304,6 @@ class DomainUserQuery(graphene.ObjectType):
         if domain_id:
             domain.append(('domain_id', '=', domain_id))
         else:
-            # Default to current website
             website = env['website'].get_current_website()
             if website:
                 domain.append(('domain_id', '=', website.id))
@@ -311,15 +314,34 @@ class DomainUserQuery(graphene.ObjectType):
         if active is not None:
             domain.append(('active', '=', active))
 
-        # Calculate offset
         if current_page > 1:
             offset = (current_page - 1) * page_size
         else:
             offset = 0
 
-        # Get records
         domainusers = DomainUserModel.search(domain, limit=page_size, offset=offset, order='role, user_id')
-        total_count = DomainUserModel.search_count(domain)
+        
+        # Determine if we should include demo data
+        if include_demo is None:
+            ICP = env['ir.config_parameter'].sudo()
+            include_demo = ICP.get_param('crearis.graphql.include_demo', 'True') == 'True'
+        
+        # Filter out demo data if requested
+        if not include_demo:
+            xml_id_data = env['ir.model.data'].sudo().search([
+                ('model', '=', 'crearis.domainuser'),
+                ('res_id', 'in', domainusers.ids)
+            ])
+            
+            demo_ids = set(
+                data.res_id for data in xml_id_data 
+                if data.complete_name.split('.')[-1].startswith('_demo')
+            )
+            
+            if demo_ids:
+                domainusers = domainusers.filtered(lambda d: d.id not in demo_ids)
+        
+        total_count = len(domainusers)
 
         return DomainUserList(domainusers=domainusers, total_count=total_count)
 

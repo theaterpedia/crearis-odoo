@@ -7,4 +7,9 @@
         <field name="value">_mue</field>
     </record>
 
+    <record id="crearis_include_demo_in_graphql" model="ir.config_parameter">
+        <field name="key">crearis.graphql.include_demo</field>
+        <field name="value">True</field>
+    </record>
+
 </odoo>

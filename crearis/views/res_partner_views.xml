@@ -6,6 +6,18 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
 
+            <!-- Add demo banner at the very top -->
+            <xpath expr="//sheet" position="before">
+                <div class="ribbon ribbon-top-left" attrs="{'invisible': [('is_demo', '=', False)]}">
+                    <span class="bg-success">DEMO DATA</span>
+                </div>
+            </xpath>
+
+            <!-- Add is_demo field as invisible so it can be used in attrs -->
+            <xpath expr="//sheet" position="inside">
+                <field name="is_demo" invisible="1"/>
+            </xpath>
+
             <xpath expr="//page[@name='internal_notes']" position="before">
                 <page name='locations_spaces' string="Manage locations">
                   <field name="is_location_provider" string="Is Location Provider"/>

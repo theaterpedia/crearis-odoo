@@ -7,7 +7,16 @@
         <field name="model">crearis.domainuser</field>
         <field name="arch" type="xml">
             <form string="Domain User">
+                
+                <!-- Add demo banner at the very top -->
+                <div class="ribbon ribbon-top-left" attrs="{'invisible': [('is_demo', '=', False)]}">
+                    <span class="bg-success">DEMO DATA</span>
+                </div>
+                
                 <sheet>
+                    <!-- Hidden field for demo detection - MUST be inside sheet -->
+                    <field name="is_demo" invisible="1"/>
+                    
                     <!-- Header Section with Title as Headline -->
                     <div class="oe_title">
                         <!-- Overline: CID, Domain Code, User, Role, Active -->
@@ -258,6 +267,7 @@
                 <field name="name"/>
                 <field name="user_id"/>
                 <field name="description"/>
+                <field name="is_demo"/>
                 <field name="page_has_content"/>
                 <field name="aside_has_content"/>
                 <field name="header_has_content"/>

@@ -34,6 +34,10 @@ def get_search_order(sort):
 class PostFilterInput(graphene.InputObjectType):
     blogs = graphene.List(graphene.Int)
     is_published = graphene.Boolean()
+    include_demo = graphene.Boolean(
+        required=False,
+        description="Include demo data records. If not specified, uses system config parameter."
+    )
 
 class Posts(graphene.Interface):
     posts = graphene.List(Post)
@@ -85,24 +89,20 @@ class PostQuery(graphene.ObjectType):
     @staticmethod
     def resolve_posts(self, info, filter, current_page, page_size, sort, search):
         env = info.context["env"]
-        domain = [] # env['website'].get_current_website().website_domain()
+        domain = []
         order = get_search_order(sort)
 
         website = env['website'].get_current_website()
 
         if not website.is_hubsite:
             website_ids = [website_id for website_id in website.post_domain_ids.ids]
-            # add the local website-id
             website_ids.append(website.id)
-            print('domainCode:', website.domain_code, ' | website_ids:', website_ids, ' | is_hubsite:', website.is_hubsite)
             domain += [('website_id', 'in', website_ids)]
 
-        # Filter by blogs or default to all
         if filter.get('blogs', False):
             blog_ids = [blog_id for blog_id in filter['blogs']]
             domain += [('blog_id', 'in', blog_ids)]
 
-        # Filter by is_published
         if filter.get('is_published', False):
             domain += [('is_published', '=', 'true')]
 
@@ -110,16 +110,37 @@ class PostQuery(graphene.ObjectType):
             for srch in search.split(" "):
                 domain += [('name', 'ilike', srch)]
 
-        # First offset is 0 but first page is 1
         if current_page > 1:
             offset = (current_page - 1) * page_size
         else:
             offset = 0
 
         BlogPosts = env["blog.post"]
-        total_count = BlogPosts.search_count(domain)
-        posts = BlogPosts.search(
-            domain, limit=page_size, offset=offset, order=order)
+        posts = BlogPosts.search(domain, limit=page_size, offset=offset, order=order)
+        
+        # Determine if we should include demo data
+        include_demo = filter.get('include_demo')
+        
+        if include_demo is None:
+            ICP = env['ir.config_parameter'].sudo()
+            include_demo = ICP.get_param('crearis.graphql.include_demo', 'True') == 'True'
+        
+        # Filter out demo data if requested
+        if not include_demo:
+            xml_id_data = env['ir.model.data'].sudo().search([
+                ('model', '=', 'blog.post'),
+                ('res_id', 'in', posts.ids)
+            ])
+            
+            demo_ids = set(
+                data.res_id for data in xml_id_data 
+                if data.complete_name.split('.')[-1].startswith('_demo')
+            )
+            
+            if demo_ids:
+                posts = posts.filtered(lambda p: p.id not in demo_ids)
+        
+        total_count = len(posts)
         return PostList(posts=posts, total_count=total_count)
     
 class AddBlogPostInput(graphene.InputObjectType):

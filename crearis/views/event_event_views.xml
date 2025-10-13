@@ -9,8 +9,16 @@
         <field name="inherit_id" ref="event.view_event_form"/>
         <field name="arch" type="xml">
 
+            <!-- Add demo banner at the very top -->
+            <xpath expr="//sheet" position="before">
+                <div class="ribbon ribbon-top-left" attrs="{'invisible': [('is_demo', '=', False)]}">
+                    <span class="bg-success">DEMO DATA</span>
+                </div>
+            </xpath>
+
             <xpath expr="//div[@name='button_box']" position="before">
                 <!--  render-props-->
+                <field name="is_demo" invisible="1"/>
                 <field name="owner_company" invisible="1"></field>  
                 <field name="use_msteams" invisible="1" />
                 <field name="use_jitsi" invisible="1" />

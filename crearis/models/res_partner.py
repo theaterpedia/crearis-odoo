@@ -8,7 +8,7 @@ from odoo import _, api, fields, models
 class ResPartner(models.Model):
     """Adds Markdown-Field and Web Options to partner"""
 
-    _inherit = ["res.partner", "web.options.abstract"]
+    _inherit = ["res.partner", "web.options.abstract", "demo.data.mixin"]
     _name = "res.partner"
 
     # HERO-TYPE, FORMAT, CIMG > are developed and tested in model event

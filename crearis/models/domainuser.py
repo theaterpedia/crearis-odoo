@@ -8,7 +8,7 @@ from odoo.exceptions import UserError
 
 class DomainUser(models.Model):
     _name = "crearis.domainuser"
-    _inherit = ['web.options.abstract']
+    _inherit = ['web.options.abstract', "demo.data.mixin"]
     _description = "Domain-Users"
     _order = "domain_id, role, user_id" 
     _rec_name = "cid"      

@@ -2,7 +2,7 @@ from odoo import models, fields, api # type: ignore
 
 class EventEvent(models.Model):
     _name = 'event.event'  # Add this line - it was missing!
-    _inherit = ["event.event", "web.options.abstract"]
+    _inherit = ["event.event", "web.options.abstract", "demo.data.mixin"]
     _rec_name = "rectitle"
 
     teasertext = fields.Text('Teasertext', translate=True, default='')

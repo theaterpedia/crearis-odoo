@@ -11,6 +11,10 @@ from odoo.addons.graphql_theaterpedia.schemas.objects import Partner
 
 class PartnerFilterInput(graphene.InputObjectType):
     ids = graphene.List(graphene.Int, required=True)
+    include_demo = graphene.Boolean(
+        required=False,
+        description="Include demo data records. If not specified, uses system config parameter."
+    )
 
 
 class PartnerQuery(graphene.ObjectType):
@@ -34,5 +38,35 @@ class PartnerQuery(graphene.ObjectType):
         
         if not partners:
             raise GraphQLError(_('No partners found with the provided IDs.'))
+        
+        # Determine if we should include demo data
+        # Priority: query parameter > config parameter
+        include_demo = filter.get('include_demo')
+        
+        if include_demo is None:
+            # Not specified in query, use config parameter
+            ICP = env['ir.config_parameter'].sudo()
+            include_demo = ICP.get_param('crearis.graphql.include_demo', 'True') == 'True'
+        
+        # Filter out demo data if requested
+        if not include_demo:
+            # Get all XML IDs for these partners
+            xml_id_data = env['ir.model.data'].sudo().search([
+                ('model', '=', 'res.partner'),
+                ('res_id', 'in', partners.ids)
+            ])
+            
+            # Find demo partner IDs (XML IDs starting with _demo)
+            demo_ids = set(
+                data.res_id for data in xml_id_data 
+                if data.complete_name.split('.')[-1].startswith('_demo')
+            )
+            
+            # Filter them out
+            if demo_ids:
+                partners = partners.filtered(lambda p: p.id not in demo_ids)
+            
+            if not partners:
+                raise GraphQLError(_('No non-demo partners found with the provided IDs.'))
         
         return partners

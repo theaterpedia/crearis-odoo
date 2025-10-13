@@ -4,6 +4,7 @@
 
 from . import website
 from . import weboptions
+from . import demo_mixin
 from . import res_partner
 from . import blog
 from . import json_field

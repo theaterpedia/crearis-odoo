@@ -126,6 +126,10 @@ class EventFilterInput(graphene.InputObjectType):
     name = graphene.String()
     min_date = graphene.String()
     max_date = graphene.String()
+    include_demo = graphene.Boolean(
+        required=False,
+        description="Include demo data records. If not specified, uses system config parameter."
+    )
 
 class EventQuery(graphene.ObjectType):
     event = graphene.Field(
@@ -170,6 +174,34 @@ class EventQuery(graphene.ObjectType):
         env = info.context["env"]
         events, total_count, min_date, max_date = get_event_list(
             env, current_page, page_size, search, sort, **filter)
+        
+        # Determine if we should include demo data
+        include_demo = filter.get('include_demo')
+        
+        if include_demo is None:
+            # Not specified in query, use config parameter
+            ICP = env['ir.config_parameter'].sudo()
+            include_demo = ICP.get_param('crearis.graphql.include_demo', 'True') == 'True'
+        
+        # Filter out demo data if requested
+        if not include_demo:
+            # Get all XML IDs for these events
+            xml_id_data = env['ir.model.data'].sudo().search([
+                ('model', '=', 'event.event'),
+                ('res_id', 'in', events.ids)
+            ])
+            
+            # Find demo event IDs (XML IDs starting with _demo)
+            demo_ids = set(
+                data.res_id for data in xml_id_data 
+                if data.complete_name.split('.')[-1].startswith('_demo')
+            )
+            
+            # Filter them out
+            if demo_ids:
+                events = events.filtered(lambda e: e.id not in demo_ids)
+                total_count = len(events)
+        
         return EventList(events=events, total_count=total_count, min_date=min_date, max_date=max_date)          
 
 class UpdateEventInput(graphene.InputObjectType):

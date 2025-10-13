@@ -255,6 +255,7 @@ class Pricelist(OdooObjectType):
 
 class Partner(OdooObjectType):
     id = graphene.Int(required=True)
+    is_demo = graphene.Boolean(required=True)
     name = graphene.String()
     firstname = graphene.String()
     lastname = graphene.String()
@@ -302,6 +303,10 @@ class Partner(OdooObjectType):
     
     public = graphene.Boolean()
     website_link = graphene.String()
+
+    @staticmethod
+    def resolve_is_demo(root, info):
+        return root.is_demo or False
 
     def resolve_state(self, info):
         return self.state_id or None
@@ -417,6 +422,7 @@ class User(OdooObjectType):
 
 class DomainUser(OdooObjectType):
     id = graphene.Int(required=True)
+    is_demo = graphene.Boolean(required=True)
     cid = graphene.String()
     version = graphene.Int()
     
@@ -551,6 +557,7 @@ class Currency(OdooObjectType):
 
 class Post(OdooObjectType):
     id = graphene.Int(required=True)
+    is_demo = graphene.Boolean(required=True)
     cid = graphene.String()
     version = graphene.Int()
     author = graphene.Field(lambda: Partner)
@@ -847,6 +854,7 @@ class EventStage(OdooObjectType):
 
 class Event(OdooObjectType):
     id = graphene.Int(required=True)
+    is_demo = graphene.Boolean(required=True)
     cid = graphene.String()
     version = graphene.Int()
     template_code = graphene.String()
