@@ -1,6 +1,14 @@
 {
   "python.languageServer": "None",
-  "git.detectSubmodules": false,
-  "git.autoRepositoryDetection": "openEditors",
-  "scm.repositories.visible": 4  
+  "git.enabled": true,
+  "git.autoRepositoryDetection": "subFolders",
+  "git.scanRepositories": [
+    "/home/persona/crearis/odoo/dev/crearis-odoo"
+  ],
+  "git.ignoredRepositories": [
+    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/rest-framework",
+    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/vuestorefront-extra",
+    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/partner-contact",
+    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/theaterpedia-data"
+  ]
 }
