@@ -34,6 +34,8 @@
     ],
     'data': [
         'data/ir_config_parameter_data.xml',
+        'data/event_stage_data.xml',
+        'data/event_type_data.xml',
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',
@@ -47,6 +49,7 @@
         'views/crearis_version_views.xml',
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
+        'views/event_type_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

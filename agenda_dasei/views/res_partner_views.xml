@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Partner Form View with DASEi fields -->
+    <record id="view_partner_form_dasei" model="ir.ui.view">
+        <field name="name">res.partner.form.dasei</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="DASEi Sync" name="dasei_sync">
+                    <group string="Computed Status">
+                        <field name="dasei_domaincode" readonly="1"/>
+                    </group>
+                    <group string="SharePoint Sync">
+                        <group>
+                            <field name="ms_contact_id" readonly="1"/>
+                            <field name="ms_contact_status" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="ms_kursteilnehmer_id" readonly="1"/>
+                            <field name="ms_kurs_level" readonly="1"/>
+                            <field name="ms_version" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend Partner Tree View -->
+    <record id="view_partner_tree_dasei" model="ir.ui.view">
+        <field name="name">res.partner.tree.dasei</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email']" position="after">
+                <field name="dasei_domaincode" optional="hide"/>
+                <field name="ms_contact_status" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search filter for DASEi domaincodes -->
+    <record id="view_partner_search_dasei" model="ir.ui.view">
+        <field name="name">res.partner.search.dasei</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="DASEi Verein" name="dasei_verein" 
+                        domain="[('dasei_domaincode', '=', 'dasei')]"/>
+                <filter string="DASEi Aufbaustufe" name="dasei3" 
+                        domain="[('dasei_domaincode', '=', 'dasei3')]"/>
+                <filter string="DASEi Grundstufe" name="dasei2" 
+                        domain="[('dasei_domaincode', '=', 'dasei2')]"/>
+                <filter string="DASEi Einstiege" name="dasei1" 
+                        domain="[('dasei_domaincode', '=', 'dasei1')]"/>
+                <filter string="DASEi Quick" name="dasei0" 
+                        domain="[('dasei_domaincode', '=', 'dasei0')]"/>
+                <separator/>
+                <filter string="Synced from SP" name="synced" 
+                        domain="[('ms_contact_id', '!=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="DASEi Domaincode" name="group_domaincode" 
+                            context="{'group_by': 'dasei_domaincode'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

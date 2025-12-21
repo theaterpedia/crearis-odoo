@@ -1,9 +1,77 @@
 from odoo import models, fields, api # type: ignore
 
+
+class EventType(models.Model):
+    _inherit = 'event.type'
+
+    # Template system
+    is_template_code = fields.Boolean(
+        string="Is Template Code",
+        default=False,
+        help="If True, name is a shortcode and has template_parent"
+    )
+    template_parent_id = fields.Many2one(
+        'event.type',
+        string="Template Parent",
+        domain=[('is_template_code', '=', False)],
+        help="Link to base event type (filter: is_template_code=False)"
+    )
+
+    # Template content fields (synced from SharePoint)
+    template_cimg = fields.Text(
+        string="Hero-Image-Link",
+        translate=False,
+        default='',
+        help="xmlid or public url for hero and thumbnail image"
+    )
+    template_teasertext = fields.Text(
+        string="Teaser Text",
+        help="Short description for listings"
+    )
+    template_units = fields.Float(
+        string="Teaching Units",
+        digits=(10, 2),
+        help="Default units/credits for events of this type"
+    )
+    template_heading = fields.Text(
+        string="Website Heading",
+        help="Heading for website display"
+    )
+    template_ext = fields.Json(
+        string="Template Extensions",
+        default=dict,
+        help="JSONB for additional template settings"
+    )
+    template_config = fields.Integer(
+        string="Config Flags",
+        default=0,
+        help="Bitmask of configuration flags"
+    )
+
+    # Sync tracking
+    ms_id = fields.Char(string="SharePoint ID", index=True)
+    ms_synced = fields.Boolean(string="Synced from SharePoint", default=False)
+    ms_version = fields.Char(string="SharePoint Version", help="oversion for conflict detection")
+
+    # Company isolation
+    company_id = fields.Many2one(
+        'res.company',
+        string="Company",
+        help="Empty = available to all companies"
+    )
+
+
 class EventEvent(models.Model):
     _name = 'event.event'  # Add this line - it was missing!
     _inherit = ["event.event", "web.options.abstract", "demo.data.mixin"]
     _rec_name = "rectitle"
+
+    # Teaching units
+    units = fields.Float(
+        string="Units",
+        digits=(10, 2),
+        help="Number of teaching units/credits for this event (e.g., 2.5 UE)"
+    )
 
     teasertext = fields.Text('Teasertext', translate=True, default='')
     schedule = fields.Text('Schedule', translate=True, default='')
@@ -124,9 +192,17 @@ class EventEvent(models.Model):
 
     cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid, store=True)
 
+    # SharePoint sync fields
+    ms_id = fields.Char(string="SharePoint ID", index=True)
+    ms_version = fields.Char(string="SP etag", help="Last seen SharePoint etag")
+    ms_pushed_version = fields.Integer(string="Pushed Version", help="Odoo version at last push to SP")
+    ms_synced = fields.Boolean(string="Synced from SharePoint", default=False)
+
     def write(self, vals):
-        # Code before write: 'self' has the old values
-        vals['version'] = self.version + 1
+        # Skip version increment when sync is updating metadata only
+        if not self.env.context.get('skip_version_increment'):
+            for rec in self:
+                vals['version'] = rec.version + 1
 
         # Perform the write operation
         res = super(EventEvent, self).write(vals)

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Base Event Types for Crearis
+             These are template types (is_template_code=False, company_id=False)
+             Company-specific types from SharePoint will link to these via template_parent_id
+             by matching sequence values.
+        -->
+
+        <!-- Workshop category (sequence 32-96) -->
+        <record id="event_type_workshop" model="event.type">
+            <field name="name">Workshop (4-8 Std.)</field>
+            <field name="sequence">32</field>
+            <field name="is_template_code">False</field>
+            <field name="auto_confirm">True</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">20</field>
+        </record>
+
+        <record id="event_type_workshop_short" model="event.type">
+            <field name="name">workshop > Kurz</field>
+            <field name="sequence">64</field>
+            <field name="is_template_code">False</field>
+            <field name="template_parent_id" ref="event_type_workshop"/>
+            <field name="auto_confirm">True</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">15</field>
+        </record>
+
+        <record id="event_type_workshop_multiday" model="event.type">
+            <field name="name">workshop > Mehrtägig</field>
+            <field name="sequence">96</field>
+            <field name="is_template_code">False</field>
+            <field name="template_parent_id" ref="event_type_workshop"/>
+            <field name="auto_confirm">True</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">20</field>
+        </record>
+
+        <!-- Kurs category (sequence 256-768) -->
+        <record id="event_type_kurs" model="event.type">
+            <field name="name">Kurs (4-10 Monate)</field>
+            <field name="sequence">256</field>
+            <field name="is_template_code">False</field>
+            <field name="auto_confirm">False</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">16</field>
+        </record>
+
+        <record id="event_type_kurs_short" model="event.type">
+            <field name="name">kurs > Kurz</field>
+            <field name="sequence">512</field>
+            <field name="is_template_code">False</field>
+            <field name="template_parent_id" ref="event_type_kurs"/>
+            <field name="auto_confirm">False</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">12</field>
+        </record>
+
+        <record id="event_type_kurs_ongoing" model="event.type">
+            <field name="name">kurs > Fortlaufend</field>
+            <field name="sequence">768</field>
+            <field name="is_template_code">False</field>
+            <field name="template_parent_id" ref="event_type_kurs"/>
+            <field name="auto_confirm">False</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">16</field>
+        </record>
+
+        <!-- Projekt category (sequence 2048-6144) -->
+        <record id="event_type_projekt" model="event.type">
+            <field name="name">Projekt (5-9 Tage)</field>
+            <field name="sequence">2048</field>
+            <field name="is_template_code">False</field>
+            <field name="auto_confirm">False</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">30</field>
+        </record>
+
+        <record id="event_type_projekt_short" model="event.type">
+            <field name="name">projekt > Kurz</field>
+            <field name="sequence">4096</field>
+            <field name="is_template_code">False</field>
+            <field name="template_parent_id" ref="event_type_projekt"/>
+            <field name="auto_confirm">False</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">25</field>
+        </record>
+
+        <record id="event_type_projekt_multiphase" model="event.type">
+            <field name="name">projekt > Mehrphasig</field>
+            <field name="sequence">6144</field>
+            <field name="is_template_code">False</field>
+            <field name="template_parent_id" ref="event_type_projekt"/>
+            <field name="auto_confirm">False</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">30</field>
+        </record>
+
+        <!-- Special types -->
+        <record id="event_type_conference" model="event.type">
+            <field name="name">Konferenz</field>
+            <field name="sequence">16384</field>
+            <field name="is_template_code">False</field>
+            <field name="auto_confirm">True</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">100</field>
+        </record>
+
+        <record id="event_type_performance" model="event.type">
+            <field name="name">Auftritt</field>
+            <field name="sequence">32768</field>
+            <field name="is_template_code">False</field>
+            <field name="auto_confirm">True</field>
+            <field name="has_seats_limitation">True</field>
+            <field name="seats_max">200</field>
+        </record>
+
+    </data>
+</odoo>

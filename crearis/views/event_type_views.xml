@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<!--  Copyright 2024 Theaterpedia E.V. -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<odoo>
+    <!-- Event Type Form View Extension -->
+    <record id="view_event_type_form" model="ir.ui.view">
+        <field name="name">event.type.form.crearis</field>
+        <field name="model">event.type</field>
+        <field name="inherit_id" ref="event.view_event_type_form"/>
+        <field name="arch" type="xml">
+            <!-- Add template fields after the name field -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="is_template_code"/>
+                <field name="template_parent_id" 
+                       attrs="{'invisible': [('is_template_code', '=', False)]}"
+                       options="{'no_create': True}"/>
+                <field name="company_id" 
+                       options="{'no_create': True}"
+                       groups="base.group_multi_company"/>
+            </xpath>
+
+            <!-- Add template content section -->
+            <xpath expr="//group[@name='event_type_mail']" position="before">
+                <group string="Template Content" name="template_content">
+                    <field name="template_heading"/>
+                    <field name="template_teasertext"/>
+                    <field name="template_cimg"/>
+                    <field name="template_units"/>
+                    <field name="template_config"/>
+                    <field name="template_ext" widget="json"/>
+                </group>
+            </xpath>
+
+            <!-- Add sync tracking section (only visible for synced types) -->
+            <xpath expr="//group[@name='event_type_mail']" position="after">
+                <group string="SharePoint Sync" name="sync_tracking" 
+                       attrs="{'invisible': [('ms_synced', '=', False)]}">
+                    <field name="ms_id" readonly="1"/>
+                    <field name="ms_synced" readonly="1"/>
+                    <field name="ms_version" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Event Type Tree View Extension -->
+    <record id="view_event_type_tree" model="ir.ui.view">
+        <field name="name">event.type.tree.crearis</field>
+        <field name="model">event.type</field>
+        <field name="inherit_id" ref="event.view_event_type_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="is_template_code"/>
+                <field name="template_parent_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="ms_synced"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Event Type Search View Extension -->
+    <record id="view_event_type_search" model="ir.ui.view">
+        <field name="name">event.type.search.crearis</field>
+        <field name="model">event.type</field>
+        <field name="inherit_id" ref="event.view_event_type_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="Template Codes" name="template_codes" 
+                        domain="[('is_template_code', '=', True)]"/>
+                <filter string="Base Types" name="base_types" 
+                        domain="[('is_template_code', '=', False)]"/>
+                <filter string="Synced from SharePoint" name="synced" 
+                        domain="[('ms_synced', '=', True)]"/>
+                <separator/>
+                <filter string="My Company" name="my_company" 
+                        domain="['|', ('company_id', '=', False), ('company_id', '=', user.company_id)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="group_company" 
+                            context="{'group_by': 'company_id'}"/>
+                    <filter string="Template Parent" name="group_parent" 
+                            context="{'group_by': 'template_parent_id'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Action to open Event Types from Crearis menu -->
+    <record id="action_event_type_crearis" model="ir.actions.act_window">
+        <field name="name">Event Types</field>
+        <field name="res_model">event.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_my_company': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create an Event Type
+            </p>
+            <p>
+                Event types define templates for events including default settings,
+                content templates, and SharePoint sync configuration.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu item under Crearis Configuration -->
+    <menuitem id="menu_event_type_crearis" 
+              name="Event Types" 
+              parent="crearis.menu_crearis_settings"
+              action="action_event_type_crearis"
+              sequence="20"/>
+</odoo>

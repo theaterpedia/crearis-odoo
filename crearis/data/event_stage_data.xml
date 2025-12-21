@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Event Stages for Crearis
+             Sequence values are used as bitmask boundaries:
+             - sequence >= 512 blocks backward transitions
+        -->
+
+        <record id="event_stage_planning" model="event.stage">
+            <field name="name">Planung</field>
+            <field name="sequence">1</field>
+            <field name="pipe_end">False</field>
+            <field name="description">Initial planning phase - event is being prepared</field>
+        </record>
+
+        <record id="event_stage_published" model="event.stage">
+            <field name="name">Ausgeschrieben</field>
+            <field name="sequence">64</field>
+            <field name="pipe_end">False</field>
+            <field name="description">Event is published and open for registration</field>
+        </record>
+
+        <record id="event_stage_running" model="event.stage">
+            <field name="name">Läuft</field>
+            <field name="sequence">128</field>
+            <field name="pipe_end">False</field>
+            <field name="description">Event is currently in progress</field>
+        </record>
+
+        <record id="event_stage_completed" model="event.stage">
+            <field name="name">Durchgeführt</field>
+            <field name="sequence">512</field>
+            <field name="pipe_end">True</field>
+            <field name="description">Event completed successfully - no backward transition allowed</field>
+        </record>
+
+        <record id="event_stage_cancelled" model="event.stage">
+            <field name="name">Abgesagt</field>
+            <field name="sequence">1024</field>
+            <field name="pipe_end">True</field>
+            <field name="description">Event was cancelled - no backward transition allowed</field>
+        </record>
+
+        <record id="event_stage_archived" model="event.stage">
+            <field name="name">Archiviert</field>
+            <field name="sequence">2048</field>
+            <field name="pipe_end">True</field>
+            <field name="description">Event archived - no backward transition allowed</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,445 @@
+# -*- coding: utf-8 -*-
+# Copyright 2024 theaterpedia.org
+# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+
+import logging
+import requests
+from datetime import datetime, timedelta
+
+from odoo import models, fields, api
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
+
+# Status IDs that should be synced from SharePoint
+SYNC_STATUS_IDS = [3, 10, 14, 15, 16, 17, 18, 19, 25, 33]
+
+
+class AgendaSyncEngine(models.AbstractModel):
+    _name = 'crearis.agenda.sync'
+    _description = 'SharePoint Agenda Sync Engine'
+
+    # Token cache (in-memory, per-company)
+    _token_cache = {}
+
+    def _get_access_token(self, company):
+        """Get or refresh Microsoft Graph API access token"""
+        cache_key = company.id
+        cached = self._token_cache.get(cache_key)
+        
+        if cached and cached['expires_at'] > datetime.now():
+            return cached['token']
+
+        if not company.ms_agenda_tenant_id or not company.ms_agenda_client_id:
+            raise UserError("Microsoft API credentials not configured")
+
+        url = f"https://login.microsoftonline.com/{company.ms_agenda_tenant_id}/oauth2/v2.0/token"
+        data = {
+            'client_id': company.ms_agenda_client_id,
+            'client_secret': company.ms_agenda_client_secret,
+            'scope': 'https://graph.microsoft.com/.default',
+            'grant_type': 'client_credentials',
+        }
+
+        response = requests.post(url, data=data)
+        if response.status_code != 200:
+            raise UserError(f"Failed to get access token: {response.text}")
+
+        token_data = response.json()
+        self._token_cache[cache_key] = {
+            'token': token_data['access_token'],
+            'expires_at': datetime.now() + timedelta(seconds=token_data['expires_in'] - 60)
+        }
+
+        return token_data['access_token']
+
+    def _graph_request(self, company, method, endpoint, json_data=None):
+        """Make a request to Microsoft Graph API"""
+        token = self._get_access_token(company)
+        base_url = f"https://graph.microsoft.com/v1.0/sites/{company.ms_agenda_site_id}"
+        url = f"{base_url}{endpoint}"
+
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+        }
+
+        if method == 'GET':
+            response = requests.get(url, headers=headers)
+        elif method == 'PATCH':
+            response = requests.patch(url, headers=headers, json=json_data)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, json=json_data)
+        else:
+            raise UserError(f"Unsupported HTTP method: {method}")
+
+        if response.status_code not in (200, 201, 204):
+            _logger.error(f"Graph API error: {response.status_code} - {response.text}")
+            raise UserError(f"Graph API error: {response.text}")
+
+        if response.status_code == 204:
+            return {}
+        return response.json()
+
+    def _get_list_items(self, company, list_guid, filter_query=None, top=200):
+        """Fetch items from a SharePoint list"""
+        endpoint = f"/lists/{list_guid}/items?$expand=fields&$top={top}"
+        if filter_query:
+            endpoint += f"&$filter={filter_query}"
+
+        all_items = []
+        while endpoint:
+            result = self._graph_request(company, 'GET', endpoint)
+            all_items.extend(result.get('value', []))
+            
+            # Handle pagination
+            next_link = result.get('@odata.nextLink')
+            if next_link:
+                # Extract the endpoint part after the site URL
+                endpoint = next_link.split(company.ms_agenda_site_id)[1]
+            else:
+                endpoint = None
+
+        return all_items
+
+    def _patch_list_item(self, company, list_guid, item_id, fields_data):
+        """Update a SharePoint list item"""
+        endpoint = f"/lists/{list_guid}/items/{item_id}/fields"
+        return self._graph_request(company, 'PATCH', endpoint, fields_data)
+
+    # =========================================================================
+    # EVENT TYPE SYNC
+    # =========================================================================
+
+    def sync_event_types(self, company):
+        """Sync event types from SharePoint plan_veranstaltungscodes"""
+        list_guid = company.ms_list_veranstaltungscodes
+        if not list_guid:
+            return {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0}
+
+        sp_items = self._get_list_items(company, list_guid)
+        
+        stats = {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0}
+
+        for sp_item in sp_items:
+            result = self._sync_event_type(company, sp_item)
+            stats['synced'] += 1
+            stats[result] += 1
+
+        return stats
+
+    def _sync_event_type(self, company, sp_item):
+        """Sync a single event type with version control"""
+        EventType = self.env['event.type']
+        
+        sp_id = sp_item['id']
+        sp_etag = sp_item.get('@odata.etag', '')
+        sp_fields = sp_item.get('fields', {})
+        sp_oversion = sp_fields.get('oversion', 0) or 0
+
+        # Find existing Odoo record
+        odoo_record = EventType.search([('ms_id', '=', sp_id)], limit=1)
+
+        if not odoo_record:
+            # New record - create in Odoo
+            vals = self._map_event_type_from_sp(company, sp_fields)
+            vals['ms_id'] = sp_id
+            vals['ms_version'] = sp_etag
+            vals['ms_synced'] = True
+            odoo_record = EventType.create(vals)
+            
+            # Write back oevent_type_id
+            self._patch_list_item(company, company.ms_list_veranstaltungscodes, sp_id, {
+                'oevent_type_id': odoo_record.id,
+                'oversion': 1,
+            })
+            return 'created'
+
+        # Echo detection - if oversion matches our record, skip
+        if sp_oversion and sp_oversion == odoo_record.id:  # Using ID as simple version for types
+            if odoo_record.ms_version != sp_etag:
+                odoo_record.write({'ms_version': sp_etag})
+            return 'skipped'
+
+        # Check if SP changed
+        sp_changed = (odoo_record.ms_version != sp_etag)
+
+        if not sp_changed:
+            return 'skipped'
+
+        # SP changed - import updates
+        vals = self._map_event_type_from_sp(company, sp_fields)
+        vals['ms_version'] = sp_etag
+        odoo_record.write(vals)
+
+        # Update oversion to prevent re-import
+        self._patch_list_item(company, company.ms_list_veranstaltungscodes, sp_id, {
+            'oversion': odoo_record.id,
+        })
+
+        return 'updated'
+
+    def _map_event_type_from_sp(self, company, sp_fields):
+        """Map SharePoint fields to event.type fields"""
+        # Find template parent by sequence
+        template_parent = None
+        sequence = sp_fields.get('Sequence', 0) or 0
+        if sequence:
+            template_parent = self.env['event.type'].search([
+                ('is_template_code', '=', False),
+                ('sequence', '=', sequence),
+                ('company_id', '=', False),
+            ], limit=1)
+
+        return {
+            'name': sp_fields.get('Title', ''),
+            'sequence': sequence,
+            'is_template_code': True,
+            'template_parent_id': template_parent.id if template_parent else False,
+            'template_teasertext': sp_fields.get('TeaserText', ''),
+            'template_cimg': sp_fields.get('cimg', ''),
+            'template_heading': sp_fields.get('Heading', ''),
+            'company_id': company.id,
+        }
+
+    # =========================================================================
+    # EVENT SYNC
+    # =========================================================================
+
+    def sync_events(self, company):
+        """Sync events from SharePoint plan_veranstaltungen"""
+        list_guid = company.ms_list_veranstaltungen
+        if not list_guid:
+            return {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0, 'pushed': 0}
+
+        # Build filter for active statuses
+        status_filter = ','.join(str(s) for s in SYNC_STATUS_IDS)
+        filter_query = f"fields/StatusLookupId in ({status_filter})"
+
+        sp_items = self._get_list_items(company, list_guid)  # TODO: add filter when SP supports it
+
+        stats = {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0, 'pushed': 0}
+
+        for sp_item in sp_items:
+            # Manual status filter (Graph API filter on lookup fields can be tricky)
+            status_id = sp_item.get('fields', {}).get('StatusLookupId')
+            if status_id and int(status_id) not in SYNC_STATUS_IDS:
+                continue
+
+            result = self._sync_event(company, sp_item)
+            stats['synced'] += 1
+            stats[result] += 1
+
+        return stats
+
+    def _sync_event(self, company, sp_item):
+        """Sync a single event with version control"""
+        Event = self.env['event.event']
+
+        sp_id = sp_item['id']
+        sp_etag = sp_item.get('@odata.etag', '')
+        sp_fields = sp_item.get('fields', {})
+        sp_oversion = sp_fields.get('oversion', 0) or 0
+
+        # Find existing Odoo record
+        odoo_record = Event.search([('ms_id', '=', sp_id)], limit=1)
+        sync_level = company.ms_agenda_sync_level
+
+        if not odoo_record:
+            # New record - create in Odoo
+            vals = self._map_event_from_sp(company, sp_fields)
+            vals['ms_id'] = sp_id
+            vals['ms_version'] = sp_etag
+            vals['ms_synced'] = True
+            vals['ms_pushed_version'] = 0
+            odoo_record = Event.create(vals)
+
+            # Apply template defaults if event type has template parent
+            self._apply_event_template(odoo_record)
+
+            # Write back oevent_id
+            self._patch_list_item(company, company.ms_list_veranstaltungen, sp_id, {
+                'oevent_id': odoo_record.id,
+                'oversion': odoo_record.version,
+            })
+            return 'created'
+
+        # === ECHO DETECTION ===
+        if sp_oversion and sp_oversion == odoo_record.version:
+            # This is our own push echoed back - just update etag
+            if odoo_record.ms_version != sp_etag:
+                odoo_record.with_context(skip_version_increment=True).write({
+                    'ms_version': sp_etag
+                })
+            return 'skipped'
+
+        # === CHANGE DETECTION ===
+        sp_changed = (odoo_record.ms_version != sp_etag)
+        odoo_changed = (odoo_record.version > (odoo_record.ms_pushed_version or 0))
+
+        if not sp_changed and not odoo_changed:
+            return 'skipped'
+
+        # === CONFLICT RESOLUTION ===
+        if sp_changed and odoo_changed:
+            if sync_level == 'master':
+                # Odoo wins - push our changes
+                return self._push_event_to_sp(company, odoo_record)
+            else:
+                # Slave/init mode - SP wins
+                return self._import_event_from_sp(company, sp_item, odoo_record)
+
+        if sp_changed:
+            return self._import_event_from_sp(company, sp_item, odoo_record)
+
+        if odoo_changed and sync_level == 'master':
+            return self._push_event_to_sp(company, odoo_record)
+
+        return 'skipped'
+
+    def _import_event_from_sp(self, company, sp_item, odoo_record):
+        """Import SharePoint changes to Odoo event"""
+        sp_fields = sp_item.get('fields', {})
+        sp_etag = sp_item.get('@odata.etag', '')
+
+        vals = self._map_event_from_sp(company, sp_fields)
+        vals['ms_version'] = sp_etag
+
+        odoo_record.write(vals)
+
+        # Push oversion back to prevent re-import loop
+        self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], {
+            'oversion': odoo_record.version,
+        })
+
+        # Update pushed version
+        odoo_record.with_context(skip_version_increment=True).write({
+            'ms_pushed_version': odoo_record.version,
+        })
+
+        return 'updated'
+
+    def _push_event_to_sp(self, company, odoo_record):
+        """Push Odoo event changes to SharePoint"""
+        sp_data = self._map_event_to_sp(odoo_record)
+        sp_data['oversion'] = odoo_record.version
+
+        response = self._patch_list_item(
+            company,
+            company.ms_list_veranstaltungen,
+            odoo_record.ms_id,
+            sp_data
+        )
+
+        # Update tracking without incrementing version
+        new_etag = response.get('@odata.etag', odoo_record.ms_version)
+        odoo_record.with_context(skip_version_increment=True).write({
+            'ms_version': new_etag,
+            'ms_pushed_version': odoo_record.version,
+        })
+
+        return 'pushed'
+
+    def _map_event_from_sp(self, company, sp_fields):
+        """Map SharePoint fields to event.event fields"""
+        # Find event type by code
+        event_type = None
+        type_code = sp_fields.get('VeranstaltungscodeLookupId')
+        if type_code:
+            event_type = self.env['event.type'].search([
+                ('ms_id', '=', str(type_code)),
+                ('company_id', '=', company.id),
+            ], limit=1)
+
+        # Parse dates
+        date_begin = sp_fields.get('Datum')
+        date_end = sp_fields.get('DatumEnde') or date_begin
+
+        # Find default website for domain_code
+        website = self.env['website'].search([
+            ('company_id', '=', company.id)
+        ], limit=1)
+
+        return {
+            'name': sp_fields.get('Title', ''),
+            'event_type_id': event_type.id if event_type else False,
+            'date_begin': date_begin,
+            'date_end': date_end,
+            'teasertext': sp_fields.get('TeaserText', ''),
+            'schedule': sp_fields.get('Seminarplan_Memo', ''),
+            'domain_code': website.id if website else False,
+        }
+
+    def _map_event_to_sp(self, odoo_record):
+        """Map Odoo event fields to SharePoint fields"""
+        return {
+            'Title': odoo_record.name,
+            'TeaserText': odoo_record.teasertext or '',
+            'Seminarplan_Memo': odoo_record.schedule or '',
+            'oevent_id': odoo_record.id,
+        }
+
+    def _apply_event_template(self, event):
+        """Apply template defaults from event type (one-time on create)"""
+        if not event.event_type_id or not event.event_type_id.template_parent_id:
+            return
+
+        template = event.event_type_id
+        updates = {}
+
+        if template.template_teasertext and not event.teasertext:
+            updates['teasertext'] = template.template_teasertext
+        if template.template_cimg and not event.cimg:
+            updates['cimg'] = template.template_cimg
+        if template.template_units and not event.units:
+            updates['units'] = template.template_units
+
+        if updates:
+            event.with_context(skip_version_increment=True).write(updates)
+
+    # =========================================================================
+    # MAIN SYNC ENTRY POINT
+    # =========================================================================
+
+    def sync_all(self, company):
+        """Run full sync for a company"""
+        _logger.info(f"Starting agenda sync for company {company.name}")
+
+        results = {
+            'event_types': 0,
+            'events': 0,
+        }
+
+        try:
+            # Sync event types first
+            type_stats = self.sync_event_types(company)
+            results['event_types'] = type_stats.get('synced', 0)
+            _logger.info(f"Event types: {type_stats}")
+
+            # Then sync events
+            event_stats = self.sync_events(company)
+            results['events'] = event_stats.get('synced', 0)
+            _logger.info(f"Events: {event_stats}")
+
+            # Update last sync timestamp
+            company.write({'ms_agenda_last_sync': fields.Datetime.now()})
+
+        except Exception as e:
+            _logger.exception(f"Sync failed for company {company.name}")
+            raise UserError(f"Sync failed: {str(e)}")
+
+        return results
+
+    @api.model
+    def cron_sync_all_companies(self):
+        """Cron job to sync all configured companies"""
+        companies = self.env['res.company'].search([
+            ('ms_agenda_configured', '=', True),
+            ('ms_agenda_sync_enabled', '=', True),
+        ])
+
+        for company in companies:
+            try:
+                self.sync_all(company)
+            except Exception as e:
+                _logger.exception(f"Cron sync failed for {company.name}: {e}")
