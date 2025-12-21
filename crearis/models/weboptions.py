@@ -106,6 +106,7 @@ class WebOptionsAbstract(models.AbstractModel):
             ('secondary', 'Secondary'),
             ('accent', 'Accent'),
             ('neutral', 'Neutral'),
+            ('muted', 'Muted'),
             ('positive', 'Positive'),
             ('negative', 'Negative'),
             ('warning', 'Warning')

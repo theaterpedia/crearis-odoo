@@ -38,10 +38,10 @@ class BlogPost(models.Model):
     )
 
     cimg = fields.Text(
-        'Hero-Image-Link',
+        'Hero/Preview Image',
         translate=False,
         default='',
-        help="public url for the hero-image"
+        help="xmlid or public url for hero and thumbnail image"
     )
 
     md = fields.Text('Markdown Content', translate=True, help="Markdown body of the post.", default='')

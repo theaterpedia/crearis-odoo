@@ -3,6 +3,8 @@
 
 _meta/.obsidian
 
+_tmp_import
+
 .vscode/.server-controller-port.log
 .external/event
 .external/theaterpedia-data

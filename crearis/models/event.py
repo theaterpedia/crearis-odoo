@@ -25,7 +25,7 @@ class EventEvent(models.Model):
         help="How big is the header?",
         default="mini")
     
-    cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
+    cimg = fields.Text('Hero/Preview Image', translate=False, default='', help="xmlid or public url for hero and thumbnail image")
     md = fields.Text('Markdown Content', translate=True, help="Markdown body of the event.", default='')
 
     blocks = fields.Json()

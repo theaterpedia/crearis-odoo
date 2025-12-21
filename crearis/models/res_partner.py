@@ -38,10 +38,10 @@ class ResPartner(models.Model):
     )
 
     cimg = fields.Text(
-        string='Hero-Image-Link',
+        string='Hero/Preview Image',
         translate=False,
         default='',
-        help="public url for the hero-image"
+        help="xmlid or public url for hero and thumbnail image"
     )
 
     md = fields.Text(

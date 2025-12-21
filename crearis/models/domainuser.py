@@ -89,7 +89,7 @@ class DomainUser(models.Model):
         default="mini"
     )
     
-    cimg = fields.Text('Hero-Image-Link', translate=False, default='', help="public url for the hero-image")
+    cimg = fields.Text('Hero/Preview Image', translate=False, default='', help="xmlid or public url for hero and thumbnail image")
     md = fields.Text('Markdown Content', translate=True, help="Custom Markdown body for the user on this domain.", default='')
 
     settings = fields.Json(
