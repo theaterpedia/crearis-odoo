@@ -73,6 +73,7 @@ class EventEvent(models.Model):
         help="Number of teaching units/credits for this event (e.g., 2.5 UE)"
     )
 
+    heading = fields.Text('Website Heading', translate=True, default='', help="Main heading for website display")
     teasertext = fields.Text('Teasertext', translate=True, default='')
     schedule = fields.Text('Schedule', translate=True, default='')
     edit_mode = fields.Selection(

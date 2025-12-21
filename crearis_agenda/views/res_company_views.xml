@@ -46,6 +46,7 @@
                             <field name="ms_list_veranstaltungscodes"/>
                             <field name="ms_list_referenten"/>
                             <field name="ms_list_planungsstatus"/>
+                            <field name="ms_list_seminarzeiten"/>
                         </group>
                         <group>
                             <field name="ms_list_contacts"/>

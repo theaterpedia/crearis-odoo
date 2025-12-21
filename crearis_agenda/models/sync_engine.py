@@ -180,7 +180,16 @@ class AgendaSyncEngine(models.AbstractModel):
         return 'updated'
 
     def _map_event_type_from_sp(self, company, sp_fields):
-        """Map SharePoint fields to event.type fields"""
+        """Map SharePoint fields to event.type fields
+        
+        SharePoint plan_veranstaltungscodes fields:
+        - Title: Event type code (e.g., 'ME', 'MB')
+        - Veranstaltungstitel: Full title
+        - TeaserText: Short description
+        - CloudinaryCode / cimg: Hero image reference
+        - UE: Teaching units
+        - domain_code: Domain assignment
+        """
         # Find template parent by sequence
         template_parent = None
         sequence = sp_fields.get('Sequence', 0) or 0
@@ -197,8 +206,9 @@ class AgendaSyncEngine(models.AbstractModel):
             'is_template_code': True,
             'template_parent_id': template_parent.id if template_parent else False,
             'template_teasertext': sp_fields.get('TeaserText', ''),
-            'template_cimg': sp_fields.get('cimg', ''),
-            'template_heading': sp_fields.get('Heading', ''),
+            'template_cimg': sp_fields.get('cimg') or sp_fields.get('CloudinaryCode', ''),
+            'template_heading': sp_fields.get('Veranstaltungstitel', ''),
+            'template_units': sp_fields.get('UE', 0) or 0,
             'company_id': company.id,
         }
 
@@ -341,46 +351,119 @@ class AgendaSyncEngine(models.AbstractModel):
         return 'pushed'
 
     def _map_event_from_sp(self, company, sp_fields):
-        """Map SharePoint fields to event.event fields"""
-        # Find event type by code
+        """Map SharePoint fields to event.event fields
+        
+        SharePoint plan_veranstaltungen fields:
+        - Title: Event name
+        - Start, Ende: Date/time range
+        - VeranstaltungsCodeLookupId: Link to event type
+        - Seminarplan/SeminarplanLookupId: Link to plan_seminarzeiten (schedule template)
+        - Seminarplan_Memo: Custom schedule text (used when Seminarplan = 1 or override)
+        - cimg: Hero image (direct mapping)
+        - domain_code: Domain assignment (direct mapping)
+        - oheading, oteasertext, omd, oschedule: Write-back fields from Odoo
+        - UE: Teaching units override
+        """
+        # Find event type by lookup ID
         event_type = None
-        type_code = sp_fields.get('VeranstaltungscodeLookupId')
+        type_code = sp_fields.get('VeranstaltungsCodeLookupId')
         if type_code:
             event_type = self.env['event.type'].search([
                 ('ms_id', '=', str(type_code)),
                 ('company_id', '=', company.id),
             ], limit=1)
 
-        # Parse dates
-        date_begin = sp_fields.get('Datum')
-        date_end = sp_fields.get('DatumEnde') or date_begin
+        # Parse dates (SharePoint uses Start/Ende, not Datum/DatumEnde)
+        date_begin = sp_fields.get('Start')
+        date_end = sp_fields.get('Ende') or date_begin
 
-        # Find default website for domain_code
-        website = self.env['website'].search([
-            ('company_id', '=', company.id)
-        ], limit=1)
+        # Find website for domain_code
+        website = None
+        domain_code_value = sp_fields.get('domain_code')
+        if domain_code_value:
+            website = self.env['website'].search([
+                ('domain_code', '=', domain_code_value),
+            ], limit=1)
+        if not website:
+            website = self.env['website'].search([
+                ('company_id', '=', company.id)
+            ], limit=1)
+
+        # Resolve schedule text:
+        # 1. If SP has oschedule (written back from Odoo), use it
+        # 2. Else if SeminarplanLookupId = 1 or has value, use Seminarplan_Memo
+        # 3. Else fetch from plan_seminarzeiten lookup
+        schedule_text = sp_fields.get('oschedule', '')
+        if not schedule_text:
+            seminarplan_id = sp_fields.get('SeminarplanLookupId')
+            if seminarplan_id == 1 or sp_fields.get('Seminarplan_Memo'):
+                # Use custom memo
+                schedule_text = sp_fields.get('Seminarplan_Memo', '')
+            elif seminarplan_id:
+                # Fetch from plan_seminarzeiten - will be resolved in separate call
+                schedule_text = self._fetch_seminarplan_text(company, seminarplan_id)
 
         return {
             'name': sp_fields.get('Title', ''),
             'event_type_id': event_type.id if event_type else False,
             'date_begin': date_begin,
             'date_end': date_end,
-            'teasertext': sp_fields.get('TeaserText', ''),
-            'schedule': sp_fields.get('Seminarplan_Memo', ''),
+            'heading': sp_fields.get('oheading', ''),
+            'teasertext': sp_fields.get('oteasertext', ''),
+            'md': sp_fields.get('omd', ''),
+            'schedule': schedule_text,
+            'cimg': sp_fields.get('cimg', ''),
+            'units': sp_fields.get('UE', 0) or 0,
             'domain_code': website.id if website else False,
         }
 
+    def _fetch_seminarplan_text(self, company, seminarplan_id):
+        """Fetch schedule text from plan_seminarzeiten by ID"""
+        if not seminarplan_id or not company.ms_list_seminarzeiten:
+            return ''
+        
+        try:
+            result = self._graph_request(
+                company, 'GET',
+                f"/lists/{company.ms_list_seminarzeiten}/items/{seminarplan_id}?$expand=fields"
+            )
+            return result.get('fields', {}).get('Seminarplan_Memo', '')
+        except Exception as e:
+            _logger.warning(f"Failed to fetch seminarplan {seminarplan_id}: {e}")
+            return ''
+
     def _map_event_to_sp(self, odoo_record):
-        """Map Odoo event fields to SharePoint fields"""
+        """Map Odoo event fields to SharePoint fields (write-back)
+        
+        Write-back fields to plan_veranstaltungen:
+        - oheading: from heading (de)
+        - oteasertext: from teasertext (de) - note: SharePoint has typo 'otesasertext'
+        - omd: from md (de)
+        - oschedule: from schedule (de)
+        - oversion: from version
+        - cimg: direct sync
+        - domain_code: direct sync
+        - oevent_id: Odoo event ID
+        """
         return {
-            'Title': odoo_record.name,
-            'TeaserText': odoo_record.teasertext or '',
-            'Seminarplan_Memo': odoo_record.schedule or '',
+            'oheading': odoo_record.heading or '',
+            'otesasertext': odoo_record.teasertext or '',  # SP has typo
+            'omd': odoo_record.md or '',
+            'oschedule': odoo_record.schedule or '',
+            'cimg': odoo_record.cimg or '',
+            'domain_code': odoo_record.domain_code.domain_code if odoo_record.domain_code else '',
             'oevent_id': odoo_record.id,
         }
 
     def _apply_event_template(self, event):
-        """Apply template defaults from event type (one-time on create)"""
+        """Apply template defaults from event type (one-time on create)
+        
+        From event.type template fields:
+        - template_teasertext → teasertext
+        - template_cimg → cimg
+        - template_units → units
+        - template_heading → heading
+        """
         if not event.event_type_id or not event.event_type_id.template_parent_id:
             return
 
@@ -393,6 +476,8 @@ class AgendaSyncEngine(models.AbstractModel):
             updates['cimg'] = template.template_cimg
         if template.template_units and not event.units:
             updates['units'] = template.template_units
+        if template.template_heading and not event.heading:
+            updates['heading'] = template.template_heading
 
         if updates:
             event.with_context(skip_version_increment=True).write(updates)

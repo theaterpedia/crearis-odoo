@@ -57,6 +57,7 @@ ms_agenda_api = {
     'list_contacts': '7a77d6af-3a91-4109-8f56-9dbac73d2fa4',
     'list_kursteilnehmer': '2bf5f8e7-ebca-4a8b-b11e-feaee6a30287',
     'list_veranstaltungsteilnehmer': 'C9E05737-4C47-4E0F-A6B6-C6D6F3FBE88D',
+    'list_seminarzeiten': '6BBE92C5-82C5-40E7-8C5F-D6CB3018EC23',
 }
 ```
 
@@ -197,11 +198,11 @@ def write(self, vals):
 |------------------|------------|-------|
 | `id` | `ms_id` | SharePoint item ID |
 | `@odata.etag` | `ms_version` | Version tracking |
-| `Title` | `name` | Event type code (e.g., "A1") |
-| `Sequence` | `sequence` | Matches template_parent |
+| `Title` | `name` | Event type code (e.g., "ME", "MB") |
+| `Veranstaltungstitel` | `template_heading` | Full title for website |
 | `TeaserText` | `template_teasertext` | Template content |
-| `cimg` | `template_cimg` | Hero image URL |
-| `Heading` | `template_heading` | Website heading |
+| `cimg` / `CloudinaryCode` | `template_cimg` | Hero image reference |
+| `UE` | `template_units` | Teaching units |
 | - | `is_template_code` | Set to `True` |
 | - | `company_id` | Set to syncing company |
 | `oevent_type_id` | - | Write-back: Odoo ID |
@@ -214,14 +215,31 @@ def write(self, vals):
 | `id` | `ms_id` | SharePoint item ID |
 | `@odata.etag` | `ms_version` | Version tracking |
 | `Title` | `name` | Event title |
-| `Datum` | `date_begin` | Start date |
-| `DatumEnde` | `date_end` | End date |
-| `TeaserText` | `teasertext` | Description |
-| `Seminarplan_Memo` | `schedule` | Schedule content |
-| `VeranstaltungscodeLookupId` | `event_type_id` | Via ms_id lookup |
+| `Start` | `date_begin` | Start date/time |
+| `Ende` | `date_end` | End date/time |
+| `cimg` | `cimg` | Hero image (direct) |
+| `domain_code` | `domain_code` | Domain assignment (direct) |
+| `UE` | `units` | Teaching units override |
+| `SeminarplanLookupId` | - | Link to plan_seminarzeiten |
+| `Seminarplan_Memo` | `schedule` | Custom schedule (if SeminarplanLookupId=1) |
+| `VeranstaltungsCodeLookupId` | `event_type_id` | Via ms_id lookup |
 | `StatusLookupId` | - | Filter only (SYNC_STATUS_IDS) |
-| `oevent_id` | - | Write-back: Odoo ID |
-| `oversion` | - | Write-back: Echo marker |
+| **Write-back fields:** | | |
+| `oheading` | `heading` | Website heading |
+| `otesasertext` | `teasertext` | Teaser (note SP typo) |
+| `omd` | `md` | Markdown content |
+| `oschedule` | `schedule` | Schedule text |
+| `oversion` | `version` | Echo marker |
+| `oevent_id` | `id` | Odoo event ID |
+
+### Schedule Resolution Logic
+
+The `schedule` field is resolved in this priority order:
+
+1. If `oschedule` exists on SharePoint → use it (write-back from Odoo)
+2. Else if `SeminarplanLookupId = 1` → use `Seminarplan_Memo` 
+3. Else if `SeminarplanLookupId` set → fetch from `plan_seminarzeiten`
+4. Else → empty
 
 ### Status Filter
 
@@ -249,6 +267,8 @@ def _apply_event_template(self, event):
         event.cimg = template.template_cimg
     if template.template_units and not event.units:
         event.units = template.template_units
+    if template.template_heading and not event.heading:
+        event.heading = template.template_heading
 ```
 
 This uses `skip_version_increment=True` to avoid triggering unnecessary sync cycles.
