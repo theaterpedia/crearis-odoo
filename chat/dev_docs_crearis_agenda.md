@@ -199,7 +199,7 @@ def write(self, vals):
 | `id` | `ms_id` | SharePoint item ID |
 | `@odata.etag` | `ms_version` | Version tracking |
 | `Title` | `name` | Event type code (e.g., "ME", "MB") |
-| `Veranstaltungstitel` | `template_heading` | Full title for website |
+| `Kurzbeschreibung` + `Veranstaltungstitel` | `template_heading` | Synthesized: "overline **headline**" |
 | `TeaserText` | `template_teasertext` | Template content |
 | `cimg` / `CloudinaryCode` | `template_cimg` | Hero image reference |
 | `UE` | `template_units` | Teaching units |
@@ -207,6 +207,19 @@ def write(self, vals):
 | - | `company_id` | Set to syncing company |
 | `oevent_type_id` | - | Write-back: Odoo ID |
 | `oversion` | - | Write-back: Echo marker |
+| `oheading` | - | Write-back: from template_heading |
+
+### template_heading Synthesis
+
+On init sync, `template_heading` is built from SharePoint fields:
+
+```python
+# Format: "Kurzbeschreibung **Veranstaltungstitel**"
+if kurzbeschreibung and veranstaltungstitel:
+    template_heading = f"{kurzbeschreibung} **{veranstaltungstitel}**"
+elif veranstaltungstitel:
+    template_heading = f"**{veranstaltungstitel}**"
+```
 
 ### Events (plan_veranstaltungen → event.event)
 
@@ -225,12 +238,30 @@ def write(self, vals):
 | `VeranstaltungsCodeLookupId` | `event_type_id` | Via ms_id lookup |
 | `StatusLookupId` | - | Filter only (SYNC_STATUS_IDS) |
 | **Write-back fields:** | | |
-| `oheading` | `heading` | Website heading |
-| `otesasertext` | `teasertext` | Teaser (note SP typo) |
+| `oheading` | `name` | Event name in "overline **headline**" format |
+| `oteasertext` | `teasertext` | Teaser text |
 | `omd` | `md` | Markdown content |
 | `oschedule` | `schedule` | Schedule text |
 | `oversion` | `version` | Echo marker |
 | `oevent_id` | `id` | Odoo event ID |
+
+### name Field Format
+
+The `name` field on `event.event` uses the overline-headline format:
+
+```
+"Kurzbeschreibung **Veranstaltungstitel**"
+```
+
+On init sync, `name` is synthesized:
+1. If `oheading` exists on SharePoint → use it (previously synced)
+2. Else build from `event_type.template_heading` (overline) + `Title` (headline):
+   ```python
+   overline = template_heading.split('**')[0].strip()
+   name = f'{overline} **{Title}**'
+   ```
+
+The `rectitle` field remains unchanged - it shows shortcode + name for list display.
 
 ### Schedule Resolution Logic
 
@@ -267,8 +298,7 @@ def _apply_event_template(self, event):
         event.cimg = template.template_cimg
     if template.template_units and not event.units:
         event.units = template.template_units
-    if template.template_heading and not event.heading:
-        event.heading = template.template_heading
+    # Note: heading comes via rectitle computed from template_heading
 ```
 
 This uses `skip_version_increment=True` to avoid triggering unnecessary sync cycles.

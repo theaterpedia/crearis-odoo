@@ -93,9 +93,6 @@
             <!--  Teasertext inside left-content -->
             <xpath expr="//label[@for='date_begin']" position="before">
                 <div class="o_row" colspan="2" attrs="{'invisible':[('use_teasertext', '=', False)]}">
-                    <field name="heading" placeholder="Website Heading" nolabel="1" />
-                </div>
-                <div class="o_row" colspan="2" attrs="{'invisible':[('use_teasertext', '=', False)]}">
                     <field name="teasertext" placeholder="Teasertext" nolabel="1" />
                 </div>
                 <!-- Units field -->

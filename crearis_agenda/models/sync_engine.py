@@ -200,6 +200,17 @@ class AgendaSyncEngine(models.AbstractModel):
                 ('company_id', '=', False),
             ], limit=1)
 
+        # Synthesize template_heading: "Kurzbeschreibung **Veranstaltungstitel**"
+        kurzbeschreibung = sp_fields.get('Kurzbeschreibung', '') or ''
+        veranstaltungstitel = sp_fields.get('Veranstaltungstitel', '') or ''
+        template_heading = ''
+        if kurzbeschreibung and veranstaltungstitel:
+            template_heading = '{} **{}**'.format(kurzbeschreibung.strip(), veranstaltungstitel.strip())
+        elif veranstaltungstitel:
+            template_heading = '**{}**'.format(veranstaltungstitel.strip())
+        elif kurzbeschreibung:
+            template_heading = kurzbeschreibung.strip()
+
         return {
             'name': sp_fields.get('Title', ''),
             'sequence': sequence,
@@ -207,7 +218,7 @@ class AgendaSyncEngine(models.AbstractModel):
             'template_parent_id': template_parent.id if template_parent else False,
             'template_teasertext': sp_fields.get('TeaserText', ''),
             'template_cimg': sp_fields.get('cimg') or sp_fields.get('CloudinaryCode', ''),
-            'template_heading': sp_fields.get('Veranstaltungstitel', ''),
+            'template_heading': template_heading,
             'template_units': sp_fields.get('UE', 0) or 0,
             'company_id': company.id,
         }
@@ -403,12 +414,30 @@ class AgendaSyncEngine(models.AbstractModel):
                 # Fetch from plan_seminarzeiten - will be resolved in separate call
                 schedule_text = self._fetch_seminarplan_text(company, seminarplan_id)
 
+        # Build name in "overline **headline**" format
+        # - If oheading exists (written back from Odoo), use it
+        # - Else synthesize from template_heading (overline) + Title (headline)
+        sp_title = sp_fields.get('Title', '')
+        name = sp_fields.get('oheading', '')
+        if not name and event_type and event_type.template_heading:
+            # Extract overline from template_heading (format: "overline **headline**")
+            th = event_type.template_heading
+            if '**' in th:
+                overline = th.split('**')[0].strip()
+            else:
+                overline = th.strip()
+            if overline:
+                name = '{} **{}**'.format(overline, sp_title)
+            else:
+                name = '**{}**'.format(sp_title)
+        if not name:
+            name = sp_title  # Fallback to plain title
+
         return {
-            'name': sp_fields.get('Title', ''),
+            'name': name,
             'event_type_id': event_type.id if event_type else False,
             'date_begin': date_begin,
             'date_end': date_end,
-            'heading': sp_fields.get('oheading', ''),
             'teasertext': sp_fields.get('oteasertext', ''),
             'md': sp_fields.get('omd', ''),
             'schedule': schedule_text,
@@ -446,8 +475,8 @@ class AgendaSyncEngine(models.AbstractModel):
         - oevent_id: Odoo event ID
         """
         return {
-            'oheading': odoo_record.heading or '',
-            'otesasertext': odoo_record.teasertext or '',  # SP has typo
+            'oheading': odoo_record.name or '',  # name is in "overline **headline**" format
+            'oteasertext': odoo_record.teasertext or '',
             'omd': odoo_record.md or '',
             'oschedule': odoo_record.schedule or '',
             'cimg': odoo_record.cimg or '',
@@ -476,8 +505,7 @@ class AgendaSyncEngine(models.AbstractModel):
             updates['cimg'] = template.template_cimg
         if template.template_units and not event.units:
             updates['units'] = template.template_units
-        if template.template_heading and not event.heading:
-            updates['heading'] = template.template_heading
+        # Note: heading is computed via rectitle from template_heading, no need to copy
 
         if updates:
             event.with_context(skip_version_increment=True).write(updates)
