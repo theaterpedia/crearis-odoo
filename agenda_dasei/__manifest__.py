@@ -14,6 +14,8 @@ Features:
 - Kursteilnehmer evaluation (Kurs field → dasei1/2/3)
 - Computed highest domaincode for login routing
 - Sync of plan_kursteilnehmer and contacts
+- Course products (M18, N18, ZR, ZT profiles)
+- Module progress tracking (A, B, C, D modules)
     """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',
@@ -22,10 +24,14 @@ Features:
     'website': 'https://theaterpedia.org/',
     'depends': [
         'crearis_agenda',
+        'product',
+        'event',
     ],
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',
+        'views/product_template_views.xml',
+        'views/course_participation_views.xml',
     ],
     'installable': True,
     'auto_install': False,

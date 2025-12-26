@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Course Participation Tree View -->
+    <record id="view_course_participation_tree" model="ir.ui.view">
+        <field name="name">dasei.course.participation.tree</field>
+        <field name="model">dasei.course.participation</field>
+        <field name="arch" type="xml">
+            <tree string="Course Participations">
+                <field name="partner_id"/>
+                <field name="course_id"/>
+                <field name="status_id"/>
+                <field name="completed_modules"/>
+                <field name="is_created"/>
+                <field name="ms_item_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Course Participation Form View -->
+    <record id="view_course_participation_form" model="ir.ui.view">
+        <field name="name">dasei.course.participation.form</field>
+        <field name="model">dasei.course.participation</field>
+        <field name="arch" type="xml">
+            <form string="Course Participation">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="course_id"/>
+                            <field name="status_id"/>
+                        </group>
+                        <group>
+                            <field name="completed_modules"/>
+                            <field name="is_created"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1"/>
+                    </group>
+                    <group string="SharePoint Sync" groups="base.group_no_one">
+                        <field name="ms_item_id" readonly="1"/>
+                        <field name="ms_etag" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Course Participation Search View -->
+    <record id="view_course_participation_search" model="ir.ui.view">
+        <field name="name">dasei.course.participation.search</field>
+        <field name="model">dasei.course.participation</field>
+        <field name="arch" type="xml">
+            <search string="Course Participations">
+                <field name="partner_id"/>
+                <field name="course_id"/>
+                <filter string="Created" name="is_created" domain="[('is_created', '=', True)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Course" name="group_course" context="{'group_by': 'course_id'}"/>
+                    <filter string="Participant" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Status" name="group_status" context="{'group_by': 'status_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Course Participation Action -->
+    <record id="action_course_participation" model="ir.actions.act_window">
+        <field name="name">Course Participations</field>
+        <field name="res_model">dasei.course.participation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_course_participation_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No course participations found
+            </p>
+            <p>
+                Course participations link participants to training programs.
+                They are synced from SharePoint plan_kursteilnehmer.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_course_participation"
+              name="Course Participations"
+              parent="event.event_main_menu"
+              action="action_course_participation"
+              sequence="25"/>
+</odoo>

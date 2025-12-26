@@ -4,3 +4,6 @@
 
 from . import res_partner
 from . import sync_partner
+from . import product_template
+from . import course_participation
+from . import sync_product

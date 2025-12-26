@@ -50,6 +50,14 @@ class AgendaSyncPartner(models.AbstractModel):
         for sp_item in sp_items:
             sp_fields = sp_item.get('fields', {})
 
+            # Skip product references (FullName starting with underscore)
+            # These are course products like "_M17_Tageskurs München", not real contacts
+            full_name = sp_fields.get('FullName', '')
+            if full_name.startswith('_'):
+                _logger.debug(f"Skipping product reference: {full_name}")
+                stats['skipped'] += 1
+                continue
+
             # Filter by status
             status_id = sp_fields.get('StatusLookupId')
             if status_id:
@@ -88,12 +96,15 @@ class AgendaSyncPartner(models.AbstractModel):
             vals = self._map_contact_from_sp(sp_fields)
             vals['ms_contact_id'] = sp_id
             vals['ms_version'] = sp_etag
-            Partner.create(vals)
+            odoo_record = Partner.create(vals)
 
-            # Write back opartner_id
-            self._patch_list_item(company, company.ms_list_contacts, sp_id, {
-                'opartner_id': odoo_record.id if odoo_record else 0,
-            })
+            # Write back opartner_id (ignore errors - may have unique constraint issues)
+            try:
+                self._patch_list_item(company, company.ms_list_contacts, sp_id, {
+                    'opartner_id': odoo_record.id,
+                })
+            except Exception as e:
+                _logger.warning(f"Failed to write back opartner_id for contact {sp_id}: {e}")
             return 'created'
 
         # Check if changed

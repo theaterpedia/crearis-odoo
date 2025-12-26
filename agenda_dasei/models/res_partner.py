@@ -23,7 +23,7 @@ class ResPartner(models.Model):
         help="Highest domaincode from status or domainuser records"
     )
 
-    @api.depends('ms_contact_status', 'ms_kurs_level', 'domainuser_ids', 'domainuser_ids.domain_code')
+    @api.depends('ms_contact_status', 'ms_kurs_level')
     def _compute_dasei_domaincode(self):
         """Compute highest domaincode from contact status, kurs level, or domainuser records"""
         CODE_PRIORITY = {
@@ -45,10 +45,10 @@ class ResPartner(models.Model):
             if status_code:
                 all_codes.append(status_code)
 
-            # Get from domainuser records
-            if partner.domainuser_ids:
-                du_codes = partner.domainuser_ids.mapped('domain_code')
-                all_codes.extend([c for c in du_codes if c])
+            # TODO: Get from domainuser records when dasei.domainuser model is implemented
+            # if partner.domainuser_ids:
+            #     du_codes = partner.domainuser_ids.mapped('domain_code')
+            #     all_codes.extend([c for c in du_codes if c])
 
             if not all_codes:
                 partner.dasei_domaincode = False
@@ -116,4 +116,6 @@ class ResPartner(models.Model):
     def should_sync_vereinsmitglied(self):
         """Status 8,9,10 only sync domainuser if no existing entries"""
         self.ensure_one()
-        return len(self.domainuser_ids) == 0
+        # TODO: Implement when dasei.domainuser model exists
+        # return len(self.domainuser_ids) == 0
+        return True

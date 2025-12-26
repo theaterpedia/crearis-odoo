@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Product Form with Course fields -->
+    <record id="view_product_template_form_dasei" model="ir.ui.view">
+        <field name="name">product.template.form.dasei</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Course Program" name="course_program"
+                      attrs="{'invisible': [('ms_contact_id', '=', False)]}">
+                    <group>
+                        <group>
+                            <field name="course_program"/>
+                            <field name="course_year"/>
+                            <field name="course_type"/>
+                        </group>
+                        <group>
+                            <field name="ms_contact_id" readonly="1"/>
+                            <field name="ms_etag" readonly="1" groups="base.group_no_one"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Tree with course fields -->
+    <record id="view_product_template_tree_dasei" model="ir.ui.view">
+        <field name="name">product.template.tree.dasei</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="course_program" optional="hide"/>
+                <field name="course_year" optional="hide"/>
+                <field name="course_type" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Course Products Action (filtered) -->
+    <record id="action_course_products" model="ir.actions.act_window">
+        <field name="name">Course Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('ms_contact_id', '!=', False)]</field>
+        <field name="context">{'default_type': 'service'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No course products found
+            </p>
+            <p>
+                Course products are synced from SharePoint contacts
+                (records with FullName starting with underscore).
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_course_products"
+              name="Course Products"
+              parent="event.event_main_menu"
+              action="action_course_products"
+              sequence="24"/>
+</odoo>
