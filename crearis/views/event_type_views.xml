@@ -19,8 +19,8 @@
                        groups="base.group_multi_company"/>
             </xpath>
 
-            <!-- Add template content section -->
-            <xpath expr="//group[@name='event_type_mail']" position="before">
+            <!-- Add template content section before the notebook -->
+            <xpath expr="//notebook" position="before">
                 <group string="Template Content" name="template_content">
                     <field name="template_heading"/>
                     <field name="template_teasertext"/>
@@ -29,10 +29,6 @@
                     <field name="template_config"/>
                     <field name="template_ext" widget="json"/>
                 </group>
-            </xpath>
-
-            <!-- Add sync tracking section (only visible for synced types) -->
-            <xpath expr="//group[@name='event_type_mail']" position="after">
                 <group string="SharePoint Sync" name="sync_tracking" 
                        attrs="{'invisible': [('ms_synced', '=', False)]}">
                     <field name="ms_id" readonly="1"/>
@@ -62,7 +58,7 @@
     <record id="view_event_type_search" model="ir.ui.view">
         <field name="name">event.type.search.crearis</field>
         <field name="model">event.type</field>
-        <field name="inherit_id" ref="event.view_event_type_search"/>
+        <field name="inherit_id" ref="event.event_type_view_search"/>
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <filter string="Template Codes" name="template_codes" 
@@ -73,7 +69,7 @@
                         domain="[('ms_synced', '=', True)]"/>
                 <separator/>
                 <filter string="My Company" name="my_company" 
-                        domain="['|', ('company_id', '=', False), ('company_id', '=', user.company_id)]"/>
+                        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Company" name="group_company" 
                             context="{'group_by': 'company_id'}"/>
