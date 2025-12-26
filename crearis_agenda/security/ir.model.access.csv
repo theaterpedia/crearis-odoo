@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_agenda_sync_user,crearis.agenda.sync.user,model_crearis_agenda_sync,crearis.group_crearis_user,1,0,0,0
-access_agenda_sync_manager,crearis.agenda.sync.manager,model_crearis_agenda_sync,crearis.group_crearis_manager,1,1,1,1
+access_agenda_sync_user,crearis.agenda.sync.user,model_crearis_agenda_sync,crearis.crearis_use_domain,1,0,0,0
+access_agenda_sync_manager,crearis.agenda.sync.manager,model_crearis_agenda_sync,crearis.crearis_manage_domain,1,1,1,1

@@ -97,7 +97,9 @@
                 </div>
                 <!-- Units field -->
                 <label for="units" />
-                <field name="units" />
+                <div class="o_row">
+                    <field name="units" class="oe_inline" nolabel="1" />
+                </div>
             </xpath>
     
         <!--  Left Content -->
@@ -106,12 +108,11 @@
             </field>
 
             <xpath expr="//field[@name='date_tz']" position="before">            
-                <label for="schedule" />
+                <label for="date_tz" string="Timezone" />
                 <div class="o_row">
                     <field name="date_tz" class="oe_inline" nolabel="1" />
-                    <field name="date_tz" class="oe_inline" nolabel="1" />
                 </div>
-                <label string="" for="schedule" />
+                <label for="schedule" />
                 <field name="schedule" nolabel="1" />
     
                 <label string="Header Type+Size" for="header_type" />

@@ -12,6 +12,10 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 # Status IDs that should be synced from SharePoint
+# From plan_planungsstatus:
+# 3=[angekündigt #ORGA#], 10=[angekündigt mit Vorbehalt], 14=[angekündigt], 15=AKTUELL mit Vorbehalt
+# 16=AKTUELL #ORGA#, 17=[angekündigt #TEAM#], 18=AKTUELL #TEAM#, 19=AKTUELL, 25=[angekündigt #USER#]
+# 33=AKTUELL #USER#
 SYNC_STATUS_IDS = [3, 10, 14, 15, 16, 17, 18, 19, 25, 33]
 
 
@@ -52,6 +56,17 @@ class AgendaSyncEngine(models.AbstractModel):
         }
 
         return token_data['access_token']
+
+    def _parse_sp_datetime(self, sp_datetime):
+        """Convert SharePoint ISO 8601 datetime to Odoo format
+        
+        SharePoint: 2019-09-13T07:00:00Z
+        Odoo: 2019-09-13 07:00:00
+        """
+        if not sp_datetime:
+            return None
+        # Remove timezone suffix and replace T with space
+        return sp_datetime.replace('T', ' ').replace('Z', '')
 
     def _graph_request(self, company, method, endpoint, json_data=None):
         """Make a request to Microsoft Graph API"""
@@ -156,7 +171,8 @@ class AgendaSyncEngine(models.AbstractModel):
             return 'created'
 
         # Echo detection - if oversion matches our record, skip
-        if sp_oversion and sp_oversion == odoo_record.id:  # Using ID as simple version for types
+        # But if ms_version is NULL, we want to force re-import
+        if sp_oversion and sp_oversion == odoo_record.id and odoo_record.ms_version:
             if odoo_record.ms_version != sp_etag:
                 odoo_record.write({'ms_version': sp_etag})
             return 'skipped'
@@ -184,7 +200,8 @@ class AgendaSyncEngine(models.AbstractModel):
         
         SharePoint plan_veranstaltungscodes fields:
         - Title: Event type code (e.g., 'ME', 'MB')
-        - Veranstaltungstitel: Full title
+        - Feld1: Kurzbeschreibung (full descriptive title)
+        - Feld10: Veranstaltungstitel (short catchy title)
         - TeaserText: Short description
         - CloudinaryCode / cimg: Hero image reference
         - UE: Teaching units
@@ -201,8 +218,9 @@ class AgendaSyncEngine(models.AbstractModel):
             ], limit=1)
 
         # Synthesize template_heading: "Kurzbeschreibung **Veranstaltungstitel**"
-        kurzbeschreibung = sp_fields.get('Kurzbeschreibung', '') or ''
-        veranstaltungstitel = sp_fields.get('Veranstaltungstitel', '') or ''
+        # SharePoint internal names: Feld1=Kurzbeschreibung, Feld10=Veranstaltungstitel
+        kurzbeschreibung = sp_fields.get('Feld1', '') or ''
+        veranstaltungstitel = sp_fields.get('Feld10', '') or ''
         template_heading = ''
         if kurzbeschreibung and veranstaltungstitel:
             template_heading = '{} **{}**'.format(kurzbeschreibung.strip(), veranstaltungstitel.strip())
@@ -262,18 +280,24 @@ class AgendaSyncEngine(models.AbstractModel):
         sp_fields = sp_item.get('fields', {})
         sp_oversion = sp_fields.get('oversion', 0) or 0
 
+        # Skip events without required date fields
+        # SharePoint uses Feld17 (Start) and Feld18 (Ende) as internal names
+        if not sp_fields.get('Feld17'):
+            _logger.debug("Skipping event %s - no Start date (Feld17)", sp_id)
+            return 'skipped'
+
         # Find existing Odoo record
         odoo_record = Event.search([('ms_id', '=', sp_id)], limit=1)
         sync_level = company.ms_agenda_sync_level
 
         if not odoo_record:
-            # New record - create in Odoo
+            # New record - create in Odoo with de_DE language context
             vals = self._map_event_from_sp(company, sp_fields)
             vals['ms_id'] = sp_id
             vals['ms_version'] = sp_etag
             vals['ms_synced'] = True
             vals['ms_pushed_version'] = 0
-            odoo_record = Event.create(vals)
+            odoo_record = Event.with_context(lang='de_DE').create(vals)
 
             # Apply template defaults if event type has template parent
             self._apply_event_template(odoo_record)
@@ -326,7 +350,8 @@ class AgendaSyncEngine(models.AbstractModel):
         vals = self._map_event_from_sp(company, sp_fields)
         vals['ms_version'] = sp_etag
 
-        odoo_record.write(vals)
+        # Write with de_DE language context for translated fields
+        odoo_record.with_context(lang='de_DE').write(vals)
 
         # Push oversion back to prevent re-import loop
         self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], {
@@ -384,9 +409,11 @@ class AgendaSyncEngine(models.AbstractModel):
                 ('company_id', '=', company.id),
             ], limit=1)
 
-        # Parse dates (SharePoint uses Start/Ende, not Datum/DatumEnde)
-        date_begin = sp_fields.get('Start')
-        date_end = sp_fields.get('Ende') or date_begin
+        # Parse dates (SharePoint internal names: Feld17=Start, Feld18=Ende)
+        # SharePoint returns ISO 8601 format: 2019-09-13T07:00:00Z
+        # Odoo expects: %Y-%m-%d %H:%M:%S
+        date_begin = self._parse_sp_datetime(sp_fields.get('Feld17'))
+        date_end = self._parse_sp_datetime(sp_fields.get('Feld18')) or date_begin
 
         # Find website for domain_code
         website = None
@@ -402,44 +429,51 @@ class AgendaSyncEngine(models.AbstractModel):
 
         # Resolve schedule text:
         # 1. If SP has oschedule (written back from Odoo), use it
-        # 2. Else if SeminarplanLookupId = 1 or has value, use Seminarplan_Memo
-        # 3. Else fetch from plan_seminarzeiten lookup
-        schedule_text = sp_fields.get('oschedule', '')
+        # 2. Else use Feld11 (custom schedule memo on the event)
+        # 3. Else if SeminarplanLookupId > 1, fetch from plan_seminarzeiten template
+        schedule_text = sp_fields.get('oschedule') or ''
+        if not schedule_text:
+            schedule_text = sp_fields.get('Feld11') or ''
         if not schedule_text:
             seminarplan_id = sp_fields.get('SeminarplanLookupId')
-            if seminarplan_id == 1 or sp_fields.get('Seminarplan_Memo'):
-                # Use custom memo
-                schedule_text = sp_fields.get('Seminarplan_Memo', '')
-            elif seminarplan_id:
-                # Fetch from plan_seminarzeiten - will be resolved in separate call
+            if seminarplan_id and str(seminarplan_id) != '1':
+                # Fetch from plan_seminarzeiten template
                 schedule_text = self._fetch_seminarplan_text(company, seminarplan_id)
+        
+        _logger.debug("Schedule for %s: oschedule=%s, Feld11=%s, SeminarplanLookupId=%s, result=%s",
+                     sp_fields.get('Title'), sp_fields.get('oschedule'), sp_fields.get('Feld11'),
+                     sp_fields.get('SeminarplanLookupId'), schedule_text)
 
-        # Build name in "overline **headline**" format
-        # - If oheading exists (written back from Odoo), use it
-        # - Else synthesize from template_heading (overline) + Title (headline)
-        sp_title = sp_fields.get('Title', '')
-        name = sp_fields.get('oheading', '')
+        # Resolve name (heading):
+        # 1. If SP has oheading (written back from Odoo), use it
+        # 2. Else use template_heading from event_type directly
+        # 3. Fallback to SP Title
+        name = sp_fields.get('oheading', '') or ''
         if not name and event_type and event_type.template_heading:
-            # Extract overline from template_heading (format: "overline **headline**")
-            th = event_type.template_heading
-            if '**' in th:
-                overline = th.split('**')[0].strip()
-            else:
-                overline = th.strip()
-            if overline:
-                name = '{} **{}**'.format(overline, sp_title)
-            else:
-                name = '**{}**'.format(sp_title)
+            name = event_type.template_heading
         if not name:
-            name = sp_title  # Fallback to plain title
+            name = sp_fields.get('Title', '')
 
+        # Resolve teasertext:
+        # 1. If SP has oteasertext (written back from Odoo), use it
+        # 2. Else use template_teasertext from event_type
+        teasertext = sp_fields.get('oteasertext', '') or ''
+        if not teasertext and event_type and event_type.template_teasertext:
+            # template_teasertext might be JSONB dict, extract de_DE or string value
+            tt = event_type.template_teasertext
+            if isinstance(tt, dict):
+                teasertext = tt.get('de_DE') or tt.get('en_US') or ''
+            else:
+                teasertext = tt or ''
+
+        # Return plain strings - caller uses with_context(lang='de_DE')
         return {
             'name': name,
             'event_type_id': event_type.id if event_type else False,
             'date_begin': date_begin,
             'date_end': date_end,
-            'teasertext': sp_fields.get('oteasertext', ''),
-            'md': sp_fields.get('omd', ''),
+            'teasertext': teasertext,
+            'md': sp_fields.get('omd', '') or '',
             'schedule': schedule_text,
             'cimg': sp_fields.get('cimg', ''),
             'units': sp_fields.get('UE', 0) or 0,
@@ -447,7 +481,12 @@ class AgendaSyncEngine(models.AbstractModel):
         }
 
     def _fetch_seminarplan_text(self, company, seminarplan_id):
-        """Fetch schedule text from plan_seminarzeiten by ID"""
+        """Fetch schedule text from plan_seminarzeiten by ID
+        
+        SharePoint plan_seminarzeiten fields:
+        - Feld12: Detailed schedule text (preferred)
+        - Feld1: Short schedule description (fallback)
+        """
         if not seminarplan_id or not company.ms_list_seminarzeiten:
             return ''
         
@@ -456,7 +495,9 @@ class AgendaSyncEngine(models.AbstractModel):
                 company, 'GET',
                 f"/lists/{company.ms_list_seminarzeiten}/items/{seminarplan_id}?$expand=fields"
             )
-            return result.get('fields', {}).get('Seminarplan_Memo', '')
+            fields = result.get('fields', {})
+            # Prefer Feld12 (detailed), fallback to Feld1 (short)
+            return fields.get('Feld12') or fields.get('Feld1') or ''
         except Exception as e:
             _logger.warning(f"Failed to fetch seminarplan {seminarplan_id}: {e}")
             return ''
@@ -488,24 +529,24 @@ class AgendaSyncEngine(models.AbstractModel):
         """Apply template defaults from event type (one-time on create)
         
         From event.type template fields:
-        - template_teasertext → teasertext
-        - template_cimg → cimg
-        - template_units → units
-        - template_heading → heading
+        - template_teasertext → teasertext (if not already set)
+        - template_cimg → cimg (if not already set)
+        - template_units → units (if not already set)
+        
+        Note: name/heading and teasertext are now applied in _map_event_from_sp
+        This method handles any remaining template fields.
         """
-        if not event.event_type_id or not event.event_type_id.template_parent_id:
+        if not event.event_type_id:
             return
 
         template = event.event_type_id
         updates = {}
 
-        if template.template_teasertext and not event.teasertext:
-            updates['teasertext'] = template.template_teasertext
+        # Only apply cimg and units here - teasertext and heading handled in mapping
         if template.template_cimg and not event.cimg:
             updates['cimg'] = template.template_cimg
         if template.template_units and not event.units:
             updates['units'] = template.template_units
-        # Note: heading is computed via rectitle from template_heading, no need to copy
 
         if updates:
             event.with_context(skip_version_increment=True).write(updates)
