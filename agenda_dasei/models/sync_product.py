@@ -87,7 +87,7 @@ class SyncProduct(models.AbstractModel):
 
         if not odoo_record:
             # Create new product
-            vals = self._prepare_product_vals(sp_id, sp_etag, sp_fields)
+            vals = self._prepare_product_vals(company, sp_id, sp_etag, sp_fields)
             odoo_record = Product.create(vals)
             _logger.info(f"Created product: {odoo_record.name} (SP ID: {sp_id})")
             return 'created'
@@ -97,12 +97,59 @@ class SyncProduct(models.AbstractModel):
             return 'skipped'
 
         # Update existing
-        vals = self._prepare_product_vals(sp_id, sp_etag, sp_fields)
+        vals = self._prepare_product_vals(company, sp_id, sp_etag, sp_fields)
         odoo_record.write(vals)
         _logger.info(f"Updated product: {odoo_record.name} (SP ID: {sp_id})")
         return 'updated'
 
-    def _prepare_product_vals(self, sp_id, sp_etag, sp_fields):
+    def _generate_default_code(self, sp_id, fullname):
+        """Generate default_code from SharePoint ID and product name.
+        
+        Mappings:
+        - M18_Blockprogramm München (530) → m18b
+        - M18_Tageskurs München (534) → m18t
+        - N18_Blockprogramm Nürnberg (532) → n18b
+        - N18_Tageskurs Nürnberg (536) → n18t
+        - Profil ZR 2026-2028 (512) → z15r
+        - Profil ZT 2026-2028 (550) → z15t
+        - Offenes Programm (474) → op
+        """
+        # Direct mapping for known products
+        code_map = {
+            '530': 'm18b',  # M18_Blockprogramm München
+            '532': 'n18b',  # N18_Blockprogramm Nürnberg
+            '534': 'm18t',  # M18_Tageskurs München
+            '536': 'n18t',  # N18_Tageskurs Nürnberg
+            '512': 'z15r',  # Profil ZR
+            '550': 'z15t',  # Profil ZT
+            '474': 'op',    # Offenes Programm
+        }
+        
+        if sp_id in code_map:
+            return code_map[sp_id]
+        
+        # Fallback: generate from name pattern
+        name_lower = fullname.lower()
+        
+        # Pattern: M18_Blockprogramm → m18b, N18_Tageskurs → n18t
+        import re
+        match = re.match(r'_?([mn])(\d+)_(block|tag)', name_lower)
+        if match:
+            city = match.group(1)  # m or n
+            year = match.group(2)  # 18
+            prog_type = 'b' if match.group(3) == 'block' else 't'
+            return f"{city}{year}{prog_type}"
+        
+        # Pattern: Profil ZR/ZT → z + cohort + r/t
+        match = re.match(r'_?profil z([rt])', name_lower)
+        if match:
+            suffix = match.group(1)  # r or t
+            return f"z00{suffix}"  # Placeholder cohort
+        
+        # Fallback to SP ID
+        return f"sp{sp_id}"
+
+    def _prepare_product_vals(self, company, sp_id, sp_etag, sp_fields):
         """Prepare product values from SharePoint fields."""
         Product = self.env['product.template']
         
@@ -114,10 +161,15 @@ class SyncProduct(models.AbstractModel):
         # Build display name
         name = fullname[1:] if fullname.startswith('_') else fullname  # Remove underscore
         
+        # Generate default_code
+        default_code = self._generate_default_code(sp_id, fullname)
+        
         vals = {
             'name': name,
+            'default_code': default_code,
             'ms_contact_id': sp_id,
             'ms_etag': sp_etag,
+            'company_id': company.id,
             'type': 'service',  # Courses are services
             'sale_ok': True,
             'purchase_ok': False,

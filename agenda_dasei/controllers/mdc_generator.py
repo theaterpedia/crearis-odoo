@@ -157,16 +157,20 @@ class MDCGeneratorController(http.Controller):
         """List all available course products with event counts."""
         Product = request.env['product.template'].sudo()
 
+        # Search for products with ms_contact_id (synced from SharePoint)
+        # and non-empty course_event_ids (has events mapped)
         products = Product.search([
-            ('course_event_ids', '!=', False),
-            ('default_code', '!=', False),
+            ('ms_contact_id', '!=', False),
         ])
+
+        # Filter to only products with actual events
+        products = products.filtered(lambda p: p.course_event_ids and p.course_event_ids != {})
 
         courses = []
         for p in products:
             courses.append({
                 'id': p.id,
-                'default_code': p.default_code,
+                'default_code': p.default_code or p.ms_contact_id,
                 'name': p.name,
                 'course_program': p.course_program,
                 'course_year': p.course_year,
@@ -211,49 +215,225 @@ class MDCGeneratorController(http.Controller):
     def _build_course_mdc(self, product, events):
         """Build MDC content for a course product."""
         items = {}
+        
+        # Sort events by date
+        sorted_events = sorted(events, key=lambda e: e.date_begin or datetime.min)
 
-        for event in events:
+        for event in sorted_events:
             event_type = event.event_type_id
             shortcode = event_type.name.lower() if event_type else 'unknown'
             item_key = f"{shortcode}_{event.id}"
 
             # Use event.event fields (PRIMARY), fallback to event.type (TEMPLATE)
-            heading = event.name or (event_type.template_heading if event_type else '')
-            teasertext = event.teasertext if hasattr(event, 'teasertext') else ''
+            event_title = event.name or (event_type.template_heading if event_type else '')
+            teasertext = self._safe_string(event.teasertext if hasattr(event, 'teasertext') else '')
             if not teasertext and event_type:
-                teasertext = event_type.template_teasertext or ''
+                teasertext = self._safe_string(event_type.template_teasertext or '')
             cimg = event.cimg if hasattr(event, 'cimg') else ''
             if not cimg and event_type:
                 cimg = event_type.template_cimg or ''
+            
+            # Build tag (date range text)
+            tag = self._build_event_tag_text(event)
 
             items[item_key] = {
                 'ctype': 'event',
                 'shortcode': shortcode,
-                'title': heading,
-                'body': teasertext,
+                'tag': tag,
+                'title': event_title,
                 'image': {
                     'url': self._build_cloudinary_url(cimg),
                     'caption': f"Theaterpädagogik {event_type.name if event_type else ''}",
                 },
+                'body': teasertext,
                 'start': event.date_begin.isoformat() if event.date_begin else None,
                 'ende': event.date_end.isoformat() if event.date_end else None,
-                'ort': event.address_id.contact_address if event.address_id else '',
-                'ablauf': event.schedule if hasattr(event, 'schedule') else '',
+                'ort': self._format_address(event.address_id) if event.address_id else '',
+                'ablauf': self._safe_string(event.schedule if hasattr(event, 'schedule') else ''),
                 'mit': ', '.join(event.user_id.mapped('name')) if event.user_id else '',
             }
+
+        # Get course date range from events
+        course_start = sorted_events[0].date_begin if sorted_events else None
+        course_end = sorted_events[-1].date_end if sorted_events else None
+        
+        # Build course title and heading
+        course_title = self._get_course_title(product)
+        course_heading = self._build_course_heading(product, course_start, course_end)
+        course_description = self._get_course_description(product, course_start, course_end)
 
         # Build full MDC structure
         mdc = {
             'navigation': False,
+            'navigation_highlight': '/ausbildung-theaterpaedagogik/einstiege',
             'shortcode': product.default_code.lower() if product.default_code else '',
-            'odoo_product_ref': product.default_code or '',
-            'odoo_product_id': product.id,
-            'heading': product.name,
+            'heading': course_heading,
+            'start': course_start.strftime('%Y-%m-%d') if course_start else None,
+            'end': course_end.strftime('%Y-%m-%d') if course_end else None,
             'ctype': 'course',
+            'tag': 'course',
+            'description': course_description,
+            'title': course_title,
+            'cssclasses': ['course'],
+            'views': ['product', 'details'],
+            'details': self._build_course_details(product),
+            'product': self._build_course_product_section(product, len(sorted_events), course_start, course_end),
             'items': items,
         }
 
         return self._to_yaml(mdc)
+
+    def _get_course_title(self, product):
+        """Get course title (e.g., 'Einstiege ins Theaterspiel')."""
+        # For block/day courses, use standard title
+        if product.course_type in ('block', 'day'):
+            return 'Einstiege ins Theaterspiel'
+        # For profile courses
+        if product.course_type == 'profile':
+            return f"Profil {product.course_program}"
+        return product.name
+
+    def _build_course_heading(self, product, start_date, end_date):
+        """Build course heading like '**Title** Location dates // description'."""
+        title = self._get_course_title(product)
+        location = self._get_course_location(product)
+        
+        # Format date range - show year on start if years differ
+        if start_date and end_date:
+            if start_date.year != end_date.year:
+                date_range = f"{start_date.strftime('%-d.%-m.%Y')} - {end_date.strftime('%-d.%-m.%Y')}"
+            else:
+                date_range = f"{start_date.strftime('%-d.%-m')} - {end_date.strftime('%-d.%-m.%Y')}"
+        elif start_date:
+            date_range = start_date.strftime('%Y')
+        else:
+            date_range = ''
+        
+        # Build description based on course type
+        if product.course_type == 'block':
+            desc = 'Blockseminarverlauf'
+        elif product.course_type == 'day':
+            desc = 'Tageskursverlauf'
+        else:
+            desc = ''
+        
+        return f"**{title}** {location} {date_range} // {desc}".strip()
+
+    def _get_course_location(self, product):
+        """Get course location from program (M=München, N=Nürnberg, etc.)."""
+        locations = {
+            'M': 'München',
+            'N': 'Nürnberg',
+            'ZR': 'Region',
+            'ZT': 'Theater',
+        }
+        return locations.get(product.course_program, '')
+
+    def _get_course_description(self, product, start_date, end_date):
+        """Build course description."""
+        title = self._get_course_title(product)
+        code = product.default_code.upper() if product.default_code else ''
+        location = self._get_course_location(product)
+        
+        if start_date and end_date:
+            date_range = f"{start_date.strftime('%-d.%-m')} - {end_date.strftime('%-d.%-m.%Y')}"
+        else:
+            date_range = product.course_year or ''
+        
+        desc_type = 'Blockseminarverlauf' if product.course_type == 'block' else 'Tageskursverlauf'
+        
+        return f"Weiterbildung Theaterpädagogik - Kurs {code} {location} {date_range} // {desc_type} {location}"
+
+    def _build_course_details(self, product):
+        """Build details section for course."""
+        return {
+            'programm': {
+                'title': 'Programm & Struktur',
+                'header': '## Programm & Struktur',
+                'info': {
+                    'struktur': self._get_course_struktur(product),
+                    'beratung': "#### individuelle Fachberatung vereinbaren\n- Ausbildung oder Weiterbildung? Format?\n- Fördermöglichkeiten\n- Fortsetzung Aufbaustufe möglich mit Abschluss Theaterpädagog:in (BuT)",
+                },
+            },
+            'konditionen': {
+                'title': 'Kosten & Konditionen',
+                'header': '## Kosten & Konditionen',
+                'info': {
+                    'kosten': self._get_course_kosten(product),
+                },
+            },
+        }
+
+    def _get_course_struktur(self, product):
+        """Get course structure text."""
+        if product.course_type == 'block':
+            return "- **SEMINARBLOCK 1** (3-4 Tage im Seminarhaus)\n- **SEMINARBLOCK 2** (4 Tage)\n- **1 Basisblock** (= Basistag +1 Termin)\n- **SUMME** mind. 120 UE"
+        elif product.course_type == 'day':
+            return "- **6 TAGESSEMINARE** (So. ganztags + 2 Abende)\n- **1 Basisblock** (= Basistag +1 Termin)\n- **SUMME** mind. 120 UE"
+        return "Details folgen"
+
+    def _get_course_kosten(self, product):
+        """Get course cost text."""
+        return "### Teilnahmegebühr\n- Kursgebühr: Details folgen\n- Anmeldung erforderlich\n- Zahlung: auf Rechnung in Raten"
+
+    def _build_course_product_section(self, product, event_count, start_date, end_date):
+        """Build product section for course."""
+        title = self._get_course_title(product)
+        location = self._get_course_location(product)
+        
+        # German month abbreviations
+        months_de = ['JAN', 'FEB', 'MÄR', 'APR', 'MAI', 'JUN', 'JUL', 'AUG', 'SEP', 'OKT', 'NOV', 'DEZ']
+        
+        if start_date and end_date:
+            start_month = months_de[start_date.month - 1]
+            end_month = months_de[end_date.month - 1]
+            date_range = f"{start_month} - {end_month} {end_date.year}"
+        else:
+            date_range = product.course_year or ''
+        
+        return {
+            'header': f"## {event_count} Kurseinheiten\nIn prägnanten Einheiten wirst Du beide Wege erleben, verstehen und selber anleiten: Du lernst die Methoden, die Leitungshaltung und typische Abläufe.",
+            'footer': f"## {date_range} // {location} **{title}**",
+        }
+
+    def _build_event_tag_text(self, event):
+        """Build tag text for event (date range description)."""
+        if not event.date_begin:
+            return ''
+        
+        start = event.date_begin
+        end = event.date_end
+        
+        # German day names
+        days = ['Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.', 'So.']
+        start_day = days[start.weekday()]
+        
+        # Check if schedule mentions online
+        schedule = self._safe_string(event.schedule if hasattr(event, 'schedule') else '')
+        has_online = 'online' in schedule.lower() if schedule else False
+        online_suffix = ' + Abende online' if has_online else ''
+        
+        if end and end.date() != start.date():
+            end_day = days[end.weekday()]
+            return f"{start_day}, {start.day}.{start.month}. bis {end_day}, {end.day}.{end.month}{online_suffix}"
+        else:
+            return f"{start_day}, {start.day}.{start.month}. ganztags{online_suffix}"
+
+    def _format_address(self, address):
+        """Format address for display."""
+        if not address:
+            return ''
+        parts = []
+        if address.name:
+            parts.append(address.name)
+        if address.street:
+            parts.append(address.street)
+        if address.street2:
+            parts.append(address.street2)
+        city_line = f"{address.zip or ''} {address.city or ''}".strip()
+        if city_line:
+            parts.append(city_line)
+        return '\n'.join(parts)
 
     def _build_event_mdc(self, event):
         """Build MDC content for a standalone event (Offenes Programm)."""
@@ -261,78 +441,160 @@ class MDCGeneratorController(http.Controller):
         shortcode = event_type.name.lower() if event_type else 'event'
 
         # Use event.event fields (PRIMARY), fallback to event.type (TEMPLATE)
+        # Event name is the full title, event_type.name is the shortcode (e.g., "LR")
+        event_title = self._get_event_title(event)
         heading = event.name or (event_type.template_heading if event_type else '')
-        teasertext = event.teasertext if hasattr(event, 'teasertext') else ''
+        teasertext = self._safe_string(event.teasertext if hasattr(event, 'teasertext') else '')
         if not teasertext and event_type:
-            teasertext = event_type.template_teasertext or ''
+            teasertext = self._safe_string(event_type.template_teasertext or '')
         cimg = event.cimg if hasattr(event, 'cimg') else ''
         if not cimg and event_type:
             cimg = event_type.template_cimg or ''
+        
+        # Get image alt text from event or derive from title
+        image_alt = self._get_image_alt(event)
 
-        # Format heading for MDC: "date time: description **title**"
-        date_str = event.date_begin.strftime('%-d.%-m') if event.date_begin else ''
-        time_str = event.date_begin.strftime('%H:%M') if event.date_begin else ''
+        # Format heading for MDC: "ORT D.-D.M // Kurzbeschreibung **Titel**"
+        heading_formatted = self._format_event_heading(event, event_title)
+        
+        # Description - convert Markup to plain string
+        description = self._safe_string(event.description if hasattr(event, 'description') else '')
 
         mdc = {
-            'navigation': False,
-            'navigation_highlight': '/ausbildung-theaterpaedagogik',
-            'ctype': 'event',
+            'publish': 'draft',
             'id': f"{shortcode}_{event.ms_id or event.id}",
-            'odoo_event_id': event.id,
-            'tag': self._get_event_tag(event),
-            'heading': f"{date_str} {time_str}: {heading}" if date_str else heading,
-            'description': event.description if hasattr(event, 'description') else '',
-            'title': event_type.name if event_type else event.name,
+            'heading': heading_formatted,
+            'description': description or teasertext,
+            'teaser': teasertext,
+            'title': event_title,
+            'cssclasses': ['workshop'],
             'start': event.date_begin.strftime('%Y-%m-%d') if event.date_begin else None,
             'ende': event.date_end.strftime('%Y-%m-%d') if event.date_end else None,
-            'teaser': teasertext,
             'hero': {
-                'height': 'full',
+                'height': 'prominent',
                 'image_focus_y': 'cover',
                 'image_focus_x': 'center',
                 'content': 'banner',
-                'content_y': 'bottom',
+                'content_y': 'top',
                 'content_width': 'short',
                 'cta': {
-                    'title': 'anmelden (kostenfrei)' if self._is_free_event(event) else 'anmelden',
+                    'title': 'jetzt anmelden',
                 },
             },
             'image': {
-                'alt': event_type.name if event_type else 'Event',
+                'alt': image_alt,
                 'src': self._build_cloudinary_url(cimg),
             },
-            'cssclasses': ['workshop'],
             'views': ['details'],
             'details': self._build_event_details(event),
         }
 
         return self._to_yaml(mdc)
 
+    def _get_event_title(self, event):
+        """Extract meaningful title from event name.
+        
+        Event name format: "Kurzbeschreibung **Titel**" or "Titel"
+        Returns the part in **bold** or the whole name.
+        """
+        event_name = event.name or ''
+        # Check for **title** pattern
+        import re
+        match = re.search(r'\*\*(.+?)\*\*', event_name)
+        if match:
+            return match.group(1)
+        # Fallback to event name without location/date prefix
+        return event_name
+
+    def _format_event_heading(self, event, title):
+        """Format heading like: 'ORT D.-D.M // Kurzbeschreibung **Titel**'"""
+        if not event.date_begin:
+            return event.name or title
+        
+        # Get location abbreviation
+        location = self._get_location_abbrev(event)
+        
+        # Format date range: "4.-6.4" or just "4.4" if single day
+        start = event.date_begin
+        end = event.date_end
+        
+        if end and end.date() != start.date():
+            date_str = f"{start.day}.-{end.day}.{start.month}"
+        else:
+            date_str = f"{start.day}.{start.month}"
+        
+        # Use event name which should already contain **title**
+        return f"{location} {date_str} // {event.name}" if location else f"{date_str} // {event.name}"
+
+    def _get_location_abbrev(self, event):
+        """Get location abbreviation (MÜ for München, NÜ for Nürnberg, etc.)"""
+        if not event.address_id:
+            return ''
+        city = event.address_id.city or ''
+        abbrevs = {
+            'münchen': 'MÜ',
+            'munich': 'MÜ',
+            'nürnberg': 'NÜ',
+            'nuremberg': 'NÜ',
+        }
+        return abbrevs.get(city.lower(), city[:2].upper() if city else '')
+
+    def _get_image_alt(self, event):
+        """Get alt text for event image."""
+        # Try to extract from title
+        title = self._get_event_title(event)
+        if title and title != event.name:
+            return title
+        # Fallback to event type description or name
+        if event.event_type_id:
+            return event.event_type_id.template_heading or event.event_type_id.name
+        return 'Workshop'
+
+    def _safe_string(self, value):
+        """Convert value to plain string, handling Markup objects."""
+        if value is None:
+            return ''
+        # Convert Markup and other objects to string
+        return str(value) if value else ''
+
     def _build_event_details(self, event):
         """Build details section for standalone event."""
-        schedule = event.schedule if hasattr(event, 'schedule') else 'Details folgen'
+        schedule = self._safe_string(event.schedule if hasattr(event, 'schedule') else '')
+        location = self._get_full_location(event)
+        
+        # Build schedule info with location
+        schedule_text = schedule or 'Details folgen'
+        if location:
+            schedule_text = f"{schedule_text}\n\n{location}"
         
         return {
             'programm': {
                 'title': 'Programm',
-                'agenda': {'style': 'default'},
+                'header': '## **Programm**',
                 'info': {
-                    'struktur': f"#### Programm\n{schedule or 'Details folgen'}",
-                    'beratung': "#### Beratung\n> nach der Veranstaltung erhältst du ggf. weitere Informationen",
+                    'struktur': schedule_text,
                 },
             },
             'konditionen': {
-                'title': 'Teilnahme',
-                'header': '### Teilnahme',
+                'title': 'Konditionen',
                 'info': {
                     'kosten': self._get_cost_text(event),
-                    'storno': "### Abmeldung\n= bitte melde eine Absage bis spätestens 18:00 Uhr am Vorabend",
+                    'storno': "### Widerruf & Storno\n- 14 Tage Widerruf\n- bis 6 Wochen vor Veranstaltungsbeginn kostenfreie Stornierung formlos schriftlich\n- danach Einbehalt von 50% der Teilnahmegebühr",
                 },
             },
-            'checks': {
-                'title': 'Anmelden',
-            },
         }
+
+    def _get_full_location(self, event):
+        """Get full location string for event."""
+        if not event.address_id:
+            return ''
+        addr = event.address_id
+        parts = []
+        if addr.city:
+            parts.append(addr.city)
+        if addr.street:
+            parts.append(addr.street)
+        return ', '.join(parts) if parts else ''
 
     def _build_event_filename(self, event):
         """Build filename for standalone event.
@@ -455,12 +717,20 @@ class MDCGeneratorController(http.Controller):
         """Get cost description for event."""
         if self._is_free_event(event):
             return "### die Teilnahme ist kostenfrei\nSei bitte voll präsent."
-        return "### Kosten\nDetails zur Teilnahmegebühr folgen."
+        # TODO: Get actual price from event/product if available
+        return "### Teilnahmegebühr: € --,--\n- Anmeldung bis X Wochen vor Beginn\n- Zahlung: auf Rechnung"
 
     def _to_yaml(self, data):
         """Convert dict to YAML string with MDC frontmatter markers."""
         if yaml:
-            yaml_str = yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            # Use block style for multiline strings, allow unicode
+            yaml_str = yaml.dump(
+                data, 
+                allow_unicode=True, 
+                default_flow_style=False, 
+                sort_keys=False,
+                width=1000,  # Prevent line wrapping
+            )
         else:
             # Fallback to JSON if yaml not available
             yaml_str = json.dumps(data, ensure_ascii=False, indent=2)

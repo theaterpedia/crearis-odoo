@@ -30,9 +30,6 @@ Features:
         'product',
         'event',
     ],
-    'external_dependencies': {
-        'python': ['PyYAML'],
-    },
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',
