@@ -6,18 +6,81 @@ import json
 import io
 import re
 import zipfile
-from datetime import datetime
+from datetime import datetime, date
 
 from odoo import http
 from odoo.http import request
 
 try:
     import yaml
+    from yaml import SafeDumper
 except ImportError:
     yaml = None
+    SafeDumper = None
 
 # Offenes Programm SharePoint contact ID
 OFFENES_PROGRAMM_ID = '474'
+
+
+# =============================================================================
+# Custom YAML Dumper for Nuxt Content MDC Compatibility
+# =============================================================================
+# Protocol: https://github.com/theaterpedia/crearis-odoo/chat/input/2025-12-30-yaml-export-protocol.md
+
+class MDCYamlDumper(SafeDumper):
+    """Custom YAML dumper that follows the MDC/Nuxt Content YAML export protocol.
+    
+    Key formatting rules:
+    - 1-space indentation for nested objects (not 2-space)
+    - 2-space indentation for array items (cssclasses, views)
+    - Unquoted ISO dates (parsed as date objects)
+    - Short datetime format without seconds (YYYY-MM-DDTHH:MM)
+    - Double quotes only for strings containing ** markdown bold
+    - Multiline strings with | use 1-space indent from parent
+    """
+    pass
+
+
+def _mdc_str_representer(dumper, data):
+    """Custom string representer for MDC YAML.
+    
+    - Use double quotes for strings containing **bold** markdown
+    - Use literal block style (|) for multiline strings
+    - No quotes for simple strings
+    """
+    if '\n' in data:
+        # Multiline strings use literal block style
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+    elif '**' in data:
+        # Strings with markdown bold use double quotes
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='"')
+    else:
+        # Simple strings - no quotes
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='')
+
+
+def _mdc_date_representer(dumper, data):
+    """Date representer - unquoted ISO format (YYYY-MM-DD)."""
+    return dumper.represent_scalar('tag:yaml.org,2002:timestamp', data.isoformat())
+
+
+def _mdc_datetime_representer(dumper, data):
+    """Datetime representer - short format without seconds (YYYY-MM-DDTHH:MM)."""
+    # Format: 2026-05-14T19:00 (no seconds, no timezone)
+    return dumper.represent_scalar('tag:yaml.org,2002:timestamp', data.strftime('%Y-%m-%dT%H:%M'))
+
+
+def _mdc_none_representer(dumper, data):
+    """None representer - empty string."""
+    return dumper.represent_scalar('tag:yaml.org,2002:null', '')
+
+
+if SafeDumper:
+    # Register custom representers
+    MDCYamlDumper.add_representer(str, _mdc_str_representer)
+    MDCYamlDumper.add_representer(date, _mdc_date_representer)
+    MDCYamlDumper.add_representer(datetime, _mdc_datetime_representer)
+    MDCYamlDumper.add_representer(type(None), _mdc_none_representer)
 
 
 class MDCGeneratorController(http.Controller):
@@ -246,8 +309,8 @@ class MDCGeneratorController(http.Controller):
                     'caption': f"Theaterpädagogik {event_type.name if event_type else ''}",
                 },
                 'body': teasertext,
-                'start': event.date_begin.isoformat() if event.date_begin else None,
-                'ende': event.date_end.isoformat() if event.date_end else None,
+                'start': event.date_begin if event.date_begin else None,  # Native datetime for MDCYamlDumper
+                'ende': event.date_end if event.date_end else None,  # Native datetime for MDCYamlDumper
                 'ort': self._format_address(event.address_id) if event.address_id else '',
                 'ablauf': self._safe_string(event.schedule if hasattr(event, 'schedule') else ''),
                 'mit': ', '.join(event.user_id.mapped('name')) if event.user_id else '',
@@ -268,8 +331,8 @@ class MDCGeneratorController(http.Controller):
             'navigation_highlight': '/ausbildung-theaterpaedagogik/einstiege',
             'shortcode': product.default_code.lower() if product.default_code else '',
             'heading': course_heading,
-            'start': course_start.strftime('%Y-%m-%d') if course_start else None,
-            'end': course_end.strftime('%Y-%m-%d') if course_end else None,
+            'start': course_start.date() if course_start else None,  # Native date for MDCYamlDumper
+            'end': course_end.date() if course_end else None,  # Native date for MDCYamlDumper
             'ctype': 'course',
             'tag': 'course',
             'description': course_description,
@@ -345,19 +408,23 @@ class MDCGeneratorController(http.Controller):
         return f"Weiterbildung Theaterpädagogik - Kurs {code} {location} {date_range} // {desc_type} {location}"
 
     def _build_course_details(self, product):
-        """Build details section for course."""
+        """Build details section for course.
+        
+        Note: header values use single-line format without | since they don't 
+        contain actual newlines. The YAML dumper will handle quoting properly.
+        """
         return {
             'programm': {
                 'title': 'Programm & Struktur',
-                'header': '## Programm & Struktur',
+                'header': "## Programm & Struktur\n",  # Trailing newline triggers | style
                 'info': {
                     'struktur': self._get_course_struktur(product),
-                    'beratung': "#### individuelle Fachberatung vereinbaren\n- Ausbildung oder Weiterbildung? Format?\n- Fördermöglichkeiten\n- Fortsetzung Aufbaustufe möglich mit Abschluss Theaterpädagog:in (BuT)",
+                    'beratung': "#### individuelle Fachberatung vereinbaren\n- Ausbildung oder Weiterbildung? Format?\n- Fördermöglichkeiten\n- Fortsetzung Aufbaustufe möglich mit Abschluss Theaterpädagog:in (BuT)\n",
                 },
             },
             'konditionen': {
                 'title': 'Kosten & Konditionen',
-                'header': '## Kosten & Konditionen',
+                'header': "## Kosten & Konditionen\n",  # Trailing newline triggers | style
                 'info': {
                     'kosten': self._get_course_kosten(product),
                 },
@@ -367,14 +434,14 @@ class MDCGeneratorController(http.Controller):
     def _get_course_struktur(self, product):
         """Get course structure text."""
         if product.course_type == 'block':
-            return "- **SEMINARBLOCK 1** (3-4 Tage im Seminarhaus)\n- **SEMINARBLOCK 2** (4 Tage)\n- **1 Basisblock** (= Basistag +1 Termin)\n- **SUMME** mind. 120 UE"
+            return "- **SEMINARBLOCK 1** (3-4 Tage im Seminarhaus)\n- **SEMINARBLOCK 2** (4 Tage)\n- **1 Basisblock** (= Basistag +1 Termin)\n- **SUMME** mind. 120 UE\n"
         elif product.course_type == 'day':
-            return "- **6 TAGESSEMINARE** (So. ganztags + 2 Abende)\n- **1 Basisblock** (= Basistag +1 Termin)\n- **SUMME** mind. 120 UE"
-        return "Details folgen"
+            return "- **6 TAGESSEMINARE** (So. ganztags + 2 Abende)\n- **1 Basisblock** (= Basistag +1 Termin)\n- **SUMME** mind. 120 UE\n"
+        return "Details folgen\n"
 
     def _get_course_kosten(self, product):
         """Get course cost text."""
-        return "### Teilnahmegebühr\n- Kursgebühr: Details folgen\n- Anmeldung erforderlich\n- Zahlung: auf Rechnung in Raten"
+        return "### Teilnahmegebühr\n- Kursgebühr: Details folgen\n- Anmeldung erforderlich\n- Zahlung: auf Rechnung in Raten\n"
 
     def _build_course_product_section(self, product, event_count, start_date, end_date):
         """Build product section for course."""
@@ -392,8 +459,8 @@ class MDCGeneratorController(http.Controller):
             date_range = product.course_year or ''
         
         return {
-            'header': f"## {event_count} Kurseinheiten\nIn prägnanten Einheiten wirst Du beide Wege erleben, verstehen und selber anleiten: Du lernst die Methoden, die Leitungshaltung und typische Abläufe.",
-            'footer': f"## {date_range} // {location} **{title}**",
+            'header': f"## {event_count} Kurseinheiten\nIn prägnanten Einheiten wirst Du beide Wege erleben, verstehen und selber anleiten: Du lernst die Methoden, die Leitungshaltung und typische Abläufe.\n",
+            'footer': f"## {date_range} // {location} **{title}**\n",
         }
 
     def _build_event_tag_text(self, event):
@@ -468,8 +535,8 @@ class MDCGeneratorController(http.Controller):
             'teaser': teasertext,
             'title': event_title,
             'cssclasses': ['workshop'],
-            'start': event.date_begin.strftime('%Y-%m-%d') if event.date_begin else None,
-            'ende': event.date_end.strftime('%Y-%m-%d') if event.date_end else None,
+            'start': event.date_begin.date() if event.date_begin else None,  # Native date for MDCYamlDumper
+            'ende': event.date_end.date() if event.date_end else None,  # Native date for MDCYamlDumper
             'hero': {
                 'height': 'prominent',
                 'image_focus_y': 'cover',
@@ -570,16 +637,16 @@ class MDCGeneratorController(http.Controller):
         return {
             'programm': {
                 'title': 'Programm',
-                'header': '## **Programm**',
+                'header': "## **Programm**\n",  # Trailing newline triggers | style
                 'info': {
-                    'struktur': schedule_text,
+                    'struktur': schedule_text + '\n' if schedule_text else '',
                 },
             },
             'konditionen': {
                 'title': 'Konditionen',
                 'info': {
                     'kosten': self._get_cost_text(event),
-                    'storno': "### Widerruf & Storno\n- 14 Tage Widerruf\n- bis 6 Wochen vor Veranstaltungsbeginn kostenfreie Stornierung formlos schriftlich\n- danach Einbehalt von 50% der Teilnahmegebühr",
+                    'storno': "### Widerruf & Storno\n- 14 Tage Widerruf\n- bis 6 Wochen vor Veranstaltungsbeginn kostenfreie Stornierung formlos schriftlich\n- danach Einbehalt von 50% der Teilnahmegebühr\n",
                 },
             },
         }
@@ -716,25 +783,88 @@ class MDCGeneratorController(http.Controller):
     def _get_cost_text(self, event):
         """Get cost description for event."""
         if self._is_free_event(event):
-            return "### die Teilnahme ist kostenfrei\nSei bitte voll präsent."
+            return "### die Teilnahme ist kostenfrei\nSei bitte voll präsent.\n"
         # TODO: Get actual price from event/product if available
-        return "### Teilnahmegebühr: € --,--\n- Anmeldung bis X Wochen vor Beginn\n- Zahlung: auf Rechnung"
+        return "### Teilnahmegebühr: € --,--\n- Anmeldung bis X Wochen vor Beginn\n- Zahlung: auf Rechnung\n"
 
-    def _to_yaml(self, data):
-        """Convert dict to YAML string with MDC frontmatter markers."""
-        if yaml:
-            # Use block style for multiline strings, allow unicode
+    def _to_yaml(self, data, body_content=None):
+        """Convert dict to YAML string with MDC frontmatter markers.
+        
+        Follows the MDC/Nuxt Content YAML export protocol:
+        - 1-space indentation for nested objects
+        - 2-space indentation for array items (cssclasses, views)
+        - Unquoted dates
+        - Short datetime format
+        - Body content after frontmatter (required!)
+        
+        Args:
+            data: Dictionary to serialize
+            body_content: Optional body content after frontmatter (required by Nuxt Content)
+        """
+        if yaml and MDCYamlDumper:
+            # Use custom dumper with 1-space indentation
             yaml_str = yaml.dump(
                 data, 
+                Dumper=MDCYamlDumper,
                 allow_unicode=True, 
                 default_flow_style=False, 
                 sort_keys=False,
                 width=1000,  # Prevent line wrapping
+                indent=1,    # 1-space indentation for nested objects
             )
+            # Fix array indentation: arrays use 2-space indent per protocol
+            # cssclasses and views arrays should have items with 2-space indent
+            yaml_str = self._fix_array_indentation(yaml_str)
         else:
             # Fallback to JSON if yaml not available
             yaml_str = json.dumps(data, ensure_ascii=False, indent=2)
-        return f"---\n{yaml_str}---\n"
+        
+        # Add body content after frontmatter (CRITICAL for Nuxt Content indexing)
+        if body_content is None:
+            body_content = "<!-- MDC content generated by agenda_dasei -->\n\n<!-- PUBLISH-FROM-HERE -->"
+        
+        return f"---\n{yaml_str}---\n{body_content}\n"
+
+    def _fix_array_indentation(self, yaml_str):
+        """Fix array item indentation and items: trailing space per MDC protocol.
+        
+        Per protocol:
+        - cssclasses and views arrays use 2-space indentation for items
+        - items: key should have a trailing space before newline
+        """
+        lines = yaml_str.split('\n')
+        result = []
+        in_array = False
+        array_keys = ('cssclasses:', 'views:')
+        
+        for line in lines:
+            # Add trailing space after 'items:' key per protocol
+            if line.rstrip() == 'items:':
+                result.append('items: ')
+                continue
+            
+            # Check if we're starting an array
+            if any(line.rstrip().endswith(key) or line.rstrip() == key.rstrip(':') + ':' 
+                   for key in array_keys):
+                in_array = True
+                result.append(line)
+                continue
+            
+            # Check if we're in an array and this is an item
+            if in_array and line.strip().startswith('- '):
+                # Ensure 2-space indentation for array items
+                stripped = line.lstrip()
+                # Calculate base indent (from parent key)
+                result.append('  ' + stripped)  # 2-space indent for array items
+                continue
+            
+            # Check if we're leaving the array
+            if in_array and line.strip() and not line.strip().startswith('-'):
+                in_array = False
+            
+            result.append(line)
+        
+        return '\n'.join(result)
 
     def _json_response(self, data, status=200):
         """Create JSON HTTP response."""
