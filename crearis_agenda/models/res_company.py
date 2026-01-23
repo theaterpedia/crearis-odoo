@@ -29,6 +29,7 @@ class ResCompany(models.Model):
 
     ms_agenda_last_sync = fields.Datetime(string="Last Sync")
     ms_agenda_sync_enabled = fields.Boolean(string="Auto-Sync Enabled", default=False)
+    ms_agenda_sync_running = fields.Boolean(string="Sync Running", default=False, help="Lock flag to prevent concurrent sync")
 
     # Computed accessors for JSONB fields
     ms_list_veranstaltungen = fields.Char(
@@ -74,6 +75,7 @@ class ResCompany(models.Model):
 
     ms_agenda_configured = fields.Boolean(
         compute='_compute_ms_agenda_configured',
+        store=True,
         string="Agenda Configured"
     )
 

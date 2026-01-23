@@ -255,7 +255,9 @@ class AgendaSyncEngine(models.AbstractModel):
         status_filter = ','.join(str(s) for s in SYNC_STATUS_IDS)
         filter_query = f"fields/StatusLookupId in ({status_filter})"
 
+        _logger.info("Fetching events from SharePoint...")
         sp_items = self._get_list_items(company, list_guid)  # TODO: add filter when SP supports it
+        _logger.info(f"Fetched {len(sp_items)} events from SharePoint, processing...")
 
         stats = {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0, 'pushed': 0}
 
@@ -557,6 +559,18 @@ class AgendaSyncEngine(models.AbstractModel):
 
     def sync_all(self, company):
         """Run full sync for a company"""
+        # Check if sync is already running
+        if company.ms_agenda_sync_running:
+            _logger.warning(f"Sync already running for {company.name}, skipping")
+            return {'skipped': True, 'reason': 'already_running'}
+
+        # Set running flag (use SQL to avoid transaction issues)
+        self.env.cr.execute(
+            "UPDATE res_company SET ms_agenda_sync_running = TRUE WHERE id = %s",
+            [company.id]
+        )
+        self.env.cr.commit()
+
         _logger.info(f"Starting agenda sync for company {company.name}")
 
         results = {
@@ -582,17 +596,32 @@ class AgendaSyncEngine(models.AbstractModel):
             _logger.exception(f"Sync failed for company {company.name}")
             raise UserError(f"Sync failed: {str(e)}")
 
+        finally:
+            # Always clear running flag
+            self.env.cr.execute(
+                "UPDATE res_company SET ms_agenda_sync_running = FALSE WHERE id = %s",
+                [company.id]
+            )
+            self.env.cr.commit()
+
         return results
 
     @api.model
     def cron_sync_all_companies(self):
         """Cron job to sync all configured companies"""
+        # Search on stored fields that indicate configuration
         companies = self.env['res.company'].search([
-            ('ms_agenda_configured', '=', True),
+            ('ms_agenda_tenant_id', '!=', False),
+            ('ms_agenda_client_id', '!=', False),
+            ('ms_agenda_site_id', '!=', False),
             ('ms_agenda_sync_enabled', '=', True),
         ])
 
         for company in companies:
+            # Skip if sync is already running (check lock)
+            if company.ms_agenda_sync_running:
+                _logger.info(f"Skipping {company.name} - sync already in progress")
+                continue
             try:
                 self.sync_all(company)
             except Exception as e:

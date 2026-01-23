@@ -23,27 +23,39 @@ class AgendaSyncPartner(models.AbstractModel):
 
         # Sync contacts → partners
         try:
-            contact_stats = self.sync_contacts(company)
-            result['contacts'] = contact_stats.get('synced', 0)
-            _logger.info(f"Contacts: {contact_stats}")
+            # First, build the participant → kurs_level mapping from kursteilnehmer
+            # This is used during contact sync to set ms_kurs_level directly
+            participant_kurs_map = self._build_participant_kurs_map(company)
+            _logger.info(f"Built participant kurs map with {len(participant_kurs_map)} entries")
 
-            # Evaluate kursteilnehmer for kurs levels
-            kt_stats = self.evaluate_kursteilnehmer(company)
-            result['kursteilnehmer'] = kt_stats.get('evaluated', 0)
-            _logger.info(f"Kursteilnehmer: {kt_stats}")
+            # Now sync contacts with kurs levels applied
+            contact_stats = self.sync_contacts(company, participant_kurs_map)
+            result['contacts'] = contact_stats.get('synced', 0)
+            result['kursteilnehmer'] = len(participant_kurs_map)
+            _logger.info(f"Contacts: {contact_stats}")
 
         except Exception as e:
             _logger.exception(f"Partner sync failed: {e}")
 
         return result
 
-    def sync_contacts(self, company):
-        """Sync contacts from SharePoint to res.partner"""
+    def sync_contacts(self, company, participant_kurs_map=None):
+        """Sync contacts from SharePoint to res.partner
+        
+        Args:
+            company: res.company record
+            participant_kurs_map: dict of contact_id → kurs_code from kursteilnehmer evaluation
+        """
+        if participant_kurs_map is None:
+            participant_kurs_map = {}
+            
         list_guid = company.ms_list_contacts
         if not list_guid:
             return {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0}
 
+        _logger.info("Fetching contacts from SharePoint...")
         sp_items = self._get_list_items(company, list_guid)
+        _logger.info(f"Fetched {len(sp_items)} contacts from SharePoint, processing...")
 
         stats = {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0}
 
@@ -68,19 +80,29 @@ class AgendaSyncPartner(models.AbstractModel):
                 except (ValueError, TypeError):
                     continue
 
-            result = self._sync_contact(company, sp_item)
+            result = self._sync_contact(company, sp_item, participant_kurs_map)
             stats['synced'] += 1
             stats[result] += 1
 
         return stats
 
-    def _sync_contact(self, company, sp_item):
-        """Sync a single contact to res.partner"""
+    def _sync_contact(self, company, sp_item, participant_kurs_map=None):
+        """Sync a single contact to res.partner
+        
+        Args:
+            participant_kurs_map: dict of contact_id → kurs_code for setting ms_kurs_level
+        """
+        if participant_kurs_map is None:
+            participant_kurs_map = {}
+            
         Partner = self.env['res.partner']
 
         sp_id = sp_item['id']
         sp_etag = sp_item.get('@odata.etag', '')
         sp_fields = sp_item.get('fields', {})
+        
+        # Look up kurs level from participant map
+        kurs_level = participant_kurs_map.get(str(sp_id))
 
         # Find existing partner by ms_contact_id or email
         odoo_record = Partner.search([('ms_contact_id', '=', sp_id)], limit=1)
@@ -93,7 +115,7 @@ class AgendaSyncPartner(models.AbstractModel):
 
         if not odoo_record:
             # Create new partner
-            vals = self._map_contact_from_sp(sp_fields)
+            vals = self._map_contact_from_sp(sp_fields, kurs_level)
             vals['ms_contact_id'] = sp_id
             vals['ms_version'] = sp_etag
             odoo_record = Partner.create(vals)
@@ -109,18 +131,26 @@ class AgendaSyncPartner(models.AbstractModel):
 
         # Check if changed
         if odoo_record.ms_version == sp_etag:
+            # Even if contact unchanged, update kurs_level if we have new data
+            if kurs_level and odoo_record.ms_kurs_level != kurs_level:
+                odoo_record.write({'ms_kurs_level': kurs_level})
+                _logger.info(f"Updated kurs_level for '{odoo_record.name}': {kurs_level}")
             return 'skipped'
 
         # Update existing
-        vals = self._map_contact_from_sp(sp_fields)
+        vals = self._map_contact_from_sp(sp_fields, kurs_level)
         vals['ms_contact_id'] = sp_id
         vals['ms_version'] = sp_etag
         odoo_record.write(vals)
 
         return 'updated'
 
-    def _map_contact_from_sp(self, sp_fields):
-        """Map SharePoint contact fields to res.partner"""
+    def _map_contact_from_sp(self, sp_fields, kurs_level=None):
+        """Map SharePoint contact fields to res.partner
+        
+        Args:
+            kurs_level: Optional kurs code from kursteilnehmer evaluation (e.g., 'M17', 'ZR')
+        """
         # Parse status
         status_id = None
         try:
@@ -128,7 +158,7 @@ class AgendaSyncPartner(models.AbstractModel):
         except (ValueError, TypeError):
             pass
 
-        return {
+        vals = {
             'lastname': sp_fields.get('Title', ''),
             'firstname': sp_fields.get('FirstName', ''),
             'name': sp_fields.get('FullName') or f"{sp_fields.get('FirstName', '')} {sp_fields.get('Title', '')}".strip(),
@@ -140,57 +170,149 @@ class AgendaSyncPartner(models.AbstractModel):
             'zip': sp_fields.get('WorkZip', ''),
             'ms_contact_status': status_id,
         }
+        
+        # Include kurs_level if provided (from kursteilnehmer evaluation)
+        if kurs_level:
+            vals['ms_kurs_level'] = kurs_level
+            
+        return vals
 
-    def evaluate_kursteilnehmer(self, company):
-        """Evaluate kursteilnehmer records to determine highest kurs level per partner"""
+    def _build_participant_kurs_map(self, company):
+        """Build mapping of participant contact_id → highest kurs_code.
+        
+        This combines:
+        1. Kurs code map: product contact_id → kurs_code (from contacts with '_' prefix)
+        2. Kursteilnehmer: participant contact_id → KursLookupId
+        
+        Returns dict: participant_contact_id → kurs_code (e.g., '563' → 'M17')
+        """
+        # First build kurs code map from product contacts
+        kurs_code_map = self._build_kurs_code_map(company)
+        if not kurs_code_map:
+            return {}
+        
+        # Then evaluate kursteilnehmer to map participants → kurs codes
         list_guid = company.ms_list_kursteilnehmer
         if not list_guid:
-            return {'evaluated': 0}
+            return {}
 
+        _logger.info("Fetching kursteilnehmer from SharePoint...")
         sp_items = self._get_list_items(company, list_guid)
+        _logger.info(f"Fetched {len(sp_items)} kursteilnehmer records")
 
-        # Group by TeilnehmerLookupId (contact ID)
-        contact_kurs_map = {}  # contact_id -> highest (kurs, priority)
+        # Priority: ZR/ZT > M?/N? (not ME/NE) > ME/NE
+        def get_kurs_priority(kurs_code):
+            if not kurs_code:
+                return 0
+            if kurs_code in ('ZR', 'ZT'):
+                return 30  # Aufbaustufe (highest)
+            if kurs_code.startswith(('M', 'N')) and kurs_code not in ('ME', 'NE'):
+                return 20  # Grundstufe
+            if kurs_code in ('ME', 'NE'):
+                return 10  # Einstiege
+            return 0
 
+        participant_map = {}  # contact_id → (kurs_code, priority)
+        
+        # Debug counters
+        debug_stats = {'total': 0, 'no_status': 0, 'invalid_status': 0, 'no_contact': 0, 'no_kurs': 0, 'kurs_not_found': 0, 'matched': 0}
+
+        # Track unique KursLookupIds for debugging
+        valid_kurs_ids = set()
+        
         for sp_item in sp_items:
             sp_fields = sp_item.get('fields', {})
+            debug_stats['total'] += 1
 
             # Filter by valid teilnahmestatus
             status_id = sp_fields.get('StatsLookupId')
-            if status_id:
-                try:
-                    status_int = int(status_id)
-                    if status_int not in VALID_TEILNAHME_STATUS_IDS:
-                        continue
-                except (ValueError, TypeError):
+            if not status_id:
+                debug_stats['no_status'] += 1
+                continue
+            try:
+                status_int = int(status_id)
+                if status_int not in VALID_TEILNAHME_STATUS_IDS:
+                    debug_stats['invalid_status'] += 1
                     continue
-
-            contact_id = sp_fields.get('TeilnehmerLookupId')
-            kurs_id = sp_fields.get('KursLookupId')
-
-            if not contact_id:
+            except (ValueError, TypeError):
+                debug_stats['invalid_status'] += 1
                 continue
 
-            # We need to resolve KursLookupId to actual Kurs code
-            # For now, store the lookup ID - we'd need another API call to resolve
-            # TODO: Pre-sync plan_kurse to get Kurs codes
-            if contact_id not in contact_kurs_map:
-                contact_kurs_map[contact_id] = kurs_id
+            contact_id = sp_fields.get('TeilnehmerLookupId')
+            kurs_lookup_id = sp_fields.get('KursLookupId')
+            
+            # Track valid KursLookupIds for debugging
+            if kurs_lookup_id:
+                valid_kurs_ids.add(str(kurs_lookup_id))
+
+            if not contact_id:
+                debug_stats['no_contact'] += 1
+                continue
+            if not kurs_lookup_id:
+                debug_stats['no_kurs'] += 1
+                continue
+
+            # Resolve KursLookupId to actual Kurs code
+            kurs_code = kurs_code_map.get(str(kurs_lookup_id))
+            if not kurs_code:
+                debug_stats['kurs_not_found'] += 1
+                # Log first few not-found for debugging
+                if debug_stats['kurs_not_found'] <= 5:
+                    _logger.info(f"KursLookupId {kurs_lookup_id} not found in kurs_code_map (contact {contact_id})")
+                continue
+            
+            debug_stats['matched'] += 1
+
+            priority = get_kurs_priority(kurs_code)
+            contact_id_str = str(contact_id)
+
+            # Keep highest priority kurs for this participant
+            if contact_id_str not in participant_map:
+                participant_map[contact_id_str] = (kurs_code, priority)
             else:
-                # Keep highest (we'd need the actual code to compare properly)
-                # For now just keep first one found
-                pass
+                existing_kurs, existing_priority = participant_map[contact_id_str]
+                if priority > existing_priority:
+                    participant_map[contact_id_str] = (kurs_code, priority)
 
-        # Update partners with kurs levels
-        Partner = self.env['res.partner']
-        evaluated = 0
+        _logger.info(f"Kursteilnehmer debug: {debug_stats}")
+        _logger.info(f"Valid-status KursLookupIds (unique): {sorted(valid_kurs_ids)}")
+        _logger.info(f"Kurs code map keys: {sorted(kurs_code_map.keys())}")
+        
+        # Return just the kurs codes (without priorities)
+        return {cid: kurs for cid, (kurs, _) in participant_map.items()}
 
-        for contact_id, kurs_id in contact_kurs_map.items():
-            partner = Partner.search([('ms_contact_id', '=', str(contact_id))], limit=1)
-            if partner:
-                # TODO: Resolve kurs_id to actual code (ME, MB, ZR, etc)
-                # For now store the lookup ID
-                partner.write({'ms_kursteilnehmer_id': str(kurs_id)})
-                evaluated += 1
+    def _build_kurs_code_map(self, company):
+        """Build mapping of SharePoint contact IDs → Kurs codes.
+        
+        Kurs products are stored in the contacts list with FullName starting with underscore,
+        e.g., '_M17_Tageskurs München' → Kurs code 'M17'
+        
+        We extract the code pattern (letters + optional digits) after the first underscore.
+        """
+        list_guid = company.ms_list_contacts
+        if not list_guid:
+            return {}
 
-        return {'evaluated': evaluated}
+        _logger.info("Fetching contacts for kurs code map...")
+        sp_items = self._get_list_items(company, list_guid)
+        kurs_map = {}
+
+        for sp_item in sp_items:
+            sp_id = str(sp_item.get('id', ''))
+            sp_fields = sp_item.get('fields', {})
+            full_name = sp_fields.get('FullName', '')
+
+            # Only process product references (start with underscore)
+            if not full_name.startswith('_'):
+                continue
+
+            # Extract Kurs code from FullName like '_M17_Tageskurs' or '_ZR_Regie'
+            # Pattern: _<CODE>_... where CODE is letters + optional digits
+            parts = full_name.split('_')
+            if len(parts) >= 2:
+                kurs_code = parts[1]  # e.g., 'M17', 'ZR', 'ME'
+                if kurs_code:
+                    kurs_map[sp_id] = kurs_code
+                    _logger.info(f"Kurs map: contact_id={sp_id} → kurs_code={kurs_code} (from '{full_name}')")
+
+        return kurs_map

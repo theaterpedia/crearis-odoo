@@ -6,10 +6,10 @@ from odoo import api, fields, models
 
 # Module grouping from event_type Title (e.g., A1->A, B2->B)
 MODULE_GROUPS = {
-    'A': 'Modul A - Grundlagen Spielen',
-    'B': 'Modul B - Grundlagen Anleiten',
-    'C': 'Modul C - Theaterprojekt',
-    'D': 'Modul D - Konzeption',
+    'A': 'Modul A - Animmatives Theater',
+    'B': 'Modul B - Szenische Themenarbeit',
+    'C': 'Modul C - Pädagogische Regie',
+    'D': 'Modul D - Zielgruppenkonzepte',
     'E': 'Modul E - Gruppenarbeit',
     'F': 'Modul F - Feedback',
     'G': 'Modul G - Vertiefung',

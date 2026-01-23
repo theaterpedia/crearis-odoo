@@ -18,7 +18,7 @@ SYNC_PRODUCT_IDS = ['530', '532', '534', '536', '512', '550']
 class SyncProduct(models.AbstractModel):
     """Sync SharePoint product contacts to Odoo products."""
     _name = 'dasei.sync.product'
-    _inherit = 'crearis.sync.base'
+    _inherit = 'crearis.agenda.sync'
     _description = 'SharePoint Product Sync'
 
     def sync_products(self, company):
@@ -101,7 +101,7 @@ class SyncProduct(models.AbstractModel):
 class SyncCourseParticipation(models.AbstractModel):
     """Sync SharePoint plan_kursteilnehmer to course participations."""
     _name = 'dasei.sync.participation'
-    _inherit = 'crearis.sync.base'
+    _inherit = 'crearis.agenda.sync'
     _description = 'SharePoint Course Participation Sync'
 
     def sync_participations(self, company):
