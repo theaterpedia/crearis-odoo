@@ -30,7 +30,8 @@ Features:
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',
-        'views/product_template_views.xml',
+        # TODO: Refactor to crearis_event_package module
+        # 'views/product_template_views.xml',
         'views/course_participation_views.xml',
     ],
     'installable': True,

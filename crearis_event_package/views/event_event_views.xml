@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Event Form with Package Only toggle -->
+    <record id="view_event_form_package" model="ir.ui.view">
+        <field name="name">event.event.form.package</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_form"/>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <!-- Add invisible fields for conditional display -->
+            <xpath expr="//sheet" position="inside">
+                <field name="use_event_packages" invisible="1"/>
+                <field name="is_in_package" invisible="1"/>
+            </xpath>
+
+            <!-- Add Package Only toggle in the Tickets page -->
+            <xpath expr="//page[@name='tickets']" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='tickets']/group" position="before">
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': ['|', ('use_event_packages', '=', False), ('package_only', '=', False)]}">
+                    <strong>Package Only Event:</strong> This event can only be purchased as part of a package.
+                    Individual ticket sales are disabled.
+                </div>
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': [('is_in_package', '=', False)]}">
+                    <strong>Note:</strong> This event is currently included in one or more package purchases.
+                </div>
+                <group attrs="{'invisible': [('use_event_packages', '=', False)]}">
+                    <group>
+                        <field name="package_only" 
+                               attrs="{'readonly': [('event_ticket_ids', '!=', [])]}"/>
+                    </group>
+                    <group>
+                        <span class="text-muted" attrs="{'invisible': [('event_ticket_ids', '=', [])]}">
+                            Cannot enable Package Only when tickets exist. Remove tickets first.
+                        </span>
+                    </group>
+                </group>
+            </xpath>
+
+            <!-- Hide ticket form when package_only is True -->
+            <xpath expr="//page[@name='tickets']/group" position="attributes">
+                <attribute name="attrs">{'invisible': [('package_only', '=', True)]}</attribute>
+            </xpath>
+
+            <!-- Add stat button for package lines -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_package_lines" type="object"
+                        class="oe_stat_button" icon="fa-cubes"
+                        attrs="{'invisible': [('is_in_package', '=', False)]}">
+                    <field name="package_line_ids" widget="statinfo" string="Package Lines"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Event Tree View with package_only indicator -->
+    <record id="view_event_tree_package" model="ir.ui.view">
+        <field name="name">event.event.tree.package</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.event_event_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='event_type_id']" position="after">
+                <field name="package_only" optional="hide"/>
+                <field name="is_in_package" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Event Search View with package filters -->
+    <record id="view_event_search_package" model="ir.ui.view">
+        <field name="name">event.event.search.package</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="Package Only" name="package_only" 
+                        domain="[('package_only', '=', True)]"/>
+                <filter string="In Package" name="in_package" 
+                        domain="[('is_in_package', '=', True)]"/>
+                <filter string="Available for Individual Sale" name="individual_sale" 
+                        domain="[('package_only', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

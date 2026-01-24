@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Note: Company-level use_event_packages is defined but primarily 
+         the setting is on website level. This view extension is for 
+         direct company form access if needed. -->
+</odoo>

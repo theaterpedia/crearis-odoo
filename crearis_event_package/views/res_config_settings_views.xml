@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Settings Form for Event Package settings -->
+    <record id="res_config_settings_view_form_event_package" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.event.package</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="crearis.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Event Packages setting after Template Codes -->
+            <xpath expr="//field[@name='crearis_use_template_codes']/.." position="after">
+                <div class="o_setting_left_pane mt8">
+                    <field name="crearis_use_event_packages" 
+                           attrs="{'readonly': ['|', ('is_company_domain', '=', False), ('crearis_use_template_codes', '=', False)]}"/>
+                </div>
+                <div class="o_setting_right_pane">
+                    <div class="content-group">
+                        <div class="row mt8">
+                            <label for="crearis_use_event_packages"/>
+                            <div class="text-muted">
+                                Event Packages allow selling bundles of events as a single product.
+                                Customers select specific events from a pool defined by event types.
+                                Requires Template Codes to be enabled.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
