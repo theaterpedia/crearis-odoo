@@ -1,52 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
-        <!-- Event Stages for Crearis
-             Sequence values are used as bitmask boundaries:
-             - sequence >= 512 blocks backward transitions
+    <data noupdate="0">
+        <!-- Event Stages for Crearis (sysreg-compatible)
+             
+             SYSREG BITMASK ARCHITECTURE:
+             | Value  | Bits  | Name      | Scope       |
+             | 1      | 0-2   | new       | Category    |
+             | 8      | 3-5   | demo      | Category    |
+             | 64     | 6-8   | draft     | Category    |
+             | 512    | 9-11  | confirmed | Category    |
+             | 4096   | 12-14 | released  | Category    |
+             | 8192   | 13    | completed | Single bit  |
+             | 12288  | 12+13 | cancelled | Combined    |
+             | 32768  | 15    | archived  | Flag (Odoo active=False) |
+             | 65536  | 16    | trash     | Flag (Odoo active=False) |
+             
+             Categories (1-4096): mutually exclusive workflow stages
+             completed/cancelled: pipe_end stages (no backward transition)
+             archived/trash: implemented via Odoo active field, not as stages
+             
+             Translations: English base, de/cs via i18n/*.po files
         -->
 
-        <record id="event_stage_planning" model="event.stage">
-            <field name="name">Planung</field>
+        <!-- EXTEND base Odoo stage: new (sysreg=1) -->
+        <record id="event.event_stage_new" model="event.stage">
+            <field name="name">new</field>
             <field name="sequence">1</field>
             <field name="pipe_end">False</field>
-            <field name="description">Initial planning phase - event is being prepared</field>
+            <field name="fold">False</field>
+            <field name="description">New event - initial entry, nothing confirmed yet</field>
         </record>
 
-        <record id="event_stage_published" model="event.stage">
-            <field name="name">Ausgeschrieben</field>
+        <!-- EXTEND base Odoo stage: booked → planned (sysreg=8, demo) -->
+        <record id="event.event_stage_booked" model="event.stage">
+            <field name="name">planned</field>
+            <field name="sequence">8</field>
+            <field name="pipe_end">False</field>
+            <field name="fold">False</field>
+            <field name="description">Planned - date tentatively reserved, internal pre-planning</field>
+        </record>
+
+        <!-- NEW stage: booked (sysreg=64, draft) -->
+        <record id="event_stage_booked" model="event.stage">
+            <field name="name">booked</field>
             <field name="sequence">64</field>
             <field name="pipe_end">False</field>
-            <field name="description">Event is published and open for registration</field>
+            <field name="fold">False</field>
+            <field name="description">Booked - fully planned and internally confirmed</field>
         </record>
 
-        <record id="event_stage_running" model="event.stage">
-            <field name="name">Läuft</field>
-            <field name="sequence">128</field>
-            <field name="pipe_end">False</field>
-            <field name="description">Event is currently in progress</field>
-        </record>
-
-        <record id="event_stage_completed" model="event.stage">
-            <field name="name">Durchgeführt</field>
+        <!-- EXTEND base Odoo stage: announced (sysreg=512, confirmed) -->
+        <record id="event.event_stage_announced" model="event.stage">
+            <field name="name">announced</field>
             <field name="sequence">512</field>
-            <field name="pipe_end">True</field>
-            <field name="description">Event completed successfully - no backward transition allowed</field>
+            <field name="pipe_end">False</field>
+            <field name="fold">False</field>
+            <field name="description">Announced - publicly visible, awaiting participant confirmations</field>
         </record>
 
-        <record id="event_stage_cancelled" model="event.stage">
-            <field name="name">Abgesagt</field>
-            <field name="sequence">1024</field>
-            <field name="pipe_end">True</field>
-            <field name="description">Event was cancelled - no backward transition allowed</field>
+        <!-- NEW stage: current (sysreg=4096, released) -->
+        <record id="event_stage_current" model="event.stage">
+            <field name="name">current</field>
+            <field name="sequence">4096</field>
+            <field name="pipe_end">False</field>
+            <field name="fold">False</field>
+            <field name="description">Current - actively running, high certainty of execution</field>
         </record>
 
-        <record id="event_stage_archived" model="event.stage">
-            <field name="name">Archiviert</field>
-            <field name="sequence">2048</field>
+        <!-- EXTEND base Odoo stage: done → completed (sysreg=8192) -->
+        <record id="event.event_stage_done" model="event.stage">
+            <field name="name">completed</field>
+            <field name="sequence">8192</field>
             <field name="pipe_end">True</field>
-            <field name="description">Event archived - no backward transition allowed</field>
+            <field name="fold">True</field>
+            <field name="description">Completed - event successfully finished</field>
         </record>
+
+        <!-- EXTEND base Odoo stage: cancelled (sysreg=12288) -->
+        <record id="event.event_stage_cancelled" model="event.stage">
+            <field name="name">cancelled</field>
+            <field name="sequence">12288</field>
+            <field name="pipe_end">True</field>
+            <field name="fold">True</field>
+            <field name="description">Cancelled - event was called off</field>
+        </record>
+
+        <!-- NOTE: archived (32768) and trash (65536) are NOT stages
+             They are implemented via Odoo's native active=False field.
+             GraphQL can translate these if needed. -->
 
     </data>
 </odoo>

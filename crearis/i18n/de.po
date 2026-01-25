@@ -1,0 +1,88 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* crearis
+#
+# Translators:
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-26 08:00+0000\n"
+"PO-Revision-Date: 2026-01-26 08:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: German\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_new
+msgid "new"
+msgstr "neu"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_booked
+msgid "planned"
+msgstr "vorgemerkt"
+
+#. module: crearis
+#: model:event.stage,name:crearis.event_stage_booked
+msgid "booked"
+msgstr "geplant"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_announced
+msgid "announced"
+msgstr "angekündigt"
+
+#. module: crearis
+#: model:event.stage,name:crearis.event_stage_current
+msgid "current"
+msgstr "aktuell"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_done
+msgid "completed"
+msgstr "vollständig"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_cancelled
+msgid "cancelled"
+msgstr "gestrichen"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_new
+msgid "New event - initial entry, nothing confirmed yet"
+msgstr "Neues Event - erster Eintrag, noch nichts bestätigt"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_booked
+msgid "Planned - date tentatively reserved, internal pre-planning"
+msgstr "Vorgemerkt - Datum vorläufig reserviert, interne Vorplanung"
+
+#. module: crearis
+#: model:event.stage,description:crearis.event_stage_booked
+msgid "Booked - fully planned and internally confirmed"
+msgstr "Geplant - vollständig geplant und intern bestätigt"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_announced
+msgid "Announced - publicly visible, awaiting participant confirmations"
+msgstr "Angekündigt - öffentlich sichtbar, Teilnehmerbestätigungen ausstehend"
+
+#. module: crearis
+#: model:event.stage,description:crearis.event_stage_current
+msgid "Current - actively running, high certainty of execution"
+msgstr "Aktuell - läuft aktiv, hohe Durchführungssicherheit"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_done
+msgid "Completed - event successfully finished"
+msgstr "Vollständig - Event erfolgreich abgeschlossen"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_cancelled
+msgid "Cancelled - event was called off"
+msgstr "Gestrichen - Event wurde abgesagt"

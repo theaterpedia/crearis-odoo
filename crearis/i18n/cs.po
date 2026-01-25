@@ -1,0 +1,89 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* crearis
+#
+# Translators:
+# TODO: Czech translations need review by native speaker
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-26 08:00+0000\n"
+"PO-Revision-Date: 2026-01-26 08:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Czech\n"
+"Language: cs_CZ\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_new
+msgid "new"
+msgstr "nový"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_booked
+msgid "planned"
+msgstr "plánovaný"
+
+#. module: crearis
+#: model:event.stage,name:crearis.event_stage_booked
+msgid "booked"
+msgstr "rezervovaný"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_announced
+msgid "announced"
+msgstr "oznámený"
+
+#. module: crearis
+#: model:event.stage,name:crearis.event_stage_current
+msgid "current"
+msgstr "aktuální"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_done
+msgid "completed"
+msgstr "dokončený"
+
+#. module: crearis
+#: model:event.stage,name:event.event_stage_cancelled
+msgid "cancelled"
+msgstr "zrušený"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_new
+msgid "New event - initial entry, nothing confirmed yet"
+msgstr "Nová akce - počáteční záznam, zatím nic nepotvrzeno"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_booked
+msgid "Planned - date tentatively reserved, internal pre-planning"
+msgstr "Plánovaný - datum předběžně rezervováno, interní předplánování"
+
+#. module: crearis
+#: model:event.stage,description:crearis.event_stage_booked
+msgid "Booked - fully planned and internally confirmed"
+msgstr "Rezervovaný - plně naplánováno a interně potvrzeno"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_announced
+msgid "Announced - publicly visible, awaiting participant confirmations"
+msgstr "Oznámený - veřejně viditelný, čeká na potvrzení účastníků"
+
+#. module: crearis
+#: model:event.stage,description:crearis.event_stage_current
+msgid "Current - actively running, high certainty of execution"
+msgstr "Aktuální - aktivně probíhá, vysoká jistota realizace"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_done
+msgid "Completed - event successfully finished"
+msgstr "Dokončený - akce úspěšně ukončena"
+
+#. module: crearis
+#: model:event.stage,description:event.event_stage_cancelled
+msgid "Cancelled - event was called off"
+msgstr "Zrušený - akce byla zrušena"
