@@ -109,6 +109,7 @@
                             </div>
                         </div>
                         <!-- T13: use_products is now readonly indicator (computed from sub-features) -->
+                        <!-- Note: use_event_packages toggle moved to crearis_event_package module -->
                         <div class="o_setting_left_pane mt8">
                             <field name="crearis_use_products" readonly="1"/>
                         </div>                        
@@ -117,21 +118,7 @@
                               <div class="row mt8">
                                 <label for="crearis_use_products"/>
                                 <div class="text-muted">
-                                    <strong>Auto-computed:</strong> Enabled when any product sub-feature is active. Currently linked to Event Packages below.
-                                </div>
-                              </div>
-                            </div>
-                        </div>
-                        <!-- T13: use_event_packages - manual toggle, requires use_template_codes -->
-                        <div class="o_setting_left_pane mt8 ml32">
-                            <field name="crearis_use_event_packages" attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
-                        </div>                        
-                        <div class="o_setting_right_pane">
-                            <div class="content-group">
-                              <div class="row mt8">
-                                <label for="crearis_use_event_packages"/>
-                                <div class="text-muted">
-                                    Enable event packages: sell combined solutions with multiple events of different types. <strong>Requires Template Codes.</strong>
+                                    <strong>Auto-computed:</strong> Enabled when any product sub-feature is active (requires crearis_event_package module).
                                 </div>
                               </div>
                             </div>

@@ -18,41 +18,27 @@ class Website(models.Model):
     use_jitsi = fields.Boolean('Jitsi Rooms')
     use_template_codes = fields.Boolean('Use Template Codes')
     use_tracks = fields.Boolean('Use Tracks')
-    use_event_packages = fields.Boolean(
-        'Use Event Packages',
-        help="Enable event package products. Requires use_template_codes."
-    )
+    # Note: use_event_packages is defined in crearis_event_package module
     use_overline = fields.Boolean('Use Overline')
     use_teasertext = fields.Boolean('Use Teasertext')
 
-    @api.depends('use_event_packages')
     def _compute_use_products(self):
         """
         T11: use_products is computed, auto-enabled when any product sub-feature is active.
-        Currently: use_event_packages. Future: add more sub-features here.
+        Detects use_event_packages dynamically (added by crearis_event_package module).
         """
         for website in self:
-            website.use_products = website.use_event_packages
+            # Check if use_event_packages exists (added by crearis_event_package)
+            use_packages = getattr(website, 'use_event_packages', False)
+            website.use_products = use_packages
 
     use_products = fields.Boolean(
         'Use Products',
         compute='_compute_use_products',
-        store=True,
+        store=False,  # Cannot store: depends on optional module field
         readonly=True,
         help="Auto-computed: True when any product sub-feature (e.g., event packages) is enabled."
     )
-
-    @api.constrains('use_event_packages', 'use_template_codes')
-    def _check_event_packages_requires_template_codes(self):
-        """
-        T12: use_event_packages requires use_template_codes=True
-        """
-        for website in self:
-            if website.use_event_packages and not website.use_template_codes:
-                from odoo.exceptions import ValidationError
-                raise ValidationError(
-                    "Event Packages require Template Codes to be enabled first."
-                )
 
     @api.depends("company_id.domain_code")
     def _compute_is_homedomain(self):

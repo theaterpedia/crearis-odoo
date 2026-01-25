@@ -23,13 +23,7 @@ class ResConfigSettings(models.TransientModel):
     crearis_use_jitsi = fields.Boolean('Jitsi Rooms', related='website_id.use_jitsi', readonly=False, default=False)
     crearis_use_template_codes = fields.Boolean('Use Codes', related='website_id.use_template_codes', readonly=False, default=False)
     crearis_use_tracks = fields.Boolean('Use Tracks', related='website_id.use_tracks', readonly=False, default=False)
-    crearis_use_event_packages = fields.Boolean(
-        'Use Event Packages',
-        related='website_id.use_event_packages',
-        readonly=False,
-        default=False,
-        help="Enable event package products. Requires Template Codes."
-    )
+    # Note: crearis_use_event_packages moved to crearis_event_package module
     # T11: use_products is now computed/readonly - auto-enabled when use_event_packages=True
     crearis_use_products = fields.Boolean(
         'Use Products',
