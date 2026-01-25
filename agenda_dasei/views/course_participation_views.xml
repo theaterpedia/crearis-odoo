@@ -82,10 +82,10 @@
         </field>
     </record>
 
-    <!-- Menu Items -->
+    <!-- Menu Items - DA1: Move to DASEi submenu -->
     <menuitem id="menu_course_participation"
               name="Course Participations"
-              parent="event.event_main_menu"
+              parent="menu_dasei_data"
               action="action_course_participation"
-              sequence="25"/>
+              sequence="10"/>
 </odoo>

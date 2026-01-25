@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!--  Copyright 2024 Theaterpedia E.V. -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<odoo>
+    <!-- DA1: DASEi Submenu under Crearis -->
+    <!-- This menu groups all DASEi-specific views and actions -->
+    
+    <!-- DASEi submenu under main Crearis menu -->
+    <menuitem id="menu_dasei" 
+              name="DASEi" 
+              parent="crearis.menu_crearis"
+              sequence="10"/>
+    
+    <!-- DASEi Sync submenu -->
+    <menuitem id="menu_dasei_sync" 
+              name="Sync" 
+              parent="menu_dasei"
+              sequence="10"/>
+    
+    <!-- DASEi Data submenu -->
+    <menuitem id="menu_dasei_data" 
+              name="Data" 
+              parent="menu_dasei"
+              sequence="20"/>
+    
+</odoo>

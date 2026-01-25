@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 theaterpedia.org
+    License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+-->
+<odoo>
+    <data noupdate="1">
+
+        <!-- D6: Cron job for course sync -->
+        <record id="ir_cron_sync_kurse" model="ir.cron">
+            <field name="name">DASEi: Sync Courses from SharePoint</field>
+            <field name="model_id" ref="crearis_agenda.model_crearis_agenda_sync"/>
+            <field name="state">code</field>
+            <field name="code">
+for company in env['res.company'].search([('ms_agenda_configured', '=', True)]):
+    model.sync_kurse(company)
+            </field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="active" eval="False"/>
+        </record>
+
+        <!-- D6: Cron job for registration sync -->
+        <record id="ir_cron_sync_registrations" model="ir.cron">
+            <field name="name">DASEi: Sync Registrations from SharePoint</field>
+            <field name="model_id" ref="crearis_agenda.model_crearis_agenda_sync"/>
+            <field name="state">code</field>
+            <field name="code">
+for company in env['res.company'].search([('ms_agenda_configured', '=', True)]):
+    model.sync_registrations(company)
+            </field>
+            <field name="interval_number">4</field>
+            <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="active" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

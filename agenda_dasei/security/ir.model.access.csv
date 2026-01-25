@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_course_participation_user,dasei.course.participation.user,model_dasei_course_participation,base.group_user,1,0,0,0
 access_course_participation_manager,dasei.course.participation.manager,model_dasei_course_participation,base.group_system,1,1,1,1
+access_course_user,dasei.course.user,model_dasei_course,base.group_user,1,0,0,0
+access_course_manager,dasei.course.manager,model_dasei_course,base.group_system,1,1,1,1

@@ -62,6 +62,11 @@ class ResCompany(models.Model):
         inverse='_inverse_ms_list_kursteilnehmer',
         string="List: Kursteilnehmer"
     )
+    ms_list_kurse = fields.Char(
+        compute='_compute_ms_agenda_fields',
+        inverse='_inverse_ms_list_kurse',
+        string="List: Kurse"
+    )
     ms_list_veranstaltungsteilnehmer = fields.Char(
         compute='_compute_ms_agenda_fields',
         inverse='_inverse_ms_list_veranstaltungsteilnehmer',
@@ -88,6 +93,7 @@ class ResCompany(models.Model):
             'list_planungsstatus': '6ADC07D7-8208-4370-AFBF-67B223F2C996',
             'list_contacts': '7a77d6af-3a91-4109-8f56-9dbac73d2fa4',
             'list_kursteilnehmer': '2bf5f8e7-ebca-4a8b-b11e-feaee6a30287',
+            'list_kurse': 'AA5F4A45-DB15-4588-BD12-4F38E99ACE0F',
             'list_veranstaltungsteilnehmer': 'C9E05737-4C47-4E0F-A6B6-C6D6F3FBE88D',
             'list_seminarzeiten': '6BBE92C5-82C5-40E7-8C5F-D6CB3018EC23',
         }
@@ -102,6 +108,7 @@ class ResCompany(models.Model):
             rec.ms_list_planungsstatus = api.get('list_planungsstatus', '')
             rec.ms_list_contacts = api.get('list_contacts', '')
             rec.ms_list_kursteilnehmer = api.get('list_kursteilnehmer', '')
+            rec.ms_list_kurse = api.get('list_kurse', '')
             rec.ms_list_veranstaltungsteilnehmer = api.get('list_veranstaltungsteilnehmer', '')
             rec.ms_list_seminarzeiten = api.get('list_seminarzeiten', '')
 
@@ -139,6 +146,12 @@ class ResCompany(models.Model):
         for rec in self:
             api = dict(rec.ms_agenda_api or {})
             api['list_kursteilnehmer'] = rec.ms_list_kursteilnehmer
+            rec.ms_agenda_api = api
+
+    def _inverse_ms_list_kurse(self):
+        for rec in self:
+            api = dict(rec.ms_agenda_api or {})
+            api['list_kurse'] = rec.ms_list_kurse
             rec.ms_agenda_api = api
 
     def _inverse_ms_list_veranstaltungsteilnehmer(self):

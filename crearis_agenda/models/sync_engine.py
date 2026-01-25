@@ -14,9 +14,27 @@ _logger = logging.getLogger(__name__)
 # Status IDs that should be synced from SharePoint
 # From plan_planungsstatus:
 # 3=[angekündigt #ORGA#], 10=[angekündigt mit Vorbehalt], 14=[angekündigt], 15=AKTUELL mit Vorbehalt
-# 16=AKTUELL #ORGA#, 17=[angekündigt #TEAM#], 18=AKTUELL #TEAM#, 19=AKTUELL, 25=[angekündigt #USER#]
+# 16=AKTUELL #ORGA#, 17=[angekündigt #TEAM#], 18=AKTUELL #TEAM#], 19=AKTUELL, 25=[angekündigt #USER#]
 # 33=AKTUELL #USER#
 SYNC_STATUS_IDS = [3, 10, 14, 15, 16, 17, 18, 19, 25, 33]
+
+# S7.2: StatusLookupId → stage sysreg mapping
+# Maps SharePoint plan_planungsstatus IDs to Odoo event stage sequences (sysreg values)
+# Stage sequences (sysreg): 1=new, 8=planned, 64=booked, 512=announced, 4096=current, 8192=completed, 12288=cancelled
+STATUS_TO_STAGE_SYSREG = {
+    # angekündigt variants → announced (512)
+    3: 512,    # [angekündigt #ORGA#]
+    10: 512,   # [angekündigt mit Vorbehalt]
+    14: 512,   # [angekündigt]
+    17: 512,   # [angekündigt #TEAM#]
+    25: 512,   # [angekündigt #USER#]
+    # AKTUELL variants → current (4096)
+    15: 4096,  # AKTUELL mit Vorbehalt
+    16: 4096,  # AKTUELL #ORGA#
+    18: 4096,  # AKTUELL #TEAM#
+    19: 4096,  # AKTUELL
+    33: 4096,  # AKTUELL #USER#
+}
 
 
 class AgendaSyncEngine(models.AbstractModel):
@@ -468,10 +486,24 @@ class AgendaSyncEngine(models.AbstractModel):
             else:
                 teasertext = tt or ''
 
+        # S7.2: Resolve stage from StatusLookupId
+        # Maps SP planning status → Odoo event stage by sysreg sequence
+        stage_id = False
+        status_id = sp_fields.get('StatusLookupId')
+        if status_id:
+            stage_sysreg = STATUS_TO_STAGE_SYSREG.get(int(status_id))
+            if stage_sysreg:
+                stage = self.env['event.stage'].search([
+                    ('sequence', '=', stage_sysreg)
+                ], limit=1)
+                if stage:
+                    stage_id = stage.id
+
         # Return plain strings - caller uses with_context(lang='de_DE')
         return {
             'name': name,
             'event_type_id': event_type.id if event_type else False,
+            'stage_id': stage_id,
             'date_begin': date_begin,
             'date_end': date_end,
             'teasertext': teasertext,

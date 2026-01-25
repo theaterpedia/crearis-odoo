@@ -22,10 +22,19 @@ Transitive: `crearis`, `event`
 ```
 agenda_dasei/
 ├── models/
-│   ├── res_partner.py      # Partner fields + domaincode computation
-│   └── sync_partner.py     # Contact sync (inherits crearis.agenda.sync)
+│   ├── res_partner.py          # Partner fields + domaincode computation
+│   ├── sync_partner.py         # Contact sync (inherits crearis.agenda.sync)
+│   ├── course.py               # dasei.course model (D3)
+│   ├── course_participation.py # dasei.course.participation model
+│   ├── sync_kurse.py           # Course sync from plan_kurse (D3)
+│   └── sync_registrations.py   # Registration sync from plan_veranstaltungsteilnehmer (D4)
 ├── views/
-│   └── res_partner_views.xml   # DASEi tab + search filters
+│   ├── agenda_dasei_menu.xml   # DASEi submenu structure (DA1)
+│   ├── res_partner_views.xml   # DASEi tab + search filters
+│   ├── course_views.xml        # Course model views
+│   └── course_participation_views.xml
+├── data/
+│   └── ir_cron_data.xml        # Cron jobs for course/registration sync (D6)
 └── security/
     └── ir.model.access.csv
 ```
@@ -333,6 +342,78 @@ def get_login_url(self, partner):
 
 ---
 
+## Course Model (dasei.course) — D3
+
+Represents annual training cohorts synced from SharePoint plan_kurse.
+
+### Fields
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `code` | Char | Course code (K26, K27) |
+| `name` | Char | Full course name |
+| `year` | Integer | Year |
+| `location` | Char | Location (Witten, Kassel, Online) |
+| `date_start` | Datetime | Course start |
+| `date_end` | Datetime | Course end |
+| `ms_item_id` | Char | SharePoint item ID |
+| `domain_code_id` | Many2one | Optional website mapping |
+
+### SharePoint → Odoo Mapping (plan_kurse)
+
+| SharePoint | Odoo |
+|------------|------|
+| Title | name |
+| KursNr | code |
+| Jahr | year |
+| Ort | location |
+| Startdatum | date_start |
+| Enddatum | date_end |
+
+---
+
+## Registration Sync (D4)
+
+Syncs event registrations from SharePoint plan_veranstaltungsteilnehmer.
+
+### Status Mapping (plan_teilnahmestatus → registration state)
+
+```python
+STATUS_TO_REGISTRATION_STATE = {
+    12: 'new',      # Angebot
+    5: 'demo',      # vorbehaltlich
+    1: 'draft',     # unbestätigt
+    13: 'open',     # bestätigt
+    3: 'done',      # vollständig (attended)
+    8: 'cancel',    # storniert
+    6: 'no_show',   # abwesend
+    4: 'partial',   # teilweise
+}
+```
+
+### SharePoint → Odoo Mapping (plan_veranstaltungsteilnehmer)
+
+| SharePoint | Odoo |
+|------------|------|
+| TeilnehmerLookupId | partner_id (via ms_contact_id) |
+| VeranstaltungLookupId | event_id (via ms_id) |
+| StatusLookupId | state (mapped) |
+| UE | units |
+| Bemerkung | internal_notes |
+
+---
+
+## Cron Jobs (D6)
+
+| Job | Interval | Model Method |
+|-----|----------|--------------|
+| Sync Courses | Daily | `sync_kurse(company)` |
+| Sync Registrations | 4 hours | `sync_registrations(company)` |
+
+Both jobs iterate over companies with `ms_agenda_configured=True`.
+
+---
+
 ## Testing
 
 ### Manual Test: Verify Domaincode Computation
@@ -362,4 +443,4 @@ print(partner.dasei_domaincode)  # Should be 'dasei3' (higher priority)
 
 ---
 
-*Last updated: 2025-12-22*
+*Last updated: 2026-01-26*

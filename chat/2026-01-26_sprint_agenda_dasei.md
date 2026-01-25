@@ -102,6 +102,15 @@
 | 2026-01-26 | S5.1: DB cleanup | ✅ | Old stages deleted, sequences updated |
 | 2026-01-26 | S5.1: Migration script | ✅ | crearis/migrations/16.0.1.1.0/pre-migrate.py |
 | 2026-01-26 | S5.2: cid/slug architecture | ✅ | event.event + blog.post updated |
+| 2026-01-26 | S5.3: Registration states | ✅ | event_registration.py with extended states |
+| 2026-01-26 | S5.4: Template code viz | ✅ | Grey box in event form |
+| 2026-01-26 | S5.5: Feature flags | ✅ | use_products computed, use_event_packages added |
+| 2026-01-26 | S6: crearis batch 1 commit | ✅ | Commit 5f18552 |
+| 2026-01-26 | S7.1: DB1 stage cleanup | ✅ | No duplicates in agenda_dasei |
+| 2026-01-26 | S7.2: StatusLookupId mapping | ✅ | STATUS_TO_STAGE_SYSREG in sync_engine |
+| 2026-01-26 | S7.3: DA1 menu restructure | ✅ | DASEi submenu under Crearis |
+| 2026-01-26 | S7.4: D1-D8 SharePoint lists | ✅ | plan_kurse + plan_veranstaltungsteilnehmer |
+| 2026-01-26 | S8: Dev docs | ✅ | Updated agenda_dasei + crearis_agenda docs |
 | | | | |
 
 ---

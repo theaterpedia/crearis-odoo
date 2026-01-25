@@ -4,8 +4,11 @@
 
 from . import res_partner
 from . import sync_partner
+from . import course
+from . import course_participation
+from . import sync_kurse
+from . import sync_registrations
 # TODO: Refactor product_template to crearis_event_package module
 # from . import product_template
-from . import course_participation
 # TODO: Refactor sync_product to crearis_event_package module
 # from . import sync_product

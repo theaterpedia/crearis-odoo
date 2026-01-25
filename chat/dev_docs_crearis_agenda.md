@@ -280,6 +280,32 @@ Only events with these `StatusLookupId` values are synced:
 SYNC_STATUS_IDS = [3, 10, 14, 15, 16, 17, 18, 19, 25, 33]
 ```
 
+### Status → Stage Mapping (S7.2)
+
+SharePoint `StatusLookupId` values are mapped to Odoo event stages via sysreg sequences:
+
+```python
+STATUS_TO_STAGE_SYSREG = {
+    # angekündigt variants → announced (512)
+    3: 512,    # [angekündigt #ORGA#]
+    10: 512,   # [angekündigt mit Vorbehalt]
+    14: 512,   # [angekündigt]
+    17: 512,   # [angekündigt #TEAM#]
+    25: 512,   # [angekündigt #USER#]
+    # AKTUELL variants → current (4096)
+    15: 4096,  # AKTUELL mit Vorbehalt
+    16: 4096,  # AKTUELL #ORGA#
+    18: 4096,  # AKTUELL #TEAM#
+    19: 4096,  # AKTUELL
+    33: 4096,  # AKTUELL #USER#
+}
+```
+
+| SP Status | Odoo Stage | Sysreg |
+|-----------|------------|--------|
+| 3, 10, 14, 17, 25 | announced | 512 |
+| 15, 16, 18, 19, 33 | current | 4096 |
+
 ---
 
 ## Template Application

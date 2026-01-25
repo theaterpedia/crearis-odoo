@@ -29,7 +29,10 @@ Features:
     ],
     'data': [
         'security/ir.model.access.csv',
+        'data/ir_cron_data.xml',  # D6: Cron jobs for course and registration sync
+        'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
         'views/res_partner_views.xml',
+        'views/course_views.xml',  # D3: Course model views
         # TODO: Refactor to crearis_event_package module
         # 'views/product_template_views.xml',
         'views/course_participation_views.xml',
