@@ -23,7 +23,20 @@ class ResConfigSettings(models.TransientModel):
     crearis_use_jitsi = fields.Boolean('Jitsi Rooms', related='website_id.use_jitsi', readonly=False, default=False)
     crearis_use_template_codes = fields.Boolean('Use Codes', related='website_id.use_template_codes', readonly=False, default=False)
     crearis_use_tracks = fields.Boolean('Use Tracks', related='website_id.use_tracks', readonly=False, default=False)
-    crearis_use_products = fields.Boolean('Use Products', related='website_id.use_products', readonly=False, default=False)
+    crearis_use_event_packages = fields.Boolean(
+        'Use Event Packages',
+        related='website_id.use_event_packages',
+        readonly=False,
+        default=False,
+        help="Enable event package products. Requires Template Codes."
+    )
+    # T11: use_products is now computed/readonly - auto-enabled when use_event_packages=True
+    crearis_use_products = fields.Boolean(
+        'Use Products',
+        related='website_id.use_products',
+        readonly=True,
+        help="Auto-computed: True when any product sub-feature is enabled."
+    )
     crearis_use_overline = fields.Boolean('Use Overline', related='website_id.use_overline', readonly=False, default=False)
     crearis_use_teasertext = fields.Boolean('Use Teasertext', related='website_id.use_teasertext', readonly=False, default=False)
     is_company_domain = fields.Boolean('is Company Website', related='website_id.is_company_domain', readonly=True)

@@ -87,3 +87,85 @@ msgstr "Dokončený - akce úspěšně ukončena"
 #: model:event.stage,description:event.event_stage_cancelled
 msgid "Cancelled - event was called off"
 msgstr "Zrušený - akce byla zrušena"
+
+#. module: crearis
+#. Registration States (event.registration)
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "New"
+msgstr "Nový"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Demo"
+msgstr "Demo"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Unconfirmed"
+msgstr "Nepotvrzený"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Confirmed"
+msgstr "Potvrzený"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Attended"
+msgstr "Zúčastněný"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Cancelled"
+msgstr "Zrušený"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "No Show"
+msgstr "Nedostavil se"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Partial"
+msgstr "Částečně"
+
+#. module: crearis
+#: model:ir.model.fields,field_description:crearis.field_event_registration__units
+msgid "Units"
+msgstr "Jednotky"
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_event_registration__units
+msgid "Number of teaching units attended (for partial attendance)"
+msgstr "Počet absolvovaných vyučovacích jednotek (při částečné účasti)"
+
+#. module: crearis
+#: model:ir.model.fields,field_description:crearis.field_event_registration__internal_notes
+msgid "Internal Notes"
+msgstr "Interní poznámky"
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_event_registration__internal_notes
+msgid "Internal notes visible only to staff"
+msgstr "Interní poznámky viditelné pouze pro zaměstnance"
+
+#. module: crearis
+#. Feature Flags (website)
+#: model:ir.model.fields,field_description:crearis.field_website__use_event_packages
+msgid "Use Event Packages"
+msgstr "Použít balíčky akcí"
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_website__use_event_packages
+msgid "Enable event package products. Requires use_template_codes."
+msgstr "Povolí produkty balíčků akcí. Vyžaduje kódy šablon."
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_website__use_products
+msgid "Auto-computed: True when any product sub-feature (e.g., event packages) is enabled."
+msgstr "Automaticky vypočítáno: Pravda, když je povolena jakákoli produktová funkce (např. balíčky akcí)."
+
+#. module: crearis
+#: code:crearis.models.website
+msgid "Event Packages require Template Codes to be enabled first."
+msgstr "Balíčky akcí vyžadují, aby byly nejprve povoleny kódy šablon."

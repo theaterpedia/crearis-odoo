@@ -86,3 +86,85 @@ msgstr "Vollständig - Event erfolgreich abgeschlossen"
 #: model:event.stage,description:event.event_stage_cancelled
 msgid "Cancelled - event was called off"
 msgstr "Gestrichen - Event wurde abgesagt"
+
+#. module: crearis
+#. Registration States (event.registration)
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "New"
+msgstr "Neu"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Demo"
+msgstr "Demo"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Unconfirmed"
+msgstr "Unbestätigt"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Confirmed"
+msgstr "Bestätigt"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Attended"
+msgstr "Teilgenommen"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Cancelled"
+msgstr "Abgemeldet"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "No Show"
+msgstr "Nicht erschienen"
+
+#. module: crearis
+#: model:ir.model.fields.selection,name:crearis.field_event_registration__state
+msgid "Partial"
+msgstr "Teilweise"
+
+#. module: crearis
+#: model:ir.model.fields,field_description:crearis.field_event_registration__units
+msgid "Units"
+msgstr "Einheiten"
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_event_registration__units
+msgid "Number of teaching units attended (for partial attendance)"
+msgstr "Anzahl der besuchten Unterrichtseinheiten (bei Teilnahme)"
+
+#. module: crearis
+#: model:ir.model.fields,field_description:crearis.field_event_registration__internal_notes
+msgid "Internal Notes"
+msgstr "Interne Notizen"
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_event_registration__internal_notes
+msgid "Internal notes visible only to staff"
+msgstr "Interne Notizen, nur für Mitarbeiter sichtbar"
+
+#. module: crearis
+#. Feature Flags (website)
+#: model:ir.model.fields,field_description:crearis.field_website__use_event_packages
+msgid "Use Event Packages"
+msgstr "Event-Pakete verwenden"
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_website__use_event_packages
+msgid "Enable event package products. Requires use_template_codes."
+msgstr "Aktiviert Event-Paket-Produkte. Erfordert Template-Codes."
+
+#. module: crearis
+#: model:ir.model.fields,help:crearis.field_website__use_products
+msgid "Auto-computed: True when any product sub-feature (e.g., event packages) is enabled."
+msgstr "Automatisch berechnet: Wahr, wenn ein Produkt-Feature (z.B. Event-Pakete) aktiviert ist."
+
+#. module: crearis
+#: code:crearis.models.website
+msgid "Event Packages require Template Codes to be enabled first."
+msgstr "Event-Pakete erfordern, dass Template-Codes zuerst aktiviert werden."

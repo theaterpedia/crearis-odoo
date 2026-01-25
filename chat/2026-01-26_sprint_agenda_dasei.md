@@ -99,6 +99,9 @@
 | 2026-01-26 | S3.1/B1: cid architecture | ✅ | cid=id-based stable, slug=SEO, cidSlug=combined |
 | 2026-01-26 | S3.2/B2: event stages | ✅ | Sysreg mapping, i18n files created |
 | 2026-01-26 | S3.3/B3: registration states | ✅ | Impl plan created, mapping defined |
+| 2026-01-26 | S5.1: DB cleanup | ✅ | Old stages deleted, sequences updated |
+| 2026-01-26 | S5.1: Migration script | ✅ | crearis/migrations/16.0.1.1.0/pre-migrate.py |
+| 2026-01-26 | S5.2: cid/slug architecture | ✅ | event.event + blog.post updated |
 | | | | |
 
 ---

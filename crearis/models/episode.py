@@ -63,18 +63,60 @@ class BlogPost(models.Model):
 
     @api.depends("website_id")
     def _compute_cid(self):
-        """Compute Crearis ID based on website and post ID."""
-        template_code = 'post'
-
+        """
+        Compute stable content ID (cid) for blog posts.
+        
+        Format: {domain}.blog-post__{id}
+        Example: dasei.blog-post__42
+        
+        CID is stable and NEVER changes after creation.
+        """
         for post in self:
-            domain_code = 'private'
-            if post.website_id.domain_code:
-                domain_code = post.website_id.domain_code
+            domain_code = post.website_id.domain_code if post.website_id else 'private'
+            post.cid = '{}.blog-post__{}'.format(domain_code, post.id or 0)
 
-            if not post.id:
-                post.cid = '{}.blog-{}__{}'.format(domain_code, template_code, "-1")
+    @api.depends("name")
+    def _compute_slug(self):
+        """
+        Compute SEO-friendly slug from post name.
+        
+        Only auto-generates on creation (when slug is empty).
+        Does NOT auto-update when name changes to preserve permalinks.
+        """
+        import re
+        for post in self:
+            if not post.slug and post.name:
+                slug = post.name.lower()
+                slug = re.sub(r'[äàáâ]', 'a', slug)
+                slug = re.sub(r'[öòóô]', 'o', slug)
+                slug = re.sub(r'[üùúû]', 'u', slug)
+                slug = re.sub(r'[ß]', 'ss', slug)
+                slug = re.sub(r'[ěéèê]', 'e', slug)
+                slug = re.sub(r'[íìîï]', 'i', slug)
+                slug = re.sub(r'[čćç]', 'c', slug)
+                slug = re.sub(r'[řŕ]', 'r', slug)
+                slug = re.sub(r'[šś]', 's', slug)
+                slug = re.sub(r'[žźż]', 'z', slug)
+                slug = re.sub(r'[ňń]', 'n', slug)
+                slug = re.sub(r'[ýÿ]', 'y', slug)
+                slug = re.sub(r'[^a-z0-9]+', '_', slug)
+                slug = slug.strip('_')
+                post.slug = slug
+            elif not post.slug:
+                post.slug = ''
+
+    @api.depends("cid", "slug")
+    def _compute_cid_slug(self):
+        """
+        Compute combined permalink: {cid}__{slug}
+        
+        Example: dasei.blog-post__42__mein_erster_blogpost
+        """
+        for post in self:
+            if post.cid and post.slug:
+                post.cid_slug = '{}_{}'.format(post.cid, post.slug)
             else:
-                post.cid = '{}.blog-{}__{}'.format(domain_code, template_code, post.id)
+                post.cid_slug = post.cid or ''
 
     cid = fields.Char(
         "Crearis ID",
@@ -82,6 +124,47 @@ class BlogPost(models.Model):
         compute=_compute_cid,
         store=True
     )
+    slug = fields.Char(
+        "URL Slug",
+        translate=False,
+        compute=_compute_slug,
+        store=True,
+        readonly=False,
+        help="SEO-friendly URL segment. Auto-generated from name, manually editable."
+    )
+    cid_slug = fields.Char(
+        "CID+Slug",
+        translate=False,
+        compute=_compute_cid_slug,
+        store=True,
+        help="Combined permalink: {cid}__{slug}"
+    )
+
+    def action_regenerate_slug(self):
+        """
+        Manually regenerate slug from name.
+        Called via "Regenerate" button in UI.
+        """
+        import re
+        for post in self:
+            if post.name:
+                slug = post.name.lower()
+                slug = re.sub(r'[äàáâ]', 'a', slug)
+                slug = re.sub(r'[öòóô]', 'o', slug)
+                slug = re.sub(r'[üùúû]', 'u', slug)
+                slug = re.sub(r'[ß]', 'ss', slug)
+                slug = re.sub(r'[ěéèê]', 'e', slug)
+                slug = re.sub(r'[íìîï]', 'i', slug)
+                slug = re.sub(r'[čćç]', 'c', slug)
+                slug = re.sub(r'[řŕ]', 'r', slug)
+                slug = re.sub(r'[šś]', 's', slug)
+                slug = re.sub(r'[žźż]', 'z', slug)
+                slug = re.sub(r'[ňń]', 'n', slug)
+                slug = re.sub(r'[ýÿ]', 'y', slug)
+                slug = re.sub(r'[^a-z0-9]+', '_', slug)
+                slug = slug.strip('_')
+                post.slug = slug
+        return True
 
     def write(self, vals):
         """Override write to increment version and invalidate cache."""

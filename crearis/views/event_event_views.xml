@@ -27,6 +27,15 @@
                 <field name="use_products" invisible="1" />
                 <field name="use_overline" invisible="1" />
                 <field name="use_teasertext" invisible="1" />
+                
+                <!-- T-UI-1: Template Code Box - prominent display when use_template_codes is active -->
+                <div class="d-flex" attrs="{'invisible': [('use_template_codes', '=', False)]}">
+                    <div style="background-color: #e9ecef; padding: 8px 16px; border-radius: 4px; margin-right: 16px; min-width: 60px; text-align: center;">
+                        <span style="font-size: 24px; font-weight: bold; color: #495057;">
+                            <field name="event_type_id" readonly="1" options="{'no_open': True}" class="oe_inline" style="font-size: 24px;"/>
+                        </span>
+                    </div>
+                </div>
             </xpath>
 
 
@@ -128,6 +137,26 @@
             <!-- Add new Website tab as first tab in notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Website" name="web_options">
+                    
+                    <!-- Permalink Section -->
+                    <separator string="Permalinks"/>
+                    <group col="4">
+                        <group colspan="2">
+                            <field name="cid" readonly="1" string="Content ID (cid)"/>
+                            <div class="o_row">
+                                <field name="slug" class="oe_inline"/>
+                                <button name="action_regenerate_slug" 
+                                        type="object" 
+                                        string="↻" 
+                                        class="btn-secondary oe_inline"
+                                        title="Regenerate slug from name"
+                                        confirm="This will overwrite the current slug. Continue?"/>
+                            </div>
+                        </group>
+                        <group colspan="2">
+                            <field name="cid_slug" readonly="1" string="Full Permalink"/>
+                        </group>
+                    </group>
                     
                     <!-- Hidden fields for computed states -->
                     <field name="page_options" invisible="1"/>

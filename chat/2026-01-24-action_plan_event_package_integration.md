@@ -247,6 +247,17 @@
 - [ ] **T41**: Update registration state workflow to support new states
 - [ ] **T42**: Add `units` and new states to GraphQL `EventRegistration` type
 
+### 🔷 CID/Slug Review (Late Round)
+
+- [ ] **T43**: Review `blog.post` cid naming pattern
+  - Current: `{domain}.blog-post__{id}`
+  - Proposed: `{domain}.post{-templatecode}__{id}` (same pattern as event)
+  - Check if blog posts need template codes
+  - Consider: `{domain}.post__{id}` (no template code) vs `{domain}.post-{blog_code}__{id}`
+  
+- [ ] **T44**: Review `domain.user` cid — consider adding slug for public profile URLs
+- [ ] **T45**: Review `res.partner` cid — consider adding slug for venue pages
+
 ---
 
 ## Dependencies & Grouping

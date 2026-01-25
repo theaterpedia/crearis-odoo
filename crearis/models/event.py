@@ -177,20 +177,118 @@ class EventEvent(models.Model):
 
     @api.depends("domain_code", "event_type_id")
     def _compute_cid(self):
-        template_code = 'evnt'
-        if self.use_template_codes:
-            template_code = self.event_type_id.name
-
+        """
+        Compute stable content ID (cid) for events.
+        
+        Format: {domain}.event-{template_code}__{id}
+        Examples:
+          - dasei.event-a1__123 (with template codes)
+          - dasei.event__123 (without template codes)
+        
+        CID is stable and NEVER changes after creation.
+        """
         for event in self:
-            domain_code = event.domain_code.domain_code
-
-        for event in self:
-            if not event.id:
-                event.cid = '{}.event-{}__{}'.format(domain_code, template_code, "-1")
+            domain_code = event.domain_code.domain_code if event.domain_code else 'unknown'
+            
+            if event.use_template_codes and event.event_type_id:
+                template_code = event.event_type_id.name or ''
+                cid_format = '{}.event-{}__{}'
+                event.cid = cid_format.format(domain_code, template_code, event.id or 0)
             else:
-                event.cid = '{}.event-{}__{}'.format(domain_code, template_code, event.id)
+                cid_format = '{}.event__{}'
+                event.cid = cid_format.format(domain_code, event.id or 0)
+
+    @api.depends("name")
+    def _compute_slug(self):
+        """
+        Compute SEO-friendly slug from event name.
+        
+        Only auto-generates on creation (when slug is empty).
+        Does NOT auto-update when name changes to preserve permalinks.
+        Manual edit via "Edit Slug" button in UI.
+        """
+        import re
+        for event in self:
+            if not event.slug and event.name:
+                # Convert to lowercase, replace spaces/special chars with underscore
+                slug = event.name.lower()
+                slug = re.sub(r'[äàáâ]', 'a', slug)
+                slug = re.sub(r'[öòóô]', 'o', slug)
+                slug = re.sub(r'[üùúû]', 'u', slug)
+                slug = re.sub(r'[ß]', 'ss', slug)
+                slug = re.sub(r'[ěéèê]', 'e', slug)
+                slug = re.sub(r'[íìîï]', 'i', slug)
+                slug = re.sub(r'[čćç]', 'c', slug)
+                slug = re.sub(r'[řŕ]', 'r', slug)
+                slug = re.sub(r'[šś]', 's', slug)
+                slug = re.sub(r'[žźż]', 'z', slug)
+                slug = re.sub(r'[ňń]', 'n', slug)
+                slug = re.sub(r'[ýÿ]', 'y', slug)
+                slug = re.sub(r'[ťt]', 't', slug)
+                slug = re.sub(r'[ďd]', 'd', slug)
+                slug = re.sub(r'[^a-z0-9]+', '_', slug)
+                slug = slug.strip('_')
+                event.slug = slug
+            elif not event.slug:
+                event.slug = ''
+
+    @api.depends("cid", "slug")
+    def _compute_cid_slug(self):
+        """
+        Compute combined permalink: {cid}__{slug}
+        
+        Example: dasei.event-a1__123__am_anfang_war_der_kreis
+        """
+        for event in self:
+            if event.cid and event.slug:
+                event.cid_slug = '{}_{}'.format(event.cid, event.slug)
+            else:
+                event.cid_slug = event.cid or ''
 
     cid = fields.Char("Crearis ID", translate=False, compute=_compute_cid, store=True)
+    slug = fields.Char(
+        "URL Slug",
+        translate=False,
+        compute=_compute_slug,
+        store=True,
+        readonly=False,
+        help="SEO-friendly URL segment. Auto-generated from name, manually editable."
+    )
+    cid_slug = fields.Char(
+        "CID+Slug",
+        translate=False,
+        compute=_compute_cid_slug,
+        store=True,
+        help="Combined permalink: {cid}__{slug}"
+    )
+
+    def action_regenerate_slug(self):
+        """
+        Manually regenerate slug from name.
+        Called via "Regenerate" button in UI.
+        """
+        import re
+        for event in self:
+            if event.name:
+                slug = event.name.lower()
+                slug = re.sub(r'[äàáâ]', 'a', slug)
+                slug = re.sub(r'[öòóô]', 'o', slug)
+                slug = re.sub(r'[üùúû]', 'u', slug)
+                slug = re.sub(r'[ß]', 'ss', slug)
+                slug = re.sub(r'[ěéèê]', 'e', slug)
+                slug = re.sub(r'[íìîï]', 'i', slug)
+                slug = re.sub(r'[čćç]', 'c', slug)
+                slug = re.sub(r'[řŕ]', 'r', slug)
+                slug = re.sub(r'[šś]', 's', slug)
+                slug = re.sub(r'[žźż]', 'z', slug)
+                slug = re.sub(r'[ňń]', 'n', slug)
+                slug = re.sub(r'[ýÿ]', 'y', slug)
+                slug = re.sub(r'[ťt]', 't', slug)
+                slug = re.sub(r'[ďd]', 'd', slug)
+                slug = re.sub(r'[^a-z0-9]+', '_', slug)
+                slug = slug.strip('_')
+                event.slug = slug
+        return True
 
     # SharePoint sync fields
     ms_id = fields.Char(string="SharePoint ID", index=True)
