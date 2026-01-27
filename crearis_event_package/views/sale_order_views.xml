@@ -17,34 +17,8 @@
         </field>
     </record>
 
-    <!-- Sale Order Line Form with Configure Package button -->
-    <record id="view_order_line_form_package" model="ir.ui.view">
-        <field name="name">sale.order.line.form.package</field>
-        <field name="model">sale.order.line</field>
-        <field name="inherit_id" ref="sale.view_order_line_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//form" position="inside">
-                <field name="is_event_package" invisible="1"/>
-            </xpath>
-            <xpath expr="//group" position="after">
-                <group string="Package Event Selections" 
-                       attrs="{'invisible': [('is_event_package', '=', False)]}">
-                    <button name="action_configure_package" type="object"
-                            string="Configure Events" class="btn-primary"
-                            attrs="{'invisible': [('is_event_package', '=', False)]}"/>
-                    <field name="package_event_line_ids" nolabel="1" colspan="2">
-                        <tree editable="bottom">
-                            <field name="sequence" widget="handle"/>
-                            <field name="event_type_id"/>
-                            <field name="event_id"/>
-                            <field name="state"/>
-                            <field name="registration_id"/>
-                        </tree>
-                    </field>
-                </group>
-            </xpath>
-        </field>
-    </record>
+    <!-- Note: sale.order.line has no base form view to inherit from.
+         Package configuration is handled via the wizard triggered from sale.order form -->
 
     <!-- Package Event Line Tree View -->
     <record id="view_product_package_event_line_tree" model="ir.ui.view">

@@ -60,6 +60,14 @@ class EventType(models.Model):
         help="Empty = available to all companies"
     )
 
+    def name_get(self):
+        """Ensure display_name returns the translated name properly."""
+        result = []
+        for record in self:
+            name = record.name or ''
+            result.append((record.id, name))
+        return result
+
 
 class EventEvent(models.Model):
     _name = 'event.event'  # Add this line - it was missing!

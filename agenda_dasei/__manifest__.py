@@ -4,7 +4,7 @@
 
 {
     'name': 'Agenda DASEi',
-    'version': '16.0.1.1.0',
+    'version': '16.0.1.2.0',
     'summary': 'DASEi-specific partner status and domaincode mapping',
     'description': """
 DASEi-specific extensions for Crearis Agenda sync.
@@ -18,6 +18,7 @@ Features:
 - Module progress tracking (A, B, C, D modules)
 - Event registration sync from plan_veranstaltungsteilnehmer
 - Status mapping: SharePoint StatusLookupId → Odoo registration state
+- Auto-creates DASEi websites (dasei0, dasei1, dasei2, dasei3) on install
     """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',
@@ -26,12 +27,15 @@ Features:
     'website': 'https://theaterpedia.org/',
     'depends': [
         'crearis_agenda',
+        'crearis_event_package',  # For event package products
         'product',
         'event',
     ],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',  # D6: Cron jobs for course and registration sync
+        'data/website_data.xml',  # DASEi website check/create server actions
+        'data/product_template_data.xml',  # Grundkurs module products (A, B, C, D)
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
         'views/res_partner_views.xml',
         'views/course_views.xml',  # D3: Course model views
@@ -39,6 +43,7 @@ Features:
         # 'views/product_template_views.xml',
         'views/course_participation_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'auto_install': False,
 }

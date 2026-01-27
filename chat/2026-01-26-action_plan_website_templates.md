@@ -1,9 +1,160 @@
 # Action Plan: Website Templates Implementation
 
 **Created**: 2026-01-26  
+**Updated**: 2026-01-27  
 **Module**: Odoo Website Templates (dasei1, dasei2, dasei3)  
 **Status**: 🟡 In Progress  
 **Priority**: HIGH (Demo: 2026-01-27 11:00)
+
+---
+
+## Deep Understanding: Product Templates ↔ Event Types ↔ Domain Codes
+
+### What dasei1, dasei2, dasei3 Represent
+
+These are **progression levels** in the DASEi training system, mapped to Odoo websites (domain codes):
+
+| Domain Code | Level | Description | Who Sees It |
+|-------------|-------|-------------|-------------|
+| `dasei0` | Quick Entry | Pre-registration, prospects | Public landing page |
+| `dasei1` | Einstiege | Entry modules (ME, NE) | New participants |
+| `dasei2` | Grundstufe | Core modules (M?/N? except ME/NE) | Active trainees |
+| `dasei3` | Aufbaustufe | Advanced modules (ZR, ZT profiles) | Advanced trainees |
+| `dasei` | Verein | Association members (status 8,9,10) | Full member portal |
+
+**Key Insight**: A participant's `dasei_domaincode` determines their **highest access level**. Someone at `dasei2` can see `dasei1` content too, but not `dasei3`.
+
+### The Three-Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  LAYER 1: PRODUCT TEMPLATES (What you can buy)                                       │
+│  ═══════════════════════════════════════════════                                    │
+│                                                                                      │
+│  product.template: "Grundkurs M18 Tageskurs"                                        │
+│      detailed_type: 'event_package'                                                 │
+│      domain_code: website('dasei2')  ←── Controls visibility on websites            │
+│      package_event_type_ids: [A, B, C, D, E, F]  ←── Which event types included     │
+│      package_edition_code: "M18"                                                    │
+│      package_date_start/end: 2026-10 to 2028-12                                     │
+│                                                                                      │
+│  product.template: "Aufbaustufe ZR 2026-2028"                                       │
+│      detailed_type: 'event_package'                                                 │
+│      domain_code: website('dasei3')  ←── Only visible to dasei3 level users         │
+│      package_event_type_ids: [G, H, J, L]                                           │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ Package defines which event_types
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  LAYER 2: EVENT TYPES (Template codes = curriculum structure)                        │
+│  ════════════════════════════════════════════════════════════                       │
+│                                                                                      │
+│  event.type records with is_template_code=True:                                     │
+│                                                                                      │
+│  GRUNDSTUFE (Required for M/N programs):                                            │
+│  ├── A1 "Am Anfang war der Kreis"       → Module A (Grundlagen Spielen)            │
+│  ├── A2 "Die Bühne kommt von selbst"    → Module A                                 │
+│  ├── B1 "Das fiktive Situationsbildverfahren" → Module B (Grundlagen Anleiten)     │
+│  ├── B2 "Klischees, Situationen"        → Module B                                 │
+│  ├── C1 "Initiierung"                   → Module C (Theaterprojekt)                │
+│  ├── D1 "Konzeption"                    → Module D (Konzeption)                    │
+│  └── ...                                                                            │
+│                                                                                      │
+│  AUFBAUSTUFE (Required for ZR/ZT profiles):                                         │
+│  ├── G1, G2, G3...                      → Module G (Vertiefung)                    │
+│  ├── H1, H2...                          → Module H (Bewegungstheater)              │
+│  ├── J1, J2...                          → Module J (Abenteuertheater)              │
+│  └── L1, L2...                          → Module L (Zusatzqualifikation)           │
+│                                                                                      │
+│  First letter = Module Group (A, B, C, D for Grund / G, H, J, L for Aufbau)         │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ Events instantiate event_types
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  LAYER 3: EVENTS (Actual occurrences with dates)                                     │
+│  ═══════════════════════════════════════════════                                    │
+│                                                                                      │
+│  event.event: "A1 München 2026"                                                     │
+│      event_type_id: A1                                                              │
+│      domain_code: website('dasei1')  ←── Entry-level event                          │
+│      date_begin: 2026-10-15                                                         │
+│                                                                                      │
+│  event.event: "B1 München JAN 2027"                                                 │
+│      event_type_id: B1                                                              │
+│      domain_code: website('dasei2')  ←── Grundstufe event                           │
+│      date_begin: 2027-01-20                                                         │
+│                                                                                      │
+│  event.event: "G1 Witten 2027"                                                      │
+│      event_type_id: G1                                                              │
+│      domain_code: website('dasei3')  ←── Aufbaustufe event                          │
+│      date_begin: 2027-03-10                                                         │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### The Checkout Flow (Event Packages)
+
+```
+Customer buys "Grundkurs M18 Tageskurs" (product.template)
+       │
+       ▼
+Wizard opens: "Select Your Events"
+       │
+       ├── For Module A: Shows events where event_type.name starts with 'A'
+       │   └── Customer selects: "A1 München 2026"
+       │
+       ├── For Module B: Shows events where event_type.name starts with 'B'
+       │   └── Customer selects: "B1 München JAN 2027"
+       │
+       └── ... (repeats for C, D, E, F)
+       
+       ▼
+product.package.event.line records created:
+       │
+       ├── sale_order_line_id → the SO line
+       ├── event_type_id → A1
+       ├── event_id → "A1 München 2026"
+       ├── registration_id → created on confirmation
+       └── state → draft → confirmed → registered → done
+```
+
+### Domain Code Filtering Logic
+
+**On Products** (`product.template.domain_code`):
+- Determines which website can display/sell the package
+- `dasei1` products show on dasei1 website
+- `dasei2` products show on dasei2 AND dasei1 (lower levels inherit)
+
+**On Events** (`event.event.domain_code`):
+- Determines which website can display the event
+- Used by wizard to filter available events for package selection
+
+**On Partners** (`res.partner.dasei_domaincode`):
+- Computed from highest course level completed
+- Determines user's access level
+- ZR/ZT completed → `dasei3`
+- M?/N? (not ME/NE) completed → `dasei2`
+- ME/NE completed → `dasei1`
+
+### Module Completion Tracking
+
+```python
+# In dasei.course.participation
+def _compute_completed_modules(self):
+    """
+    1. Get all confirmed event.registration for partner
+    2. Extract event_type.name first letter (A, B, C...)
+    3. Filter to valid MODULE_GROUPS
+    4. Store as comma-separated: "A,B,C"
+    """
+```
+
+This feeds into:
+- Certificate generation (all required modules = certificate)
+- Access level computation (completed modules → dasei_domaincode)
+- Progress dashboards
 
 ---
 

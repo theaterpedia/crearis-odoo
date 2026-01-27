@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 theaterpedia.org
+    License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+-->
+<odoo>
+    <!-- DASEi Website Data: dasei0, dasei1, dasei2, dasei3 -->
+    <!-- These are created by post_init_hook, but can also be checked via server actions -->
+    
+    <!-- Server Action: Check DASEi Websites -->
+    <record id="action_check_dasei_websites" model="ir.actions.server">
+        <field name="name">Check DASEi Websites</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="binding_model_id" ref="website.model_website"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+# Check DASEi websites without importing hooks
+DASEI_CODES = ['dasei0', 'dasei1', 'dasei2', 'dasei3']
+DASEI_NAMES = {
+    'dasei0': 'Quick Entry',
+    'dasei1': 'Einstiege',
+    'dasei2': 'Grundstufe',
+    'dasei3': 'Aufbaustufe',
+}
+
+Website = env['website']
+existing = Website.search([('domain_code', 'in', DASEI_CODES)])
+existing_codes = set(existing.mapped('domain_code'))
+missing_codes = [c for c in DASEI_CODES if c not in existing_codes]
+
+if not missing_codes:
+    message = "✅ All DASEi websites exist:\n\n"
+    for ws in existing.sorted(key=lambda w: w.domain_code):
+        message += f"• {ws.domain_code}: {ws.name}\n"
+else:
+    message = "⚠️ Missing DASEi websites:\n\n"
+    for code in missing_codes:
+        message += f"• {code}: {DASEI_NAMES.get(code, 'Unknown')}\n"
+    message += "\n\nTo create them, click 'Create Missing DASEi Websites' action."
+
+raise UserError(message)
+]]></field>
+    </record>
+    
+    <!-- Server Action: Create Missing DASEi Websites -->
+    <record id="action_create_dasei_websites" model="ir.actions.server">
+        <field name="name">Create Missing DASEi Websites</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="binding_model_id" ref="website.model_website"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+# Create missing DASEi websites without importing hooks
+DASEI_CONFIGS = {
+    'dasei0': {'name': 'DASEi Quick Entry', 'sequence': 100},
+    'dasei1': {'name': 'DASEi Einstiege', 'sequence': 101},
+    'dasei2': {'name': 'DASEi Grundstufe', 'sequence': 102},
+    'dasei3': {'name': 'DASEi Aufbaustufe', 'sequence': 103},
+}
+
+Website = env['website']
+Company = env['res.company']
+
+# Find DASEi company
+dasei_company = Company.search([
+    '|', '|',
+    ('name', 'ilike', 'das ei'),
+    ('name', 'ilike', 'dasei'),
+    ('name', 'ilike', 'DAS Ei')
+], limit=1)
+
+if not dasei_company:
+    raise UserError("No DASEi company found. Please create a company with 'DAS Ei' in the name first.")
+
+existing_codes = set(Website.search([]).mapped('domain_code'))
+created = []
+
+for code, config in DASEI_CONFIGS.items():
+    if code not in existing_codes:
+        ws = Website.create({
+            'name': config['name'],
+            'domain_code': code,
+            'company_id': dasei_company.id,
+            'sequence': config.get('sequence', 10),
+        })
+        created.append(ws)
+
+if created:
+    message = f"✅ Created {len(created)} DASEi website(s):\n\n"
+    for ws in created:
+        message += f"• {ws.domain_code}: {ws.name}\n"
+else:
+    message = "✅ All DASEi websites already exist. Nothing to create."
+
+raise UserError(message)
+]]></field>
+    </record>
+    
+</odoo>

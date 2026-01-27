@@ -14,11 +14,7 @@
             </xpath>
 
             <!-- Add Package Only toggle in the Tickets page -->
-            <xpath expr="//page[@name='tickets']" position="attributes">
-                <attribute name="string">Tickets</attribute>
-            </xpath>
-
-            <xpath expr="//page[@name='tickets']/group" position="before">
+            <xpath expr="//page[@name='tickets']/field[@name='event_ticket_ids']" position="before">
                 <div class="alert alert-info" role="alert"
                      attrs="{'invisible': ['|', ('use_event_packages', '=', False), ('package_only', '=', False)]}">
                     <strong>Package Only Event:</strong> This event can only be purchased as part of a package.
@@ -41,8 +37,8 @@
                 </group>
             </xpath>
 
-            <!-- Hide ticket form when package_only is True -->
-            <xpath expr="//page[@name='tickets']/group" position="attributes">
+            <!-- Hide ticket field when package_only is True -->
+            <xpath expr="//page[@name='tickets']/field[@name='event_ticket_ids']" position="attributes">
                 <attribute name="attrs">{'invisible': [('package_only', '=', True)]}</attribute>
             </xpath>
 
@@ -61,9 +57,9 @@
     <record id="view_event_tree_package" model="ir.ui.view">
         <field name="name">event.event.tree.package</field>
         <field name="model">event.event</field>
-        <field name="inherit_id" ref="event.event_event_view_tree"/>
+        <field name="inherit_id" ref="event.view_event_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='event_type_id']" position="after">
+            <xpath expr="//field[@name='name']" position="after">
                 <field name="package_only" optional="hide"/>
                 <field name="is_in_package" optional="hide"/>
             </xpath>

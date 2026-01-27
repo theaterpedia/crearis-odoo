@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 
+        DASEi Grundkurs Product Templates (Event Packages)
+        
+        IMPORTANT: This file has noupdate="0" because it depends on XMLIds 
+        created dynamically by ensure_event_type_xmlids() which should be 
+        called BEFORE updating the module.
+        
+        These are the 4 module products for the Grundkurs program:
+        - Modul A (dasei1): Entry-level, A0-A5 event types
+        - Modul B (dasei2): Szenische Themenarbeit, B1-B8 event types
+        - Modul C (dasei2): Pädagogische Regie, C0-C8 event types
+        - Modul D (dasei2): Kolloquium & Projekt, D0-D4 event types
+        
+        Note: Event type XMLIds are created dynamically by ensure_event_type_xmlids()
+    -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         MODUL A: Einstiege in's Theaterspiel (dasei1)
+         Entry-level module - sold on dasei1 website
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="product_modul_a" model="product.template">
+        <field name="name">Modul A: Einstiege in's Theaterspiel</field>
+        <field name="detailed_type">event_package</field>
+        <field name="list_price">1100.00</field>
+        <field name="description_sale">Modul A umfasst 6 Sessions (A0-A5) und bildet den Einstieg in die Theaterpädagogik-Ausbildung.</field>
+        <field name="website_id" ref="agenda_dasei.website_dasei1"/>
+        <field name="package_edition_code">M18E</field>
+        <field name="package_event_type_ids" eval="[(6, 0, [
+            ref('agenda_dasei.event_type_a0'),
+            ref('agenda_dasei.event_type_a1'),
+            ref('agenda_dasei.event_type_a2'),
+            ref('agenda_dasei.event_type_a3'),
+            ref('agenda_dasei.event_type_a4'),
+            ref('agenda_dasei.event_type_a5'),
+        ])]"/>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         MODUL B: Szenische Themenarbeit (dasei2)
+         Sold on dasei2 website, requires Modul A completion
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="product_modul_b" model="product.template">
+        <field name="name">Modul B: Szenische Themenarbeit</field>
+        <field name="detailed_type">event_package</field>
+        <field name="list_price">1320.00</field>
+        <field name="description_sale">Modul B (JAN-MAI 2027) - Szenische Themenarbeit mit 6-8 Sessions.</field>
+        <field name="website_id" ref="agenda_dasei.website_dasei2"/>
+        <field name="package_edition_code">M18B</field>
+        <field name="package_event_type_ids" eval="[(6, 0, [
+            ref('agenda_dasei.event_type_b1'),
+            ref('agenda_dasei.event_type_b2'),
+            ref('agenda_dasei.event_type_b3'),
+            ref('agenda_dasei.event_type_b4'),
+            ref('agenda_dasei.event_type_b5'),
+            ref('agenda_dasei.event_type_b7'),
+            ref('agenda_dasei.event_type_b8'),
+        ])]"/>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         MODUL C: Pädagogische Regie (dasei2)
+         Sold on dasei2 website
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="product_modul_c" model="product.template">
+        <field name="name">Modul C: Pädagogische Regie</field>
+        <field name="detailed_type">event_package</field>
+        <field name="list_price">1320.00</field>
+        <field name="description_sale">Modul C (JUN-DEZ 2027) - Pädagogische Regie mit 6-8 Sessions.</field>
+        <field name="website_id" ref="agenda_dasei.website_dasei2"/>
+        <field name="package_edition_code">M18C</field>
+        <field name="package_event_type_ids" eval="[(6, 0, [
+            ref('agenda_dasei.event_type_c0'),
+            ref('agenda_dasei.event_type_c1'),
+            ref('agenda_dasei.event_type_c2'),
+            ref('agenda_dasei.event_type_c3'),
+            ref('agenda_dasei.event_type_c4'),
+            ref('agenda_dasei.event_type_c5'),
+            ref('agenda_dasei.event_type_c6'),
+            ref('agenda_dasei.event_type_c7'),
+            ref('agenda_dasei.event_type_c8'),
+        ])]"/>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         MODUL D: Kolloquium & Projekt (dasei2)
+         Sold on dasei2 website
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="product_modul_d" model="product.template">
+        <field name="name">Modul D: Kolloquium, Zielgruppenpraxis, Projekt</field>
+        <field name="detailed_type">event_package</field>
+        <field name="list_price">1100.00</field>
+        <field name="description_sale">Modul D (JAN-JUL 2028) - Abschlussmodul mit Kolloquium und Projektarbeit.</field>
+        <field name="website_id" ref="agenda_dasei.website_dasei2"/>
+        <field name="package_edition_code">M18D</field>
+        <field name="package_event_type_ids" eval="[(6, 0, [
+            ref('agenda_dasei.event_type_d0'),
+            ref('agenda_dasei.event_type_d1'),
+            ref('agenda_dasei.event_type_d2'),
+            ref('agenda_dasei.event_type_d3'),
+            ref('agenda_dasei.event_type_d4'),
+        ])]"/>
+    </record>
+
+</odoo>

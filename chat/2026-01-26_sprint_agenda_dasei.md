@@ -57,11 +57,23 @@
 - [ ] **S8**: Write dev-docs
 - [ ] **S9**: Git commit (after agenda_dasei batch 1 + docs)
 
+### Phase 3b: Pre-Deployment Checklist (2026-01-27 morning)
+
+> **Priority**: Production deployment before 08:00
+
+- [x] **S9b.1**: Update manifest versions (dependencies)
+- [ ] **S9b.2**: Git commit (pre-deployment)
+- [ ] **S9b.3**: Update external modules (partner-contact, rest-framework)
+- [ ] **S9b.4**: Domain codes → events/event_types (dasei1/dasei2/dasei3 foundation)
+- [ ] **S9b.5**: Verify 'slave' sync mode (SharePoint drives sync)
+- [ ] **S9b.6**: Sync-down event locations (one-way SP → Odoo)
+- [ ] **S9b.7**: Deploy to production
+
 ### Phase 4: Website Templates — Demo Prep
 
 > **Tasks from action plan**: W1-W4 for demo target
 
-- [ ] **S10**: W1.1 — User mapping (SP Person → event.user_id)
+- [x] **S10**: W1.1 — User mapping (SP Person → event.user_id)
 - [ ] **S11**: W1.2-W1.3 — Verify headline/overline/teasertext sync
 - [ ] **S12**: W2.1-W2.3 — Pre-production deployment + debug
 - [ ] **S13**: W3.1-W3.4 — Event card templates
@@ -139,6 +151,9 @@
 | 2026-01-26 | S9: agenda_dasei batch 1 commit | ✅ | Commit f6fe324 |
 | 2026-01-26 | Refactor: use_event_packages | ✅ | Moved to crearis_event_package (3ad660d) |
 | 2026-01-26 | S10: User mapping | ✅ | Hauptreferent → user_id via dasei.referent.sync |
+| 2026-01-27 | S9b.1: Update manifests | ✅ | Dependencies updated |
+| 2026-01-27 | Fix: view inheritance errors | ✅ | XML IDs renamed, mode=extension (32097bf) |
+| 2026-01-27 | Fix: image controller | ✅ | str2bool bypass in graphql_theaterpedia |
 
 ---
 
