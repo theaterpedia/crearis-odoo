@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-26  
 **Module**: `crearis` (base), `agenda_dasei` (sync mapping)  
-**Status**: 📋 Planned  
+**Status**: ✅ Phase 1 Complete (R1-R5), 🟡 Phase 2-3 Pending  
 **Related**: B3 in [action_plan_event_package_integration.md](./2026-01-24-action_plan_event_package_integration.md)
 
 ---
@@ -37,9 +37,9 @@ Extend Odoo's `event.registration` state field with additional states and sysreg
 
 ## Implementation Tasks
 
-### Phase 1: Model Extension (crearis module)
+### Phase 1: Model Extension (crearis module) ✅ COMPLETE
 
-#### R1: Create `event_registration.py` in crearis/models
+#### R1: Create `event_registration.py` in crearis/models ✅
 
 ```python
 # crearis/models/event_registration.py
@@ -92,11 +92,11 @@ class EventRegistration(models.Model):
             reg.state_sysreg = REGISTRATION_STATE_SYSREG.get(reg.state, 0)
 ```
 
-#### R2: Register model in `__init__.py`
+#### R2: Register model in `__init__.py` ✅
 
 Add `from . import event_registration` to `crearis/models/__init__.py`
 
-#### R3: Add i18n translations
+#### R3: Add i18n translations ✅
 
 Update `crearis/i18n/de.po` and `crearis/i18n/cs.po` with:
 - new → Angebot / Nabídka
@@ -120,12 +120,11 @@ new → demo → draft → open → done
 
 ---
 
-### Phase 2: Sync Mapping (agenda_dasei module)
+### Phase 2: Sync Mapping (agenda_dasei module) ✅ COMPLETE
 
-#### R5: Create SharePoint → Odoo state mapping
+#### R5: Create SharePoint → Odoo state mapping ✅
 
-```python
-# In sync_registration.py (to be created)
+Implemented in `agenda_dasei/models/sync_registrations.py`:
 
 # SharePoint plan_teilnahmestatus.ID → Odoo state
 SP_TEILNAHMESTATUS_TO_STATE = {
