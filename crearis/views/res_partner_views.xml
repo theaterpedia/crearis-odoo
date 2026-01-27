@@ -1,23 +1,14 @@
 <?xml version="1.0"?>
 <odoo>
-    <record id="view_partner_form" model="ir.ui.view">
-        <field name="name">res.partner.form</field>
+    <record id="view_partner_form_locations" model="ir.ui.view">
+        <field name="name">res.partner.form.locations</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority">100</field>
+        <field name="mode">extension</field>
         <field name="arch" type="xml">
 
-            <!-- Add demo banner at the very top -->
-            <xpath expr="//sheet" position="before">
-                <div class="ribbon ribbon-top-left" attrs="{'invisible': [('is_demo', '=', False)]}">
-                    <span class="bg-success">DEMO DATA</span>
-                </div>
-            </xpath>
-
-            <!-- Add is_demo field as invisible so it can be used in attrs -->
-            <xpath expr="//sheet" position="inside">
-                <field name="is_demo" invisible="1"/>
-            </xpath>
-
+            <!-- Add location provider page -->
             <xpath expr="//page[@name='internal_notes']" position="before">
                 <page name='locations_spaces' string="Manage locations">
                   <field name="is_location_provider" string="Is Location Provider"/>

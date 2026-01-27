@@ -154,6 +154,14 @@
 
 ---
 
+## Backlog / Next Week
+
+| ID | Task | Module | Priority | Notes |
+|----|------|--------|----------|-------|
+| BL-1 | Fix missing website logo field in settings | `crearis` | 🟡 Medium | Logo field missing from Website Settings UI. Likely xpath issue in `res_config_settings_views.xml`. Check line 66 in odoo/addons/website/views/website_views.xml which replaces logo field. Investigate if crearis view inheritance breaks it. |
+
+---
+
 ## Notes
 
 - Sprint designed for iterative development with frequent commits

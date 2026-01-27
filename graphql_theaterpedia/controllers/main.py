@@ -38,24 +38,55 @@ class VSFBinary(Binary):
                  '/web/image/<int:id>-<string:unique>/<int:width>x<int:height>',
                  '/web/image/<int:id>-<string:unique>/<int:width>x<int:height>/<string:filename>'], type='http',
                 auth="public")
-    def content_image(self, xmlid=None, model='ir.attachment', id=None, field='datas',
-                      filename_field='name', unique=None, filename=None, mimetype=None,
-                      download=None, width=0, height=0, crop=False, access_token=None,
-                      **kwargs):
-        """ Validate width and height """
+    def content_image(self, xmlid=None, model='ir.attachment', id=None, field='raw',
+                      filename_field='name', filename=None, mimetype=None, unique=False,
+                      download=False, width=0, height=0, crop=False, access_token=None,
+                      nocache=False, **kwargs):
+        """ Validate width and height, then serve image """
+        from odoo.exceptions import UserError
+        from odoo.addons.web.controllers.binary import image_guess_size_from_field_name
+        from odoo.tools.misc import str2bool
+        
         try:
             ICP = request.env['ir.config_parameter'].sudo()
             vsf_image_resize_limit = int(ICP.get_param('vsf_image_resize_limit', 1920))
             
-            if width > vsf_image_resize_limit or height > vsf_image_resize_limit:
+            if int(width) > vsf_image_resize_limit or int(height) > vsf_image_resize_limit:
                 return request.not_found()
         except Exception:
             return request.not_found()
 
-        return super(VSFBinary, self).content_image(
-            xmlid=xmlid, model=model, id=id, field=field, filename_field=filename_field, unique=unique,
-            filename=filename, mimetype=mimetype, download=download, width=width, height=height, crop=crop,
-            access_token=access_token, **kwargs)
+        # Sanitize download parameter
+        if download and download not in (True, False, '0', '1', 'yes', 'no', 'true', 'false', 'on', 'off'):
+            download = False
+        
+        try:
+            record = request.env['ir.binary']._find_record(xmlid, model, id and int(id), access_token)
+            stream = request.env['ir.binary']._get_image_stream_from(
+                record, field, filename=filename, filename_field=filename_field,
+                mimetype=mimetype, width=int(width), height=int(height), crop=crop,
+            )
+            if request.httprequest.args.get('access_token'):
+                stream.public = True
+        except UserError as exc:
+            if download:
+                raise request.not_found() from exc
+            if (int(width), int(height)) == (0, 0):
+                width, height = image_guess_size_from_field_name(field)
+            record = request.env.ref('web.image_placeholder').sudo()
+            stream = request.env['ir.binary']._get_image_stream_from(
+                record, 'raw', width=int(width), height=int(height), crop=crop,
+            )
+            stream.public = False
+
+        send_file_kwargs = {'as_attachment': str2bool(download) if download else False}
+        if unique:
+            send_file_kwargs['immutable'] = True
+            send_file_kwargs['max_age'] = http.STATIC_CACHE_LONG
+        if nocache:
+            send_file_kwargs['max_age'] = None
+
+        return stream.get_response(**send_file_kwargs)
 
 
 class GraphQLController(http.Controller, GraphQLControllerMixin):
