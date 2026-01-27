@@ -78,6 +78,20 @@ class ResCompany(models.Model):
         string="List: Seminarzeiten"
     )
 
+    # Referent filter: comma-separated list of plan_referenten IDs to sync
+    # Empty = sync all, otherwise only sync these IDs (for performance)
+    ms_referenten_filter = fields.Char(
+        string="Active Referenten IDs",
+        help="Comma-separated list of plan_referenten IDs to sync (e.g., '1,2,3,11,16,18,28,29'). Empty = sync all."
+    )
+
+    # Dev mode: forces full update/write-back on every sync (for testing)
+    ms_dev_mode = fields.Boolean(
+        string="Dev Mode",
+        default=False,
+        help="Development mode: always force update and write-back on sync, even if no changes detected. Disable in production."
+    )
+
     ms_agenda_configured = fields.Boolean(
         compute='_compute_ms_agenda_configured',
         store=True,

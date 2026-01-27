@@ -4,9 +4,15 @@
 
 {
     'name': 'Crearis',
-    'version': '16.0.1.1.0',
+    'version': '16.0.1.2.0',
     'summary': 'Episodes and Event-Management',
-    'description': """Episodes and Event-Management on theaterpedia.org""",
+    'description': """Episodes and Event-Management on theaterpedia.org
+
+Features:
+- Extended event.registration with SharePoint sync fields (ms_id, ms_version, ms_synced)
+- Extended registration states (new, demo, no_show, partial)
+- SharePoint-compatible sysreg bitmask values
+""",
     'category': 'Website/Crearis',
     'license': 'LGPL-3',
     'application': True,

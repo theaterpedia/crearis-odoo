@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis Agenda',
-    'version': '16.0.1.0.0',
+    'version': '16.0.1.1.0',
     'summary': 'SharePoint Agenda Sync for Crearis Events',
     'description': """
 Synchronize events and event types between Odoo and Microsoft SharePoint.
@@ -16,6 +16,7 @@ Features:
 - Three sync levels: init, slave, master
 - Template application on event creation
 - Hourly cron job for automatic sync
+- Heading event filter (skip event_types with name pattern *_)
     """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',
@@ -32,6 +33,7 @@ Features:
         'views/sync_menu_views.xml',
         'data/cron_data.xml',
     ],
+    'post_init_hook': '_reset_sync_lock',
     'installable': True,
     'auto_install': False,
 }

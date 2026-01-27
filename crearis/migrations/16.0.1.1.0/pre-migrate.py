@@ -87,17 +87,19 @@ def migrate(cr, version):
         )
     _logger.info("Updated base stage sequences to sysreg values")
 
-    # Step 5: Update stage names to English base (JSON format)
+    # Step 5: Update stage names to English base (JSON object format for translated fields)
+    # IMPORTANT: Odoo 16 translated fields use JSONB objects like {"en_US": "value"}
+    # Using a plain JSON string like "new" causes array corruption on subsequent updates
     name_updates = [
-        ('"new"', 1),
-        ('"planned"', 2),
-        ('"announced"', 3),
-        ('"completed"', 4),
-        ('"cancelled"', 5),
+        ('{"en_US": "new"}', 1),
+        ('{"en_US": "planned"}', 2),
+        ('{"en_US": "announced"}', 3),
+        ('{"en_US": "completed"}', 4),
+        ('{"en_US": "cancelled"}', 5),
     ]
     for name, stage_id in name_updates:
         cr.execute(
-            "UPDATE event_stage SET name = %s WHERE id = %s",
+            "UPDATE event_stage SET name = %s::jsonb WHERE id = %s",
             (name, stage_id)
         )
     _logger.info("Updated base stage names to English")
@@ -108,15 +110,15 @@ def migrate(cr, version):
     
     if 30 in existing_crearis_stages:
         cr.execute(
-            "UPDATE event_stage SET name = %s, sequence = %s WHERE id = %s",
-            ('"booked"', 64, 30)
+            "UPDATE event_stage SET name = %s::jsonb, sequence = %s WHERE id = %s",
+            ('{"en_US": "booked"}', 64, 30)
         )
         _logger.info("Updated crearis.event_stage_booked (id=30)")
     
     if 31 in existing_crearis_stages:
         cr.execute(
-            "UPDATE event_stage SET name = %s, sequence = %s WHERE id = %s",
-            ('"current"', 4096, 31)
+            "UPDATE event_stage SET name = %s::jsonb, sequence = %s WHERE id = %s",
+            ('{"en_US": "current"}', 4096, 31)
         )
         _logger.info("Updated crearis.event_stage_current (id=31)")
 

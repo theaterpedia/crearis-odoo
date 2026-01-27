@@ -3,7 +3,7 @@
 > **Module:** `crearis_event_package`  
 > **Version:** 16.0.1.0.0  
 > **Dependencies:** `crearis`, `event_sale`, `sale`  
-> **Last Updated:** 2026-01-24
+> **Last Updated:** 2026-01-25
 
 ---
 
@@ -185,23 +185,35 @@ When a `sale.order.line` is created with a product where `detailed_type='event_p
 
 ---
 
-### 5. Website/Company Settings
+### 5. Website/Company Settings (Feature Flag)
 
 **File:** `models/res_company.py`
+
+This module **owns** the `use_event_packages` feature flag. It extends both `website` and `res.company`:
 
 ```python
 class Website(models.Model):
     _inherit = 'website'
     
     use_event_packages = fields.Boolean(default=False)
+    
+    @api.constrains('use_event_packages', 'use_template_codes')
+    def _check_event_packages_requires_template_codes(self):
+        # Enforces dependency on use_template_codes
 
 class Company(models.Model):
     _inherit = 'res.company'
     
     use_event_packages = fields.Boolean(default=False)
+    
+    @api.constrains('use_event_packages', 'use_template_codes')
+    def _check_event_packages_requires_template_codes(self):
+        # Enforces dependency on use_template_codes
 ```
 
-**Constraint:** `use_event_packages` can only be True if `use_template_codes` is True.
+**Architectural Note:** The `use_event_packages` field is defined here (not in `crearis` base module) so the feature flag lives in the same module as the functionality. The `crearis` module's `use_products` computed field detects this dynamically via `getattr()`.
+
+**Constraint:** `use_event_packages` can only be True if `use_template_codes` is True (defined in `crearis` base module).
 
 ---
 

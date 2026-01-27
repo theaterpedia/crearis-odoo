@@ -4,7 +4,7 @@
 
 {
     'name': 'Agenda DASEi',
-    'version': '16.0.1.0.0',
+    'version': '16.0.1.1.0',
     'summary': 'DASEi-specific partner status and domaincode mapping',
     'description': """
 DASEi-specific extensions for Crearis Agenda sync.
@@ -16,6 +16,8 @@ Features:
 - Sync of plan_kursteilnehmer and contacts
 - Course products (M18, N18, ZR, ZT profiles)
 - Module progress tracking (A, B, C, D modules)
+- Event registration sync from plan_veranstaltungsteilnehmer
+- Status mapping: SharePoint StatusLookupId → Odoo registration state
     """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',

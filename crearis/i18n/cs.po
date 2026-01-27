@@ -150,22 +150,6 @@ msgid "Internal notes visible only to staff"
 msgstr "Interní poznámky viditelné pouze pro zaměstnance"
 
 #. module: crearis
-#. Feature Flags (website)
-#: model:ir.model.fields,field_description:crearis.field_website__use_event_packages
-msgid "Use Event Packages"
-msgstr "Použít balíčky akcí"
-
-#. module: crearis
-#: model:ir.model.fields,help:crearis.field_website__use_event_packages
-msgid "Enable event package products. Requires use_template_codes."
-msgstr "Povolí produkty balíčků akcí. Vyžaduje kódy šablon."
-
-#. module: crearis
 #: model:ir.model.fields,help:crearis.field_website__use_products
 msgid "Auto-computed: True when any product sub-feature (e.g., event packages) is enabled."
 msgstr "Automaticky vypočítáno: Pravda, když je povolena jakákoli produktová funkce (např. balíčky akcí)."
-
-#. module: crearis
-#: code:crearis.models.website
-msgid "Event Packages require Template Codes to be enabled first."
-msgstr "Balíčky akcí vyžadují, aby byly nejprve povoleny kódy šablon."

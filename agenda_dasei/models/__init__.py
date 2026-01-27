@@ -4,6 +4,7 @@
 
 from . import res_partner
 from . import sync_partner
+from . import sync_referenten
 from . import course
 from . import course_participation
 from . import sync_kurse

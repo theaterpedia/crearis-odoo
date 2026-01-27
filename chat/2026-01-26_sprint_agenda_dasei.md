@@ -1,18 +1,22 @@
-# Sprint Plan: Agenda DASEi
+# Sprint Plan: Agenda DASEi + Website Templates
 
 **Sprint Start**: 2026-01-26  
 **Status**: 🟡 In Progress  
 **Estimated Duration**: Multi-day sprint  
+**Demo Target**: 2026-01-27 11:00 (Team Presentation)
 
 ---
 
 ## Referenced Action Plans
 
-| Action Plan | Module | Focus |
-|-------------|--------|-------|
-| [2026-01-24-action_plan_event_package_integration.md](./2026-01-24-action_plan_event_package_integration.md) | `crearis` | Event packages, GraphQL, feature flags |
-| [2026-01-24-action_plan_dasei_event_packages.md](./2026-01-24-action_plan_dasei_event_packages.md) | `agenda_dasei` | SharePoint sync, DASEi-specific mappings |
-| [2026-01-28-action_plan_graphql.md](./2026-01-28-action_plan_graphql.md) | `graphql_theaterpedia` | GraphQL schema updates (future) |
+| Action Plan | Module | Focus | Priority |
+|-------------|--------|-------|----------|
+| [2026-01-24-action_plan_event_package_integration.md](./2026-01-24-action_plan_event_package_integration.md) | `crearis` | Event packages, feature flags | ✅ Phase 1 Done |
+| [2026-01-24-action_plan_dasei_event_packages.md](./2026-01-24-action_plan_dasei_event_packages.md) | `agenda_dasei` | SharePoint sync, DASEi mappings | 🟡 In Progress |
+| [2026-01-26-action_plan_website_templates.md](./2026-01-26-action_plan_website_templates.md) | `website templates` | Customer portal UI (DASEi) | 🔴 HIGH - Demo |
+| [2026-01-28-action_plan_graphql.md](./2026-01-28-action_plan_graphql.md) | `graphql_theaterpedia` | GraphQL schema updates | 🟠 HIGH - Start end of week |
+
+**Priority Note**: GraphQL postponed to end of week but marked HIGH to guard against scope creep. Website templates are rapid prototyping, not replacement for Vue.js standardized approach.
 
 ---
 
@@ -53,21 +57,40 @@
 - [ ] **S8**: Write dev-docs
 - [ ] **S9**: Git commit (after agenda_dasei batch 1 + docs)
 
-### Phase 4: Testing & Fixes
+### Phase 4: Website Templates — Demo Prep
 
-- [ ] **S10**: Debug, test, fix issues
+> **Tasks from action plan**: W1-W4 for demo target
 
-### Phase 5: Prod A — First Production Deployment
+- [ ] **S10**: W1.1 — User mapping (SP Person → event.user_id)
+- [ ] **S11**: W1.2-W1.3 — Verify headline/overline/teasertext sync
+- [ ] **S12**: W2.1-W2.3 — Pre-production deployment + debug
+- [ ] **S13**: W3.1-W3.4 — Event card templates
+- [ ] **S14**: W4.1-W4.3 — Event detail page
+- [ ] **S15**: Git commit (demo checkpoint)
 
-- [ ] **S11**: First production deployment (enables website-coding project to start)
-- [ ] **S12**: Run Prod A tasks (DPa1: extract product-templates)
-- [ ] **S13**: Git commit (post Prod A)
+### Phase 5: Testing & Fixes
 
-### Phase 6: Remaining Tasks & Finalization
+- [ ] **S16**: Debug, test, fix issues
 
-- [ ] **S14**: Run remaining tasks from both action-plans
-- [ ] **S15**: Update dev-docs
-- [ ] **S16**: Git commit (final sprint commit)
+### Phase 6: Prod A — First Production Deployment
+
+- [ ] **S17**: First production deployment (enables website-coding project to start)
+- [ ] **S18**: Run Prod A tasks (DPa1: extract product-templates)
+- [ ] **S19**: Git commit (post Prod A)
+
+### Phase 7: GraphQL Catch-up (End of Week)
+
+> **Priority**: HIGH — Start by Friday to stay on core architecture path
+
+- [ ] **S20**: Review graphql_theaterpedia current state
+- [ ] **S21**: Update schema for new fields (cid, slug, stages)
+- [ ] **S22**: Git commit (graphql batch)
+
+### Phase 8: Remaining Tasks & Finalization
+
+- [ ] **S23**: Run remaining tasks from action-plans
+- [ ] **S24**: Update dev-docs
+- [ ] **S25**: Git commit (final sprint commit)
 
 ---
 
@@ -86,6 +109,8 @@
 | DOC-7 | SharePoint plan_planungsstatus full table | B2 discussion | 📝 To write |
 | DOC-8 | Registration states sysreg mapping | B3 resolution | 📝 To write |
 | DOC-9 | SharePoint plan_teilnahmestatus full table | B3 discussion | 📝 To write |
+| DOC-10 | plan_veranstaltungen full schema | S10 discussion | 📝 To write |
+| DOC-11 | plan_referenten schema + user mapping | S10 discussion | 📝 To write |
 | | | | |
 
 ---
@@ -111,7 +136,9 @@
 | 2026-01-26 | S7.3: DA1 menu restructure | ✅ | DASEi submenu under Crearis |
 | 2026-01-26 | S7.4: D1-D8 SharePoint lists | ✅ | plan_kurse + plan_veranstaltungsteilnehmer |
 | 2026-01-26 | S8: Dev docs | ✅ | Updated agenda_dasei + crearis_agenda docs |
-| | | | |
+| 2026-01-26 | S9: agenda_dasei batch 1 commit | ✅ | Commit f6fe324 |
+| 2026-01-26 | Refactor: use_event_packages | ✅ | Moved to crearis_event_package (3ad660d) |
+| 2026-01-26 | S10: User mapping | ✅ | Hauptreferent → user_id via dasei.referent.sync |
 
 ---
 
@@ -123,6 +150,7 @@
 | S3.1/B1 | cid/xmlid/slug alignment | ✅ Resolved | cid=stable id-based, slug=SEO editable, cidSlug=combined |
 | S3.2/B2 | Event-stages sysreg mapping | ✅ Resolved | 7 stages (1,8,64,512,4096,8192,12288), i18n via .po files |
 | S3.3/B3 | Registration states sysreg | ✅ Resolved | 8 states, impl plan created |
+| W1.1 | SP Person column → event.user_id | ✅ Resolved | dasei.referent.sync + ms_referenten_filter |
 
 ---
 
@@ -131,3 +159,5 @@
 - Sprint designed for iterative development with frequent commits
 - Action plans contain the detailed task breakdowns
 - This sprint plan serves as the coordination meta-layer
+- **Demo Target**: 2026-01-27 11:00 — Focus on visible customer-facing features
+- **GraphQL Guard**: Must start by end of week to stay on core architecture path

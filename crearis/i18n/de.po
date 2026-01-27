@@ -149,22 +149,6 @@ msgid "Internal notes visible only to staff"
 msgstr "Interne Notizen, nur für Mitarbeiter sichtbar"
 
 #. module: crearis
-#. Feature Flags (website)
-#: model:ir.model.fields,field_description:crearis.field_website__use_event_packages
-msgid "Use Event Packages"
-msgstr "Event-Pakete verwenden"
-
-#. module: crearis
-#: model:ir.model.fields,help:crearis.field_website__use_event_packages
-msgid "Enable event package products. Requires use_template_codes."
-msgstr "Aktiviert Event-Paket-Produkte. Erfordert Template-Codes."
-
-#. module: crearis
 #: model:ir.model.fields,help:crearis.field_website__use_products
 msgid "Auto-computed: True when any product sub-feature (e.g., event packages) is enabled."
 msgstr "Automatisch berechnet: Wahr, wenn ein Produkt-Feature (z.B. Event-Pakete) aktiviert ist."
-
-#. module: crearis
-#: code:crearis.models.website
-msgid "Event Packages require Template Codes to be enabled first."
-msgstr "Event-Pakete erfordern, dass Template-Codes zuerst aktiviert werden."

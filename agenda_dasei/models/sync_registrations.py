@@ -55,14 +55,68 @@ class AgendaSyncRegistrations(models.AbstractModel):
         sp_items = self._get_list_items(company, list_guid)
         _logger.info(f"Fetched {len(sp_items)} registrations from SharePoint")
 
-        stats = {'synced': 0, 'created': 0, 'updated': 0, 'skipped': 0}
+        stats = {'synced': 0, 'created': 0, 'updated': 0, 'unchanged': 0, 'skipped': 0}
+        
+        # Track status distribution for debugging
+        status_counts = {}
+        
+        # Sample SP IDs for debugging
+        sample_sp_ids = []
 
         for sp_item in sp_items:
+            # Count status distribution
+            sp_fields = sp_item.get('fields', {})
+            status_id = sp_fields.get('StatusLookupId', 'None')
+            status_counts[status_id] = status_counts.get(status_id, 0) + 1
+            
+            # Collect sample IDs
+            if len(sample_sp_ids) < 10:
+                sample_sp_ids.append(sp_item['id'])
+            
             result = self._sync_registration(company, sp_item)
             stats['synced'] += 1
             stats[result] += 1
 
+        _logger.info(f"Registration status distribution: {status_counts}")
+        _logger.info(f"Sample SharePoint IDs: {sample_sp_ids}")
+        _logger.info(f"Odoo ms_id range: 7882-15274 (968 records)")
         return stats
+
+    def backfill_registration_mails(self, registrations=None):
+        """Trigger mail schedulers for registrations that were synced without mail generation.
+        
+        Call this after sync to generate confirmation emails/tickets for 'open' registrations.
+        Can be run via cron or manually.
+        
+        Args:
+            registrations: Optional recordset. If None, finds all ms_synced registrations in 'open' state.
+        """
+        if registrations is None:
+            registrations = self.env['event.registration'].search([
+                ('ms_synced', '=', True),
+                ('state', '=', 'open'),
+            ])
+        
+        if not registrations:
+            _logger.info("No registrations to backfill mails for")
+            return
+        
+        _logger.info(f"Backfilling mail schedulers for {len(registrations)} registrations...")
+        
+        # Find event mail schedulers for "after subscription" type
+        onsubscribe_schedulers = self.env['event.mail'].sudo().search([
+            ('event_id', 'in', registrations.event_id.ids),
+            ('interval_type', '=', 'after_sub')
+        ])
+        
+        if onsubscribe_schedulers:
+            # Reset mail_done to allow re-processing
+            onsubscribe_schedulers.write({'mail_done': False})
+            # Execute will create missing event.mail.registration records and send mails
+            onsubscribe_schedulers.execute()
+            _logger.info(f"Executed {len(onsubscribe_schedulers)} mail schedulers")
+        else:
+            _logger.info("No 'after_sub' mail schedulers found for these events")
 
     def _sync_registration(self, company, sp_item):
         """Sync a single registration record
@@ -78,56 +132,98 @@ class AgendaSyncRegistrations(models.AbstractModel):
         Event = self.env['event.event']
         Partner = self.env['res.partner']
         
-        sp_id = sp_item['id']
+        sp_id = str(sp_item['id'])  # Ensure string for ms_id comparison
         sp_etag = sp_item.get('@odata.etag', '')
         sp_fields = sp_item.get('fields', {})
+        
+        # Debug for specific known ID
+        debug_id = (sp_id == '13677')
 
         # Resolve event from VeranstaltungLookupId
         event_sp_id = sp_fields.get('VeranstaltungLookupId')
         if not event_sp_id:
-            _logger.debug(f"Registration {sp_id} has no event link, skipping")
+            if debug_id: _logger.info(f"DEBUG {sp_id}: No event link")
             return 'skipped'
             
         event = Event.search([('ms_id', '=', str(event_sp_id))], limit=1)
         if not event:
-            _logger.debug(f"Event {event_sp_id} not found in Odoo, skipping registration {sp_id}")
+            # Event not synced - could be a heading event (event_type.name like "d_")
+            if debug_id: _logger.info(f"DEBUG {sp_id}: Event {event_sp_id} not found (may be heading)")
             return 'skipped'
+        if debug_id: _logger.info(f"DEBUG {sp_id}: Found event {event.id} (ms_id={event_sp_id})")
+
+        # Find existing registration FIRST (before partner check)
+        registration = Registration.search([
+            ('ms_id', '=', sp_id),
+        ], limit=1)
+        if debug_id: _logger.info(f"DEBUG {sp_id}: Existing registration search result: {registration}")
 
         # Resolve partner from TeilnehmerLookupId
         partner_sp_id = sp_fields.get('TeilnehmerLookupId')
         partner = False
         if partner_sp_id:
             partner = Partner.search([('ms_contact_id', '=', str(partner_sp_id))], limit=1)
-
-        # Find existing registration
-        registration = Registration.search([
-            ('ms_id', '=', sp_id),
-            ('event_id', '=', event.id),
-        ], limit=1)
+        if debug_id: _logger.info(f"DEBUG {sp_id}: Partner search for {partner_sp_id}: {partner}")
+        
+        # For NEW registrations: require partner (skip orphans)
+        # For EXISTING registrations: allow update even without partner (keeps historical data)
+        if not registration and not partner:
+            if debug_id: _logger.info(f"DEBUG {sp_id}: No registration AND no partner - skipping")
+            return 'skipped'
 
         vals = self._map_registration_from_sp(company, sp_fields, event, partner)
+        if debug_id: 
+            status_id = sp_fields.get('StatusLookupId')
+            _logger.info(f"DEBUG {sp_id}: SP StatusLookupId={status_id} → state={vals.get('state')}")
+            if registration:
+                _logger.info(f"DEBUG {sp_id}: Current Odoo state={registration.state}")
+
+        # Use context to skip mail/PDF generation during sync
+        # install_mode=True is key - it prevents _update_mail_schedulers() from running wkhtmltopdf
+        Registration = Registration.with_context(
+            mail_create_nosubscribe=True,
+            mail_create_nolog=True,
+            mail_notrack=True,
+            tracking_disable=True,
+            no_reset_password=True,
+            import_file=True,
+            install_mode=True,  # Critical: prevents event mail schedulers from triggering PDF generation
+        )
 
         if not registration:
-            # Create new registration
+            # Create new registration - partner is guaranteed at this point (checked above)
             vals['ms_id'] = sp_id
             vals['ms_version'] = sp_etag
             vals['ms_synced'] = True
             vals['event_id'] = event.id
-            if partner:
-                vals['partner_id'] = partner.id
-                vals['name'] = partner.name
-                vals['email'] = partner.email
-                vals['phone'] = partner.phone
+            vals['partner_id'] = partner.id
+            vals['name'] = partner.name
+            vals['email'] = partner.email
+            vals['phone'] = partner.phone
             Registration.create(vals)
             return 'created'
 
         # Check if changed
         if registration.ms_version == sp_etag:
-            return 'skipped'
+            if debug_id: _logger.info(f"DEBUG {sp_id}: Version unchanged, skipping (existing)")
+            return 'unchanged'  # Different from 'skipped' (no partner)
 
-        # Update existing
+        if debug_id: _logger.info(f"DEBUG {sp_id}: Version changed, updating")
+
+        # Update existing registration
+        # Update partner info if partner found (may fill in previously missing data)
+        if partner and not registration.partner_id:
+            vals['partner_id'] = partner.id
+            vals['name'] = partner.name
+            vals['email'] = partner.email
+            vals['phone'] = partner.phone
+        
         vals['ms_version'] = sp_etag
-        registration.write(vals)
+        registration.with_context(
+            mail_create_nosubscribe=True,
+            mail_notrack=True,
+            tracking_disable=True,
+        ).write(vals)
         return 'updated'
 
     def _map_registration_from_sp(self, company, sp_fields, event, partner):

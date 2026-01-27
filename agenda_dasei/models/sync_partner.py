@@ -18,7 +18,7 @@ class AgendaSyncPartner(models.AbstractModel):
     _inherit = 'crearis.agenda.sync'
 
     def sync_all(self, company):
-        """Extend sync_all to include partner sync"""
+        """Extend sync_all to include partner sync and registration sync"""
         result = super().sync_all(company)
 
         # Sync contacts → partners
@@ -36,6 +36,14 @@ class AgendaSyncPartner(models.AbstractModel):
 
         except Exception as e:
             _logger.exception(f"Partner sync failed: {e}")
+
+        # Sync event registrations (plan_veranstaltungsteilnehmer)
+        try:
+            reg_stats = self.sync_registrations(company)
+            result['registrations'] = reg_stats.get('synced', 0)
+            _logger.info(f"Registrations: {reg_stats}")
+        except Exception as e:
+            _logger.exception(f"Registration sync failed: {e}")
 
         return result
 
@@ -180,18 +188,23 @@ class AgendaSyncPartner(models.AbstractModel):
     def _build_participant_kurs_map(self, company):
         """Build mapping of participant contact_id → highest kurs_code.
         
-        This combines:
-        1. Kurs code map: product contact_id → kurs_code (from contacts with '_' prefix)
-        2. Kursteilnehmer: participant contact_id → KursLookupId
+        Chain: kursteilnehmer.KursLookupId → plan_kurse.kursverlauf_id → contacts._M18... → kurs_code
         
         Returns dict: participant_contact_id → kurs_code (e.g., '563' → 'M17')
         """
-        # First build kurs code map from product contacts
-        kurs_code_map = self._build_kurs_code_map(company)
-        if not kurs_code_map:
+        # Step 1: Build contact_id → kurs_code map from product contacts (with '_' prefix)
+        contact_kurs_map = self._build_kurs_code_map(company)
+        if not contact_kurs_map:
+            _logger.warning("No kurs code map built from contacts")
             return {}
         
-        # Then evaluate kursteilnehmer to map participants → kurs codes
+        # Step 2: Build kurs_id → contact_id map from plan_kurse via kursverlauf_id
+        kurs_to_contact_map = self._build_kurs_to_contact_map(company)
+        if not kurs_to_contact_map:
+            _logger.warning("No kurs_to_contact map built from plan_kurse")
+            return {}
+        
+        # Step 3: Evaluate kursteilnehmer to map participants → kurs codes
         list_guid = company.ms_list_kursteilnehmer
         if not list_guid:
             return {}
@@ -252,13 +265,19 @@ class AgendaSyncPartner(models.AbstractModel):
                 debug_stats['no_kurs'] += 1
                 continue
 
-            # Resolve KursLookupId to actual Kurs code
-            kurs_code = kurs_code_map.get(str(kurs_lookup_id))
+            # Two-step lookup: KursLookupId → plan_kurse.kursverlauf_id → contact kurs_code
+            contact_id_for_kurs = kurs_to_contact_map.get(str(kurs_lookup_id))
+            if not contact_id_for_kurs:
+                debug_stats['kurs_not_found'] += 1
+                if debug_stats['kurs_not_found'] <= 5:
+                    _logger.info(f"KursLookupId {kurs_lookup_id} not found in kurs_to_contact_map (participant {contact_id})")
+                continue
+            
+            kurs_code = contact_kurs_map.get(contact_id_for_kurs)
             if not kurs_code:
                 debug_stats['kurs_not_found'] += 1
-                # Log first few not-found for debugging
                 if debug_stats['kurs_not_found'] <= 5:
-                    _logger.info(f"KursLookupId {kurs_lookup_id} not found in kurs_code_map (contact {contact_id})")
+                    _logger.info(f"Contact {contact_id_for_kurs} (from kurs {kurs_lookup_id}) not found in contact_kurs_map")
                 continue
             
             debug_stats['matched'] += 1
@@ -275,11 +294,57 @@ class AgendaSyncPartner(models.AbstractModel):
                     participant_map[contact_id_str] = (kurs_code, priority)
 
         _logger.info(f"Kursteilnehmer debug: {debug_stats}")
-        _logger.info(f"Valid-status KursLookupIds (unique): {sorted(valid_kurs_ids)}")
-        _logger.info(f"Kurs code map keys: {sorted(kurs_code_map.keys())}")
+        _logger.info(f"Valid-status KursLookupIds (unique): {sorted(valid_kurs_ids)[:20]}...")
+        _logger.info(f"Kurs-to-contact map keys (plan_kurse IDs): {sorted(kurs_to_contact_map.keys())[:20]}...")
+        _logger.info(f"Contact-kurs map keys (contact IDs): {sorted(contact_kurs_map.keys())[:20]}...")
         
         # Return just the kurs codes (without priorities)
         return {cid: kurs for cid, (kurs, _) in participant_map.items()}
+
+    def _build_kurs_to_contact_map(self, company):
+        """Build mapping of plan_kurse IDs → contact IDs.
+        
+        HARDCODED until July 31, 2026 - SharePoint kursverlauf_id field not working.
+        TODO: Replace with dynamic lookup once SharePoint field is fixed (post Feb 1st).
+        
+        Returns dict: kurs_id → contact_id (e.g., '119' → '477')
+        """
+        # Hardcoded mapping: kurs_id → contact_id
+        # See chat/2026-01-26-kursteilnehmer_mapping_summary.md for details
+        kurs_to_contact = {
+            # M16 - Tageskurs München (variants M16E, M16T)
+            '119': '477', '100': '477', '120': '477',
+            # M17 - Tageskurs München
+            '124': '533', '110': '533', '125': '533',
+            # M18 - Tageskurs München  
+            '130': '534', '111': '534', '131': '534',
+            # N16 - Tageskurs Nürnberg
+            '101': '478',
+            # N17 - Tageskurs Nürnberg
+            '122': '535',
+            # N18 - Tageskurs Nürnberg
+            '127': '536',
+            # M16B - Blockprogramm München
+            '118': '403',
+            # M17B - Blockprogramm München
+            '123': '529',
+            # M18B - Blockprogramm München
+            '129': '530',
+            # N16B - Blockprogramm Nürnberg
+            '121': '329',
+            # N17B - Blockprogramm Nürnberg
+            '126': '531',
+            # N18B - Blockprogramm Nürnberg
+            '132': '532',
+            # Z15R - Profil ZR 2026-2028
+            '115': '512',
+            # Z15T - Profil ZT 2026-2028
+            '116': '550',
+            # Z15 (112) - missing contact_id, TODO: create SP product entry
+        }
+        
+        _logger.info(f"Using hardcoded kurs→contact map with {len(kurs_to_contact)} entries")
+        return kurs_to_contact
 
     def _build_kurs_code_map(self, company):
         """Build mapping of SharePoint contact IDs → Kurs codes.

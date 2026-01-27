@@ -21,6 +21,25 @@ REGISTRATION_STATE_SYSREG = {
 class EventRegistration(models.Model):
     _inherit = 'event.registration'
 
+    # SharePoint sync fields
+    ms_id = fields.Char(
+        string='SharePoint ID',
+        index=True,
+        copy=False,
+        help='SharePoint plan_veranstaltungsteilnehmer ID'
+    )
+    ms_version = fields.Char(
+        string='SharePoint Version',
+        copy=False,
+        help='SharePoint @odata.etag for change detection'
+    )
+    ms_synced = fields.Boolean(
+        string='Synced from SharePoint',
+        default=False,
+        copy=False,
+        help='True if this registration was created/updated by SharePoint sync'
+    )
+
     # Override state field with extended selection
     # Base Odoo states: draft, open, done, cancel
     # New states: new, demo, no_show, partial

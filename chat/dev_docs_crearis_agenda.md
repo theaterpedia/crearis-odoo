@@ -73,11 +73,24 @@ ms_agenda_sync_level = fields.Selection([
 ])
 ```
 
-| Level | SP→Odoo | Odoo→SP | Conflict Winner |
-|-------|---------|---------|-----------------|
-| init | ✅ Full import | ❌ Write-back IDs only | SharePoint |
-| slave | ✅ Updates | ❌ Write-back IDs only | SharePoint |
-| master | ✅ Updates | ✅ Full push | Odoo |
+| Level | SP→Odoo | Odoo→SP (o* fields) | Conflict Winner |
+|-------|---------|---------------------|-----------------|
+| init | ✅ Full import | ✅ Write-back if empty | SharePoint |
+| slave | ✅ Updates | ❌ No content write-back | SharePoint |
+| master | ✅ Updates | ✅ Full push (overwrites) | Odoo |
+
+**Write-back fields (o* = Odoo-owned on SharePoint):**
+- `oheading` ← `event.name` (format: `overline **headline**`)
+- `oteasertext` ← `event.teasertext`
+- `omd` ← `event.md`
+- `oschedule` ← `event.schedule`
+- `oversion` ← `event.version` (echo detection)
+- `oevent_id` ← `event.id`
+
+**Init mode behavior:**
+- Creates new records in Odoo from SharePoint
+- Writes back o* fields **only if empty** on SharePoint (non-destructive)
+- To force full re-init: manually clear o* fields on SharePoint, then sync
 
 ---
 

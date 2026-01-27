@@ -41,6 +41,23 @@ class AgendaSyncEngine(models.AbstractModel):
     _name = 'crearis.agenda.sync'
     _description = 'SharePoint Agenda Sync Engine'
 
+    """
+    Sync Levels:
+    - init:   SP → Odoo import. Write-back o* fields ONLY if empty on SP (non-destructive).
+    - slave:  SP drives updates. Conflicts: SP wins.
+    - master: Odoo drives updates. Conflicts: Odoo wins. Write-back overwrites SP o* fields.
+    
+    Write-back fields (o* = Odoo-owned on SharePoint):
+    - oheading:    event.name (format: "overline **headline**")
+    - oteasertext: event.teasertext
+    - omd:         event.md (markdown content)
+    - oschedule:   event.schedule
+    - oversion:    event.version (for echo detection)
+    - oevent_id:   event.id (Odoo record ID)
+    
+    To force re-init: clear o* fields on SharePoint manually, then run sync.
+    """
+
     # Token cache (in-memory, per-company)
     _token_cache = {}
 
@@ -288,12 +305,17 @@ class AgendaSyncEngine(models.AbstractModel):
             result = self._sync_event(company, sp_item)
             stats['synced'] += 1
             stats[result] += 1
+            
+            # Progress logging every 100 events
+            if stats['synced'] % 100 == 0:
+                _logger.info(f"Events progress: {stats['synced']} synced, {stats['updated']} updated, {stats['created']} created")
 
         return stats
 
     def _sync_event(self, company, sp_item):
         """Sync a single event with version control"""
         Event = self.env['event.event']
+        EventType = self.env['event.type']
 
         sp_id = sp_item['id']
         sp_etag = sp_item.get('@odata.etag', '')
@@ -305,6 +327,21 @@ class AgendaSyncEngine(models.AbstractModel):
         if not sp_fields.get('Feld17'):
             _logger.debug("Skipping event %s - no Start date (Feld17)", sp_id)
             return 'skipped'
+
+        # Skip "heading" events - these are report section headers, not real events
+        # Rule: event_type.name matching pattern *_ (letter + underscore) are headings
+        # e.g., d_ = heading, d1 = real event
+        type_code = sp_fields.get('VeranstaltungsCodeLookupId')
+        if type_code:
+            event_type = EventType.search([
+                ('ms_id', '=', str(type_code)),
+                ('company_id', '=', company.id),
+            ], limit=1)
+            if event_type and event_type.name and len(event_type.name) >= 2:
+                # Check if name matches heading pattern: letter + underscore (e.g., d_, m_)
+                if event_type.name[1:2] == '_':
+                    _logger.debug("Skipping heading event %s - event_type '%s' is a report header", sp_id, event_type.name)
+                    return 'skipped'
 
         # Find existing Odoo record
         odoo_record = Event.search([('ms_id', '=', sp_id)], limit=1)
@@ -322,11 +359,18 @@ class AgendaSyncEngine(models.AbstractModel):
             # Apply template defaults if event type has template parent
             self._apply_event_template(odoo_record)
 
-            # Write back oevent_id
-            self._patch_list_item(company, company.ms_list_veranstaltungen, sp_id, {
+            # Write back oevent_id + content fields (if empty on SP)
+            # Init mode: only populate empty o* fields, never overwrite existing
+            writeback_data = {
                 'oevent_id': odoo_record.id,
                 'oversion': odoo_record.version,
-            })
+            }
+            # Add content fields only if SP field is empty
+            # DISABLED: SP fields broken - waiting for MS Support
+            # if not sp_fields.get('oheading'):
+            #     writeback_data['oheading'] = odoo_record.name or ''
+            
+            self._patch_list_item(company, company.ms_list_veranstaltungen, sp_id, writeback_data)
             return 'created'
 
         # === ECHO DETECTION ===
@@ -336,11 +380,17 @@ class AgendaSyncEngine(models.AbstractModel):
                 odoo_record.with_context(skip_version_increment=True).write({
                     'ms_version': sp_etag
                 })
-            return 'skipped'
+            # In dev mode, still force update for testing
+            if not company.ms_dev_mode:
+                return 'skipped'
 
         # === CHANGE DETECTION ===
         sp_changed = (odoo_record.ms_version != sp_etag)
         odoo_changed = (odoo_record.version > (odoo_record.ms_pushed_version or 0))
+
+        # Dev mode: always force update for testing
+        if company.ms_dev_mode and sync_level == 'init':
+            return self._import_event_from_sp(company, sp_item, odoo_record)
 
         if not sp_changed and not odoo_changed:
             return 'skipped'
@@ -362,6 +412,22 @@ class AgendaSyncEngine(models.AbstractModel):
 
         return 'skipped'
 
+    def _writeback_empty_ofields(self, company, sp_item, odoo_record, sp_fields):
+        """Write back empty o* fields to SharePoint (init mode only)"""
+        writeback_data = {}
+        if not sp_fields.get('oheading'):
+            writeback_data['oheading'] = odoo_record.name or ''
+        if not sp_fields.get('oteasertext'):
+            writeback_data['oteasertext'] = odoo_record.teasertext or ''
+        if not sp_fields.get('omd'):
+            writeback_data['omd'] = odoo_record.md or ''
+        if not sp_fields.get('oschedule'):
+            writeback_data['oschedule'] = odoo_record.schedule or ''
+        
+        if writeback_data:
+            _logger.info(f"Init write-back for event {odoo_record.id}: {list(writeback_data.keys())}")
+            self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], writeback_data)
+
     def _import_event_from_sp(self, company, sp_item, odoo_record):
         """Import SharePoint changes to Odoo event"""
         sp_fields = sp_item.get('fields', {})
@@ -373,10 +439,18 @@ class AgendaSyncEngine(models.AbstractModel):
         # Write with de_DE language context for translated fields
         odoo_record.with_context(lang='de_DE').write(vals)
 
-        # Push oversion back to prevent re-import loop
-        self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], {
+        # Init mode: write back empty o* fields on SP
+        sync_level = company.ms_agenda_sync_level or 'init'
+        writeback_data = {
             'oversion': odoo_record.version,
-        })
+        }
+        # DISABLED: SP fields broken - waiting for MS Support
+        # if sync_level == 'init':
+        #     # Add content fields only if SP field is empty
+        #     if not sp_fields.get('oheading'):
+        #         writeback_data['oheading'] = odoo_record.name or ''
+        
+        self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], writeback_data)
 
         # Update pushed version
         odoo_record.with_context(skip_version_increment=True).write({
@@ -498,12 +572,29 @@ class AgendaSyncEngine(models.AbstractModel):
                 ], limit=1)
                 if stage:
                     stage_id = stage.id
+                else:
+                    _logger.warning("No stage found with sequence %s for StatusLookupId %s", stage_sysreg, status_id)
+            else:
+                _logger.debug("No sysreg mapping for StatusLookupId %s", status_id)
+
+        # Resolve user_id from Hauptreferent (if dasei.referent.sync is available)
+        # SharePoint internal name: HauptreferentLookupId
+        user_id = False
+        hauptreferent_id = sp_fields.get('HauptreferentLookupId')
+        if hauptreferent_id:
+            try:
+                referent_sync = self.env['dasei.referent.sync']
+                user_id = referent_sync.get_referent_user_id(company, hauptreferent_id)
+            except KeyError:
+                # dasei.referent.sync not installed (agenda_dasei not loaded)
+                pass
 
         # Return plain strings - caller uses with_context(lang='de_DE')
         return {
             'name': name,
             'event_type_id': event_type.id if event_type else False,
             'stage_id': stage_id,
+            'user_id': user_id,
             'date_begin': date_begin,
             'date_end': date_end,
             'teasertext': teasertext,

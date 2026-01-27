@@ -51,8 +51,17 @@
                         <group>
                             <field name="ms_list_contacts"/>
                             <field name="ms_list_kursteilnehmer"/>
+                            <field name="ms_list_kurse"/>
                             <field name="ms_list_veranstaltungsteilnehmer"/>
                         </group>
+                    </group>
+
+                    <group string="Sync Filters" attrs="{'invisible': [('ms_agenda_configured', '=', False)]}">
+                        <field name="ms_referenten_filter" placeholder="e.g., 1,2,3,11,16,18,28,29"/>
+                    </group>
+
+                    <group string="Development" attrs="{'invisible': [('ms_agenda_configured', '=', False)]}">
+                        <field name="ms_dev_mode"/>
                     </group>
                 </page>
             </xpath>
