@@ -141,12 +141,37 @@ This is a focused **3-day design sprint** following the main development sprint.
 
 ### Fork B: Content Work
 
+> See [Content Dropbox](#content-dropbox-fork-b) below for quick capture
+
 | Task | Description | Status |
 |------|-------------|--------|
 | FB1 | Event descriptions/teasertext | 🔴 |
 | FB2 | Module A-D product descriptions | 🔴 |
 | FB3 | Welcome/info pages content | 🔴 |
 | FB4 | Email templates | 🔴 |
+
+---
+
+## Content Dropbox (Fork B)
+
+> **Quick capture** for content tasks as they occur. These drive the design sprint.
+> Originated from: [current sprint Phase 9](2026-01-26_sprint_agenda_dasei.md#phase-9-fork-b--content-work-feb-3-7)
+
+### Pending Content Tasks
+
+| # | Task | Priority | Notes |
+|---|------|----------|-------|
+| 1 | Event descriptions/teasertext | 🔴 High | Sync from SP, verify quality |
+| 2 | Module A-D product descriptions | 🔴 High | Customer-facing |
+| 3 | Welcome/info pages | 🟡 Medium | dasei1/dasei2 landing |
+| 4 | Email templates | 🟡 Medium | Registration confirmations |
+| 5 | _add as they occur..._ | | |
+
+### Content Notes
+
+_Quick notes for content decisions:_
+
+- ...
 
 ---
 

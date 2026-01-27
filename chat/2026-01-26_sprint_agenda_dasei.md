@@ -36,7 +36,7 @@
 │  WEEK 2: FEB 3-7 (Two Parallel Forks)                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  FORK A: GraphQL → VueJS exploration                                        │
-│  FORK B: Content work (meaningful interactions)                             │
+│  FORK B: Content work → see next sprint                                     │
 │                                                                              │
 │  Decision: full-odoo vs partly-vuejs vs major-vuejs                         │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -121,40 +121,44 @@
 
 ### Phase 7: Fork Preparation (FRI JAN 31)
 
-- [ ] **S21**: Document current state for fork work
-- [ ] **S22**: Identify GraphQL schema gaps
-- [ ] **S23**: List content work priorities
-- [ ] **S24**: 🔴 **REVIEW & DEEPEN DOCS** — Before Fork starts!
+> **Core work**: GraphQL must reflect all crearis/agenda_dasei changes before fork
+
+- [ ] **S21**: GraphQL schema audit — verify event packages, stages, states exposed
+- [ ] **S22**: Add missing queries/mutations for new fields (cid, slug, sysreg)
+- [ ] **S23**: Test GraphQL responses match Odoo data
+- [ ] **S24**: Document current state for fork work
+- [ ] **S25**: 🔴 **REVIEW & DEEPEN DOCS** — Before Fork starts!
   - Review [dev_docs_quick_reference.md](./dev_docs_quick_reference.md)
   - Add code snippets, edge cases
   - Validate against actual implementation
   - Fill in DOC-7, DOC-9, DOC-10 (SharePoint schemas)
 
-### Phase 8: Fork A — GraphQL/VueJS Exploration (FEB 3-7)
+### Phase 8: Fork A — VueJS Exploration (FEB 3-7)
 
-> **Goal**: Evaluate full-odoo vs partly-vuejs vs major-vuejs
+> **Goal**: Evaluate full-odoo vs partly-vuejs vs major-vuejs  
+> **Prerequisite**: GraphQL API consistent (Phase 7)
 
-- [ ] **FA1**: Review graphql_theaterpedia current schema
-- [ ] **FA2**: Add event package queries to schema
-- [ ] **FA3**: Test with Vue client prototype
+- [ ] **FA1**: Review graphql_theaterpedia current schema completeness
+- [ ] **FA2**: Test event package queries with Vue client prototype
+- [ ] **FA3**: Evaluate component architecture (Odoo widgets vs Vue components)
 - [ ] **FA4**: Document complexity vs benefit analysis
 - [ ] **FA5**: Architecture decision recommendation
 
 ### Phase 9: Fork B — Content Work (FEB 3-7)
 
-> **Goal**: Make "technically running" deliver meaningful interactions
+> **Note**: Content work drives the design sprint — tasks tracked in [next sprint's Content Dropbox](2026-02-08_sprint_dasei_launch.md#content-dropbox-fork-b)
 
+Seed tasks (move to dropbox when ready):
 - [ ] **FB1**: Event descriptions/teasertext review
 - [ ] **FB2**: Module A-D product descriptions
 - [ ] **FB3**: Welcome/info pages content
 - [ ] **FB4**: Email templates for registrations
-- [ ] **FB5**: Git commit (content batch)
 
 ### Phase 10: Sprint Wrap-up (FEB 7)
 
-- [ ] **S24**: Final dev-docs update
-- [ ] **S25**: Prepare handoff to Design Sprint
-- [ ] **S26**: Git commit (sprint final)
+- [ ] **S26**: Final dev-docs update
+- [ ] **S27**: Prepare handoff to Design Sprint
+- [ ] **S28**: Git commit (sprint final)
 
 ---
 
@@ -242,6 +246,26 @@
 ---
 
 ## Notes
+
+### Broker Architecture
+
+Odoo acts as a **broker** that normalizes heterogeneous data sources into a standardized API:
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  DASEi SP       │────▶│                 │────▶│  VueJS Front    │
+│  (semi-std)     │     │     ODOO        │     │  (primary)      │
+├─────────────────┤     │     BROKER      │     ├─────────────────┤
+│  Future sources │────▶│                 │────▶│  Obsidian.md    │
+│  (various)      │     │  GraphQL API    │     │  (MAY-JUL 2026) │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+**Input**: Semi-standardized data (SharePoint lists, etc.)  
+**Output**: Fully standardized Theaterpädagogik-Nodes network  
+**Clients**: VueJS frontend (primary), Obsidian plugin (planned MAY-JUL 2026)
+
+---
 
 - Sprint designed for iterative development with frequent commits
 - Action plans contain the detailed task breakdowns
