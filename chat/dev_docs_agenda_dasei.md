@@ -1,7 +1,8 @@
 # agenda_dasei - Developer Documentation
 
-*Module Version: 16.0.1.0.0*
-*Created: 2025-12-22*
+*Module Version: 16.0.1.2.0*  
+*Created: 2025-12-22*  
+*Last Updated: 2026-01-27*
 
 ---
 
@@ -12,29 +13,39 @@
 ## Dependencies
 
 ```python
-'depends': ['crearis_agenda']
+'depends': [
+    'crearis_agenda',
+    'crearis_event_package',  # For event package products
+    'product',
+    'event',
+]
 ```
 
-Transitive: `crearis`, `event`
+Transitive: `crearis`, `event_sale`, `sale`
 
 ## Architecture
 
 ```
 agenda_dasei/
+├── __init__.py
+├── __manifest__.py
+├── hooks.py                        # post_init_hook, website creation, XMLId helpers
 ├── models/
-│   ├── res_partner.py          # Partner fields + domaincode computation
-│   ├── sync_partner.py         # Contact sync (inherits crearis.agenda.sync)
-│   ├── course.py               # dasei.course model (D3)
-│   ├── course_participation.py # dasei.course.participation model
-│   ├── sync_kurse.py           # Course sync from plan_kurse (D3)
-│   └── sync_registrations.py   # Registration sync from plan_veranstaltungsteilnehmer (D4)
+│   ├── res_partner.py              # Partner fields + domaincode computation
+│   ├── sync_partner.py             # Contact sync (inherits crearis.agenda.sync)
+│   ├── course.py                   # dasei.course model (D3)
+│   ├── course_participation.py     # dasei.course.participation model
+│   ├── sync_kurse.py               # Course sync from plan_kurse (D3)
+│   └── sync_registrations.py       # Registration sync (D4)
 ├── views/
-│   ├── agenda_dasei_menu.xml   # DASEi submenu structure (DA1)
-│   ├── res_partner_views.xml   # DASEi tab + search filters
-│   ├── course_views.xml        # Course model views
+│   ├── agenda_dasei_menu.xml       # DASEi submenu structure (DA1)
+│   ├── res_partner_views.xml       # DASEi tab + search filters
+│   ├── course_views.xml            # Course model views
 │   └── course_participation_views.xml
 ├── data/
-│   └── ir_cron_data.xml        # Cron jobs for course/registration sync (D6)
+│   ├── ir_cron_data.xml            # Cron jobs for course/registration sync (D6)
+│   ├── website_data.xml            # Server actions for website management
+│   └── product_template_data.xml   # Grundkurs module products (A, B, C, D)
 └── security/
     └── ir.model.access.csv
 ```
@@ -443,4 +454,113 @@ print(partner.dasei_domaincode)  # Should be 'dasei3' (higher priority)
 
 ---
 
-*Last updated: 2026-01-26*
+## Post-Init Hook & Website Management
+
+### hooks.py
+
+The module uses a `post_init_hook` to automatically create DASEi websites on installation:
+
+```python
+# In __manifest__.py
+'post_init_hook': 'post_init_hook',
+```
+
+### DASEi Website Creation
+
+```python
+DASEI_DOMAIN_CODES = {
+    'dasei0': {'name': 'DASEi Quick Entry', 'sequence': 100},
+    'dasei1': {'name': 'DASEi Einstiege', 'sequence': 101},
+    'dasei2': {'name': 'DASEi Grundstufe', 'sequence': 102},
+    'dasei3': {'name': 'DASEi Aufbaustufe', 'sequence': 103},
+}
+```
+
+On module install, `_check_and_create_dasei_websites()` creates missing websites and their XMLIds.
+
+### Utility Functions
+
+| Function | Purpose |
+|----------|--------|
+| `check_dasei_websites(env)` | Check status, optionally raise error |
+| `create_dasei_websites(env, company)` | Manually create missing websites |
+| `ensure_event_type_xmlids(env)` | Create XMLIds for synced event types |
+
+### Shell Usage
+
+```python
+# Check website status
+from odoo.addons.agenda_dasei.hooks import check_dasei_websites
+check_dasei_websites(env)
+
+# Create XMLIds for event types (after SharePoint sync)
+from odoo.addons.agenda_dasei.hooks import ensure_event_type_xmlids
+ensure_event_type_xmlids(env)
+```
+
+---
+
+## Event Package Products (Grundkurs)
+
+The module creates 4 product templates for the DASEi Grundkurs program, each linked to specific event types via `crearis_event_package`.
+
+### Product Templates (data/product_template_data.xml)
+
+| Product | XMLId | Domain | Event Types | Price |
+|---------|-------|--------|-------------|-------|
+| Modul A: Einstiege | `product_modul_a` | dasei1 | A0-A5 | €1,100 |
+| Modul B: Szenische Themenarbeit | `product_modul_b` | dasei2 | B1-B8 | €1,320 |
+| Modul C: Pädagogische Regie | `product_modul_c` | dasei2 | C0-C8 | €1,320 |
+| Modul D: Kolloquium & Projekt | `product_modul_d` | dasei2 | D0-D4 | €1,100 |
+
+### How It Works
+
+1. **Event types are synced** from SharePoint (via `crearis_agenda`)
+2. **XMLIds are created** by `ensure_event_type_xmlids()` during `post_init_hook`
+3. **Products reference** event types via XMLIds: `ref('agenda_dasei.event_type_a1')`
+4. **Products are linked** to websites via `website_id` field
+
+### Example Product Definition
+
+```xml
+<record id="product_modul_a" model="product.template">
+    <field name="name">Modul A: Einstiege in's Theaterspiel</field>
+    <field name="detailed_type">event_package</field>
+    <field name="list_price">1100.00</field>
+    <field name="website_id" ref="agenda_dasei.website_dasei1"/>
+    <field name="package_edition_code">M18E</field>
+    <field name="package_event_type_ids" eval="[(6, 0, [
+        ref('agenda_dasei.event_type_a0'),
+        ref('agenda_dasei.event_type_a1'),
+        ref('agenda_dasei.event_type_a2'),
+        ref('agenda_dasei.event_type_a3'),
+        ref('agenda_dasei.event_type_a4'),
+        ref('agenda_dasei.event_type_a5'),
+    ])]"/>
+</record>
+```
+
+### Event Type XMLId Pattern
+
+XMLIds are generated with pattern: `agenda_dasei.event_type_{lowercase_name}`
+
+| Event Type Name | XMLId |
+|-----------------|-------|
+| A1 | `agenda_dasei.event_type_a1` |
+| B2 | `agenda_dasei.event_type_b2` |
+| ME | `agenda_dasei.event_type_me` |
+
+---
+
+## Server Actions (website_data.xml)
+
+Two server actions are available from the Website list view:
+
+| Action | Purpose |
+|--------|--------|
+| Check DASEi Websites | Shows status of dasei0-3 websites |
+| Create Missing DASEi Websites | Creates any missing websites |
+
+---
+
+*Last updated: 2026-01-27*

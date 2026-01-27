@@ -3,7 +3,7 @@
 > **Module:** `crearis_event_package`  
 > **Version:** 16.0.1.0.0  
 > **Dependencies:** `crearis`, `event_sale`, `sale`  
-> **Last Updated:** 2026-01-25
+> **Last Updated:** 2026-01-27
 
 ---
 
@@ -367,7 +367,101 @@ To add SharePoint sync or DASEi-specific logic, create a separate module that de
 
 ---
 
+## Real-World Example: DASEi Grundkurs
+
+The `agenda_dasei` module implements event packages for the DASEi Theaterpädagogik training program.
+
+### Module Structure (4 Products)
+
+| Product | Domain | Event Types | Price |
+|---------|--------|-------------|-------|
+| Modul A: Einstiege | dasei1 | A0, A1, A2, A3, A4, A5 | €1,100 |
+| Modul B: Szenische Themenarbeit | dasei2 | B1-B8 | €1,320 |
+| Modul C: Pädagogische Regie | dasei2 | C0-C8 | €1,320 |
+| Modul D: Kolloquium & Projekt | dasei2 | D0-D4 | €1,100 |
+
+### Key Implementation Details
+
+1. **Event types are synced** from SharePoint via `crearis_agenda`
+2. **XMLIds are created dynamically** by `ensure_event_type_xmlids()` hook function
+3. **Products reference event types** via XMLIds in data XML:
+
+```xml
+<record id="product_modul_a" model="product.template">
+    <field name="name">Modul A: Einstiege in's Theaterspiel</field>
+    <field name="detailed_type">event_package</field>
+    <field name="list_price">1100.00</field>
+    <field name="website_id" ref="agenda_dasei.website_dasei1"/>
+    <field name="package_edition_code">M18E</field>
+    <field name="package_event_type_ids" eval="[(6, 0, [
+        ref('agenda_dasei.event_type_a0'),
+        ref('agenda_dasei.event_type_a1'),
+        ref('agenda_dasei.event_type_a2'),
+        ref('agenda_dasei.event_type_a3'),
+        ref('agenda_dasei.event_type_a4'),
+        ref('agenda_dasei.event_type_a5'),
+    ])]"/>
+</record>
+```
+
+### XMLId Pattern for Event Types
+
+The `agenda_dasei` module creates XMLIds for event types with pattern:
+
+```
+agenda_dasei.event_type_{lowercase_name}
+```
+
+Examples:
+- Event type "A1" → `agenda_dasei.event_type_a1`
+- Event type "ME" → `agenda_dasei.event_type_me`
+
+### Websites as Domain Codes
+
+Products are assigned to websites (domain codes) controlling visibility:
+
+| Website | Domain Code | Products |
+|---------|-------------|----------|
+| DASEi Einstiege | dasei1 | Modul A |
+| DASEi Grundstufe | dasei2 | Modul B, C, D |
+
+---
+
+## View Implementation Notes
+
+### Avoiding Duplicate Field Definitions
+
+**Problem:** Having the same field twice in a view (e.g., once as `many2many_tags`, once as `tree`) causes the frontend to merge field specifications incorrectly, resulting in empty tag labels.
+
+**Solution:** Use a single field definition with the appropriate mode:
+
+```xml
+<!-- CORRECT: Single field with tree mode -->
+<field name="package_event_type_ids" nolabel="1" mode="tree">
+    <tree editable="bottom" create="false" delete="true">
+        <field name="display_name" string="Event Type"/>
+        <field name="is_template_code" string="Template Code"/>
+        <field name="template_parent_id" string="Parent Category"/>
+    </tree>
+</field>
+
+<!-- WRONG: Two fields with same name -->
+<field name="package_event_type_ids" widget="many2many_tags"/>
+<field name="package_event_type_ids" mode="tree">...</field>
+```
+
+### Using display_name in Tree Views
+
+For related records in tree views, use `display_name` instead of `name` to ensure proper rendering:
+
+```xml
+<field name="display_name" string="Event Type"/>
+```
+
+---
+
 ## Related Documents
 
 - [2026-01-24-product_event_package_architecture.md](2026-01-24-product_event_package_architecture.md) - Architecture design
 - [grundkurs_pricing_report.md](grundkurs_pricing_report.md) - Business requirements
+- [dev_docs_agenda_dasei.md](dev_docs_agenda_dasei.md) - DASEi module documentation
