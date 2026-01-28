@@ -18,4 +18,5 @@ from . import event_registration
 from . import config_template
 # from . import event_workflow
 from . import res_config_settings
+from . import schedule_mixin
 

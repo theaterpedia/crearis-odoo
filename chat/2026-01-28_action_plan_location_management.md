@@ -197,6 +197,22 @@ Detect and exclude, then implement full sessions support in next sprint.
 - Multi-week workshops with specific dates
 - Recurring seminars
 
+### Phase 9: Schedule UI & Config Views
+
+**Context:** Views for managing schedule configuration and visualizing parsed schedules.
+
+- [ ] L30: Schedule Config View - Edit shortcodes, test parser (Settings → Technical)
+- [ ] L31: Event Schedule Tab - Display/edit schedule_raw with parsed preview
+- [ ] L32: Online Sessions View - List all online sessions across events
+- [ ] L33: Room support in shortcodes (`_VENUE:ROOM_` format)
+- [ ] L34: SharePoint write-back field `oschedule_data`
+
+### Phase 10: Conference Integration (Future)
+
+- [ ] L35: MS Teams adapter - acquire meeting links for online sessions
+- [ ] L36: Store conference URLs in session data
+- [ ] L37: Power Automate trigger on schedule changes
+
 ---
 
 ## Open Questions
