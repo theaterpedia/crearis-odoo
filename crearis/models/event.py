@@ -378,3 +378,26 @@ class EventEvent(models.Model):
                     ),
                 }
                 SessionLine.create(vals)
+
+    # ----------------------------------
+    # Kanban Actions
+    # ----------------------------------
+    
+    def action_show_template_info(self):
+        """
+        Dummy action for template code badge click in kanban view.
+        Shows info about the event template/type.
+        """
+        self.ensure_one()
+        template_name = self.event_type_id.name if self.event_type_id else 'Unknown'
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': f'Template: {template_name}',
+                'message': f'Event "{self.name}" uses template code "{template_name}". '
+                           f'Click on the event card to see full details.',
+                'type': 'info',
+                'sticky': False,
+            }
+        }

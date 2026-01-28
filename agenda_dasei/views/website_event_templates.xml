@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Copyright 2026 Theaterpedia E.V. / crearis.io -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<odoo>
+
+    <!-- ========================================================== -->
+    <!-- W3: DASEi Event Card Template                              -->
+    <!-- Overline + Headline format: "Kursbeschreibung **Kurstitel**" -->
+    <!-- ========================================================== -->
+
+    <!-- Helper template: Parse "overline **headline**" from event.name -->
+    <template id="dasei_event_heading" name="DASEi Event Heading">
+        <!--
+        Event name format: "Kursbeschreibung **Kurstitel**"
+        We parse into:
+          - overline: text before **
+          - headline: text inside **...**
+        Fallback: if no **, entire name is headline
+        -->
+        <t t-set="name_parts" t-value="(event.name or '').split('**')"/>
+        <t t-set="has_headline" t-value="len(name_parts) >= 3"/>
+        
+        <t t-if="has_headline">
+            <!-- Overline (smaller, above) -->
+            <span class="o_dasei_overline d-block text-muted small text-uppercase" t-out="name_parts[0].strip()"/>
+            <!-- Headline (main title) -->
+            <span class="o_dasei_headline fw-bold" t-out="name_parts[1].strip()"/>
+        </t>
+        <t t-else="">
+            <!-- No ** format, use entire name as headline -->
+            <span class="o_dasei_headline fw-bold" t-out="event.name"/>
+        </t>
+    </template>
+
+    <!-- Override event card in list view -->
+    <template id="dasei_event_card" inherit_id="website_event.events_list" name="DASEi Event Cards">
+        <!-- Replace the title section with our overline+headline -->
+        <xpath expr="//h5[hasclass('card-title')]" position="replace">
+            <div t-attf-class="card-title mt-2 mb-0 #{(not event.website_published) and 'text-danger'}">
+                <!-- Template code badge -->
+                <span t-if="event.event_type_id and event.use_template_codes" 
+                      class="badge bg-secondary me-2 float-end"
+                      t-out="event.event_type_id.name"/>
+                
+                <!-- Overline + Headline -->
+                <t t-call="agenda_dasei.dasei_event_heading"/>
+            </div>
+        </xpath>
+        
+        <!-- Add teasertext below date/location -->
+        <xpath expr="//div[hasclass('mt8')]" position="before">
+            <p t-if="event.teasertext" class="small text-muted mb-1 o_dasei_teasertext" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                <t t-out="event.teasertext"/>
+            </p>
+        </xpath>
+        
+        <!-- Add session count indicator for hybrid events -->
+        <xpath expr="//div[hasclass('mt8')]" position="inside">
+            <span t-if="event.has_online_sessions" class="badge bg-info ms-1">
+                <i class="fa fa-video-camera me-1"/>Online
+            </span>
+            <span t-if="event.session_count > 1" class="badge bg-light text-dark ms-1">
+                <t t-out="event.session_count"/> Sessions
+            </span>
+        </xpath>
+    </template>
+
+    <!-- ========================================================== -->
+    <!-- W4: DASEi Event Detail Page                                -->
+    <!-- Header with overline + headline + sessions table           -->
+    <!-- ========================================================== -->
+
+    <!-- Extend event detail layout -->
+    <template id="dasei_event_detail_header" inherit_id="website_event.layout" name="DASEi Event Header">
+        <!-- Insert header section at top of event page -->
+        <xpath expr="//div[@id='wrap']" position="inside">
+            <t t-set="name_parts" t-value="(event.name or '').split('**')"/>
+            <t t-set="has_headline" t-value="len(name_parts) >= 3"/>
+            
+            <section class="o_dasei_event_header bg-light py-4 border-bottom">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <!-- Template code badge -->
+                            <span t-if="event.event_type_id and event.use_template_codes" 
+                                  class="badge bg-secondary mb-2"
+                                  style="font-size: 1rem;">
+                                <t t-out="event.event_type_id.name"/>
+                            </span>
+                            
+                            <!-- Overline -->
+                            <p t-if="has_headline" class="text-muted mb-1 text-uppercase small">
+                                <t t-out="name_parts[0].strip()"/>
+                            </p>
+                            
+                            <!-- Headline -->
+                            <h1 class="mb-3">
+                                <t t-if="has_headline" t-out="name_parts[1].strip()"/>
+                                <t t-else="" t-out="event.name"/>
+                            </h1>
+                            
+                            <!-- Teasertext -->
+                            <p t-if="event.teasertext" class="lead text-muted">
+                                <t t-out="event.teasertext"/>
+                            </p>
+                            
+                            <!-- Quick info badges -->
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <span class="badge bg-primary">
+                                    <i class="fa fa-calendar me-1"/>
+                                    <t t-out="event.date_begin" t-options="{'widget': 'date'}"/>
+                                </span>
+                                <span t-if="event.address_id" class="badge bg-secondary">
+                                    <i class="fa fa-map-marker me-1"/>
+                                    <t t-out="event.address_id.city or event.address_id.name"/>
+                                </span>
+                                <span t-if="event.has_online_sessions" class="badge bg-info">
+                                    <i class="fa fa-video-camera me-1"/>Online Sessions
+                                </span>
+                                <span t-if="event.user_id" class="badge bg-light text-dark">
+                                    <i class="fa fa-user me-1"/>
+                                    <t t-out="event.user_id.name"/>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Right column: Quick stats -->
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted">Schedule Overview</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        <li t-if="event.session_count">
+                                            <strong><t t-out="event.session_count"/></strong> Sessions
+                                        </li>
+                                        <li t-if="event.total_hours">
+                                            <strong><t t-out="event.total_hours"/></strong> Total Hours
+                                        </li>
+                                        <li t-if="event.online_hours">
+                                            <i class="fa fa-video-camera text-info me-1"/>
+                                            <t t-out="event.online_hours"/> Online
+                                        </li>
+                                        <li t-if="event.venue_hours">
+                                            <i class="fa fa-building text-secondary me-1"/>
+                                            <t t-out="event.venue_hours"/> Venue
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </xpath>
+    </template>
+
+    <!-- ========================================================== -->
+    <!-- W4.2: Sessions Table for Event Detail                      -->
+    <!-- Shows session_line_ids in a clean table                    -->
+    <!-- ========================================================== -->
+
+    <template id="dasei_event_sessions_table" name="DASEi Sessions Table">
+        <section t-if="event.session_line_ids" class="o_dasei_sessions py-4">
+            <div class="container">
+                <h4 class="mb-3">
+                    <i class="fa fa-calendar-check-o me-2"/>Schedule
+                </h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th>Time</th>
+                                <th>Duration</th>
+                                <th>Type</th>
+                                <th>Location</th>
+                                <th t-if="event.has_online_sessions">Conference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="event.session_line_ids" t-as="session">
+                                <tr t-attf-class="#{session.type == 'online' and 'table-info' or ''}">
+                                    <td>
+                                        <t t-out="session.date" t-options="{'widget': 'date', 'format': 'dd.MM.yyyy'}"/>
+                                    </td>
+                                    <td><t t-out="session.day"/></td>
+                                    <td>
+                                        <t t-out="session.start"/> - <t t-out="session.end"/>
+                                    </td>
+                                    <td><t t-out="session.duration_h"/>h</td>
+                                    <td>
+                                        <span t-if="session.type == 'online'" class="badge bg-info">
+                                            <i class="fa fa-video-camera me-1"/>Online
+                                        </span>
+                                        <span t-elif="session.type == 'venue'" class="badge bg-secondary">
+                                            <i class="fa fa-building me-1"/>Venue
+                                        </span>
+                                        <span t-else="" class="badge bg-light text-dark">
+                                            <t t-out="session.type"/>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <t t-out="session.location_hint or '-'"/>
+                                    </td>
+                                    <td t-if="event.has_online_sessions">
+                                        <a t-if="session.conference_url" 
+                                           t-att-href="session.conference_url"
+                                           class="btn btn-sm btn-outline-primary"
+                                           target="_blank">
+                                            <i class="fa fa-external-link me-1"/>Join
+                                        </a>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                <td><strong><t t-out="event.total_hours"/>h</strong></td>
+                                <td colspan="3"/>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <!-- Add sessions table to event detail page -->
+    <template id="dasei_event_detail_sessions" inherit_id="website_event.layout" name="DASEi Sessions in Detail">
+        <xpath expr="//div[@id='oe_structure_website_event_layout_1']" position="before">
+            <t t-call="agenda_dasei.dasei_event_sessions_table"/>
+        </xpath>
+    </template>
+
+    <!-- ========================================================== -->
+    <!-- Package-Only Event Notice                                  -->
+    <!-- Shows when event.package_only = True                       -->
+    <!-- ========================================================== -->
+
+    <template id="dasei_package_only_notice" inherit_id="website_event.layout" name="Package Only Notice">
+        <xpath expr="//section[hasclass('o_dasei_event_header')]" position="inside">
+            <div t-if="event.package_only" class="alert alert-info mt-3 mb-0">
+                <i class="fa fa-info-circle me-2"/>
+                <strong>Part of a Course Package</strong>
+                <p class="mb-0 small">
+                    This event is only available as part of a training package. 
+                    Please check our course offerings to register.
+                </p>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- ========================================================== -->
+    <!-- DASEi Custom Styles                                        -->
+    <!-- ========================================================== -->
+
+    <template id="dasei_event_styles" inherit_id="website.assets_frontend" name="DASEi Event Styles">
+        <xpath expr="." position="inside">
+            <style>
+                /* DASEi Event Card Styles */
+                .o_dasei_overline {
+                    font-size: 0.75rem;
+                    letter-spacing: 0.05em;
+                }
+                .o_dasei_headline {
+                    font-size: 1.1rem;
+                    line-height: 1.3;
+                }
+                .o_dasei_teasertext {
+                    font-size: 0.875rem;
+                }
+                
+                /* Event Header */
+                .o_dasei_event_header {
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                }
+                
+                /* Sessions Table */
+                .o_dasei_sessions .table {
+                    font-size: 0.9rem;
+                }
+                .o_dasei_sessions .badge {
+                    font-weight: 500;
+                }
+            </style>
+        </xpath>
+    </template>
+
+</odoo>

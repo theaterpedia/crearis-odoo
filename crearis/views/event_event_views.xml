@@ -314,4 +314,85 @@
         </field>
     </record>
 
+    <!-- Kanban View Enhancements for crearis events -->
+    <record id="view_event_kanban_crearis" model="ir.ui.view">
+        <field name="name">event.event.kanban.crearis</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_kanban"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add additional fields to kanban -->
+            <xpath expr="//kanban/field[@name='user_id']" position="after">
+                <field name="use_template_codes"/>
+                <field name="event_type_id"/>
+                <field name="has_online_sessions"/>
+            </xpath>
+            
+            <!-- 1. Replace title with overline/headline parsing -->
+            <xpath expr="//div[hasclass('o_kanban_record_title') and hasclass('o_text_overflow')]" position="replace">
+                <div class="o_kanban_record_title">
+                    <!-- Parse name: "overline **headline**" format -->
+                    <t t-set="name_val" t-value="record.name.value"/>
+                    <t t-set="has_headline" t-value="name_val.indexOf('**') >= 0"/>
+                    
+                    <!-- If has ** pattern: overline (thin) + headline (bold) -->
+                    <t t-if="has_headline">
+                        <t t-set="parts" t-value="name_val.split('**')"/>
+                        <div t-if="parts[0]" 
+                             class="text-muted text-truncate" 
+                             style="font-weight: 400; font-size: 0.75rem; line-height: 1.2;"
+                             t-att-title="parts[0].trim()">
+                            <t t-esc="parts[0].trim()"/>
+                        </div>
+                        <div t-if="parts[1]" 
+                             class="fw-bold o_text_overflow" 
+                             style="font-size: 0.9rem; line-height: 1.3;"
+                             t-att-title="parts[1]">
+                            <t t-esc="parts[1]"/>
+                        </div>
+                    </t>
+                    <!-- No ** pattern: show as before -->
+                    <t t-else="">
+                        <div class="o_text_overflow fw-bold" style="font-size: 0.9rem;" t-att-title="record.name.value">
+                            <field name="name"/>
+                        </div>
+                    </t>
+                </div>
+            </xpath>
+            
+            <!-- 2. Replace location div (has d-flex class and contains fa-map-marker) with location + Online on same line -->
+            <xpath expr="//div[hasclass('col-9')]//div[hasclass('d-flex') and i[hasclass('fa-map-marker')]]" position="replace">
+                <div class="d-flex flex-wrap align-items-center" style="font-size: 0.85rem; gap: 0.25rem 0.75rem;">
+                    <!-- Location -->
+                    <span t-if="record.address_id.value" class="d-flex align-items-center text-muted">
+                        <i class="fa fa-map-marker me-1" title="Location"/>
+                        <span t-esc="record.address_id.value"/>
+                    </span>
+                    <!-- Online indicator on same line -->
+                    <span t-if="record.has_online_sessions.raw_value" class="d-flex align-items-center text-info">
+                        <i class="fa fa-video-camera me-1" title="Online Sessions"/>
+                        <span>Online</span>
+                    </span>
+                </div>
+            </xpath>
+            
+            <!-- 3. Scale down expected attendees -->
+            <xpath expr="//h5[hasclass('o_event_fontsize_11')]" position="attributes">
+                <attribute name="style">font-size: 0.85rem;</attribute>
+            </xpath>
+            
+            <!-- 4. Add responsible person below attendees -->
+            <xpath expr="//h5[hasclass('o_event_fontsize_11')]" position="after">
+                <div t-if="record.user_id.value" class="text-muted" style="font-size: 0.8rem;">
+                    <i class="fa fa-user-o me-1" title="Responsible"/>
+                    <span t-esc="record.user_id.value"/>
+                </div>
+            </xpath>
+            
+            <!-- WISHLIST: Template code badge in bottom-left - xpath not working reliably, deferred -->
+            <!-- See triage doc: chat/2026-01-28-triage_unresolved_items.md → Wishlist #1 -->
+            
+        </field>
+    </record>
+
 </odoo>
