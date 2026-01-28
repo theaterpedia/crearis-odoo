@@ -21,7 +21,13 @@ class ResPartner(models.Model):
     cid = fields.Char("Crearis ID", translate=False,compute=_compute_cid)
 
     is_location_provider = fields.Boolean(string='Has one or more phyiscal locations for creative work', default=False,
-        help="Check if the contact serves locations for cultural work: venue, co-working, spots in nature or city")  
+        help="Check if the contact serves locations for cultural work: venue, co-working, spots in nature or city")
+    
+    # Event location flag (synced from SharePoint plan_raeume via agenda_dasei)
+    is_event_location = fields.Boolean(
+        string="Event Location",
+        default=False,
+        help="Partner is an event venue/location. Set automatically by SharePoint sync or manually.")  
 
     def _default_category(self):
         return self.env['res.partner.category'].browse(self._context.get('category_id'))

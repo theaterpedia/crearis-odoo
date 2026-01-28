@@ -13,10 +13,10 @@ from . import domainuser
 from . import version
 from . import location
 from . import res_company
+from . import schedule_mixin  # Must be before event (provides event.schedule.mixin)
 from . import event
 from . import event_registration
 from . import config_template
 # from . import event_workflow
 from . import res_config_settings
-from . import schedule_mixin
 

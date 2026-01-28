@@ -77,6 +77,11 @@ class ResCompany(models.Model):
         inverse='_inverse_ms_list_seminarzeiten',
         string="List: Seminarzeiten"
     )
+    ms_list_raeume = fields.Char(
+        compute='_compute_ms_agenda_fields',
+        inverse='_inverse_ms_list_raeume',
+        string="List: Räume"
+    )
 
     # Referent filter: comma-separated list of plan_referenten IDs to sync
     # Empty = sync all, otherwise only sync these IDs (for performance)
@@ -110,6 +115,7 @@ class ResCompany(models.Model):
             'list_kurse': 'AA5F4A45-DB15-4588-BD12-4F38E99ACE0F',
             'list_veranstaltungsteilnehmer': 'C9E05737-4C47-4E0F-A6B6-C6D6F3FBE88D',
             'list_seminarzeiten': '6BBE92C5-82C5-40E7-8C5F-D6CB3018EC23',
+            'list_raeume': '705952ee-bc5e-476f-88ea-31d21d5d3f7d',
         }
 
     @api.depends('ms_agenda_api')
@@ -125,6 +131,7 @@ class ResCompany(models.Model):
             rec.ms_list_kurse = api.get('list_kurse', '')
             rec.ms_list_veranstaltungsteilnehmer = api.get('list_veranstaltungsteilnehmer', '')
             rec.ms_list_seminarzeiten = api.get('list_seminarzeiten', '')
+            rec.ms_list_raeume = api.get('list_raeume', '')
 
     def _inverse_ms_list_veranstaltungen(self):
         for rec in self:
@@ -178,6 +185,12 @@ class ResCompany(models.Model):
         for rec in self:
             api = dict(rec.ms_agenda_api or {})
             api['list_seminarzeiten'] = rec.ms_list_seminarzeiten
+            rec.ms_agenda_api = api
+
+    def _inverse_ms_list_raeume(self):
+        for rec in self:
+            api = dict(rec.ms_agenda_api or {})
+            api['list_raeume'] = rec.ms_list_raeume
             rec.ms_agenda_api = api
 
     @api.depends('ms_agenda_tenant_id', 'ms_agenda_client_id', 'ms_agenda_site_id')

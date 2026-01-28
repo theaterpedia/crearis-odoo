@@ -55,6 +55,7 @@ Features:
         'views/crearis_version_views.xml',
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
+        'views/event_schedule_views.xml',
         'views/event_type_views.xml',
     ],
     'assets': {

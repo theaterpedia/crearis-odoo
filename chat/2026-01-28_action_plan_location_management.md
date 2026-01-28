@@ -138,29 +138,29 @@ elif raum_id in ABSTRACT_TO_TAG:
 
 ### Phase 1: Data Model
 
-- [ ] L1: Add `sp_raum_id` field to `event.event`
-- [ ] L2: Add `is_event_location`, `sp_raum_id` to `res.partner`
-- [ ] L3: Install tags (run module update)
+- [x] L1: Add `sp_raum_id` field to `event.event`
+- [x] L2: Add `is_event_location`, `sp_raum_id` to `res.partner`
+- [x] L3: Install tags (run module update)
 
 ### Phase 2: Sync Engine
 
-- [ ] L4: Add `VENUE_IDS` and `ABSTRACT_TO_TAG` constants
-- [ ] L5: Update `_map_event_from_sp()` to set `sp_raum_id`
-- [ ] L6: Implement `_sync_event_location()` helper
-- [ ] L7: Add location tag logic (add tag, remove conflicting tags)
+- [x] L4: Add `VENUE_IDS` and `ABSTRACT_TO_TAG` constants
+- [x] L5: Update `_map_event_from_sp()` to set `sp_raum_id`
+- [x] L6: Implement `_sync_event_location()` helper
+- [x] L7: Add location tag logic (add tag, remove conflicting tags)
 
 ### Phase 3: Venue Sync
 
-- [ ] L8: Implement `sync_locations()` method for plan_raeume → res.partner
-- [ ] L9: Write-back `oaddress_id` to SP after partner creation
-- [ ] L10: Test full event sync with location data
+- [x] L8: Implement `sync_locations()` method for plan_raeume → res.partner
+- [x] L9: Write-back `oaddress_id` to SP after partner creation
+- [x] L10: Test full event sync with location data
 
 ### Phase 4: Schedule Data (JSONB)
 
-- [ ] L11: Add `schedule_data` JSONB field to `event.event`
-- [ ] L12: Add `online_provider` selection field to `res.company` (msteams, zoom, jitsi, etc.)
-- [ ] L13: Define `_online_` convention parser
-- [ ] L14: Implement schedule text → JSONB transformation
+- [x] L11: Add `schedule_data` JSONB field to `event.event`
+- [x] L12: Add `online_provider` selection field to `res.company` (msteams, zoom, jitsi, etc.)
+- [x] L13: Define `_online_` convention parser
+- [x] L14: Implement schedule text → JSONB transformation
 - [ ] L15: Write-back `schedule_data` to SP (new field `oschedule_data`)
 
 ### Phase 5: Online Sessions View
@@ -336,6 +336,19 @@ See: [2026-01-28_research_event_tracks_hybrid.md](2026-01-28_research_event_trac
 - Shows early thinking on tracks (1.5 years ago)
 - Not actively used
 - Will refactor against event_package product implementation
+
+---
+
+## Wishlist / Next Ideas
+
+Items parked for future sprints:
+
+| # | Item | Description | Effort | Notes |
+|---|------|-------------|--------|-------|
+| W1 | **Email-a-Report** | Booking overview PDF/email for location partners (6-18 months ahead) | ~3h | Eleanora requirement #4 |
+| W2 | **Email-a-Request** | Wizard for booking/alteration/cancellation requests | ~4h | Eleanora requirement #5 |
+| W3 | **Filter Presets** | "offene Tasks", "Stornierungen", by instructor | ~2h | Eleanora requirement #3 |
+| W4 | **Wizard instead of inline-edit** | 3-step wizard for event changes | ~4h | Eleanora requirement #2 |
 
 ---
 

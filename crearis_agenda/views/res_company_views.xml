@@ -47,6 +47,7 @@
                             <field name="ms_list_referenten"/>
                             <field name="ms_list_planungsstatus"/>
                             <field name="ms_list_seminarzeiten"/>
+                            <field name="ms_list_raeume"/>
                         </group>
                         <group>
                             <field name="ms_list_contacts"/>

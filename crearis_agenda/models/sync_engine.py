@@ -36,6 +36,23 @@ STATUS_TO_STAGE_SYSREG = {
     33: 4096,  # AKTUELL #USER#
 }
 
+# L4: Location sync constants
+# Physical venues → sync to res.partner with address data
+VENUE_IDS = {1, 3, 4, 6, 7, 8, 13, 16, 17, 18, 19, 20}
+
+# Abstract locations → set event tag, no partner sync
+# Maps raum_id → tag xmlid in agenda_dasei module
+ABSTRACT_TO_TAG = {
+    2: 'event_tag_tbd',              # Leer
+    5: 'event_tag_online',           # Web: Standard
+    9: 'event_tag_on_request_nbg',   # Nbg: Sonstige
+    10: 'event_tag_on_request_deu',  # DEU: Nachfrage
+    11: 'event_tag_on_request_bay',  # BAY: Nachfrage
+    12: 'event_tag_on_request_czb',  # CZB: Nachfrage
+    14: 'event_tag_tbd',             # -
+    15: 'event_tag_on_request_eu',   # EU
+}
+
 
 class AgendaSyncEngine(models.AbstractModel):
     _name = 'crearis.agenda.sync'
@@ -692,6 +709,9 @@ class AgendaSyncEngine(models.AbstractModel):
 
             # Apply template defaults if event type has template parent
             self._apply_event_template(odoo_record)
+            
+            # Parse schedule into schedule_data
+            self._parse_event_schedule(company, odoo_record)
 
             # Write back oevent_id + content fields (if empty on SP)
             # Init mode: only populate empty o* fields, never overwrite existing
@@ -751,8 +771,8 @@ class AgendaSyncEngine(models.AbstractModel):
         writeback_data = {}
         if not sp_fields.get('oheading'):
             writeback_data['oheading'] = odoo_record.name or ''
-        if not sp_fields.get('oteasertext'):
-            writeback_data['oteasertext'] = odoo_record.teasertext or ''
+        if not sp_fields.get('otesasertext'):
+            writeback_data['otesasertext'] = odoo_record.teasertext or ''  # SP field has typo
         if not sp_fields.get('omd'):
             writeback_data['omd'] = odoo_record.md or ''
         if not sp_fields.get('oschedule'):
@@ -772,6 +792,9 @@ class AgendaSyncEngine(models.AbstractModel):
 
         # Write with de_DE language context for translated fields
         odoo_record.with_context(lang='de_DE').write(vals)
+        
+        # Parse schedule into schedule_data if we have schedule text
+        self._parse_event_schedule(company, odoo_record)
 
         # Init mode: write back empty o* fields on SP
         sync_level = company.ms_agenda_sync_level or 'init'
@@ -792,6 +815,41 @@ class AgendaSyncEngine(models.AbstractModel):
         })
 
         return 'updated'
+    
+    def _parse_event_schedule(self, company, event):
+        """Parse schedule text into schedule_data JSONB.
+        
+        Uses ScheduleParser from crearis module with company-configured shortcodes.
+        """
+        if not event.schedule:
+            return
+        
+        try:
+            from odoo.addons.crearis.models.schedule_mixin import ScheduleParser
+            
+            # Get company shortcodes config
+            shortcodes = company.schedule_shortcodes or {'_online_': {'type': 'online', 'name': 'Online'}}
+            # Handle both 'de' and 'de_DE' formats
+            locale = 'de' if company.schedule_locale and company.schedule_locale.startswith('de') else 'en'
+            
+            parser = ScheduleParser(locale=locale, shortcodes=shortcodes)
+            
+            # Parse with event dates for weekday resolution
+            schedule_data = parser.parse(
+                event.schedule,
+                date_begin=event.date_begin,
+                date_end=event.date_end
+            )
+            
+            if schedule_data:
+                event.with_context(skip_version_increment=True).write({
+                    'schedule_data': schedule_data,
+                    'schedule_raw': event.schedule,
+                })
+                _logger.debug("Parsed schedule for event %s: %d sessions", 
+                             event.id, schedule_data.get('summary', {}).get('session_count', 0))
+        except Exception as e:
+            _logger.warning("Failed to parse schedule for event %s: %s", event.id, e)
 
     def _push_event_to_sp(self, company, odoo_record):
         """Push Odoo event changes to SharePoint"""
@@ -883,9 +941,9 @@ class AgendaSyncEngine(models.AbstractModel):
             name = sp_fields.get('Title', '')
 
         # Resolve teasertext:
-        # 1. If SP has oteasertext (written back from Odoo), use it
+        # 1. If SP has otesasertext (written back from Odoo), use it - note SP field has typo
         # 2. Else use template_teasertext from event_type
-        teasertext = sp_fields.get('oteasertext', '') or ''
+        teasertext = sp_fields.get('otesasertext', '') or ''
         if not teasertext and event_type and event_type.template_teasertext:
             # template_teasertext might be JSONB dict, extract de_DE or string value
             tt = event_type.template_teasertext
@@ -923,6 +981,10 @@ class AgendaSyncEngine(models.AbstractModel):
                 # dasei.referent.sync not installed (agenda_dasei not loaded)
                 pass
 
+        # L6: Resolve location from raum1LookupId
+        raum_id = sp_fields.get('raum1LookupId')
+        location_vals = self._sync_event_location(company, raum_id)
+
         # Return plain strings - caller uses with_context(lang='de_DE')
         return {
             'name': name,
@@ -937,7 +999,164 @@ class AgendaSyncEngine(models.AbstractModel):
             'cimg': sp_fields.get('cimg', ''),
             'units': sp_fields.get('UE', 0) or 0,
             'domain_code': website.id if website else False,
+            **location_vals,  # sp_raum_id, address_id, tag_ids
         }
+
+    def _sync_event_location(self, company, raum_id):
+        """L6-L7: Sync location from SharePoint raum1LookupId
+        
+        Type A (VENUE_IDS): Find/create res.partner with address data
+        Type B (ABSTRACT_TO_TAG): Set event tag, no partner
+        
+        Returns dict with:
+        - sp_raum_id: Always set if raum_id provided
+        - address_id: Partner ID for venues, False for abstract
+        - tag_ids: [(4, tag_id)] for abstract locations
+        """
+        if not raum_id:
+            return {'sp_raum_id': False}
+        
+        raum_id = int(raum_id)
+        vals = {'sp_raum_id': raum_id}
+        
+        if raum_id in VENUE_IDS:
+            # Type A: Physical venue → find/create partner
+            partner = self.env['res.partner'].search([
+                ('sp_raum_id', '=', raum_id),
+                ('is_event_location', '=', True),
+            ], limit=1)
+            
+            if not partner:
+                # Lazy create: fetch from SP and create partner
+                partner = self._create_location_partner(company, raum_id)
+            
+            if partner:
+                vals['address_id'] = partner.id
+                # Remove any abstract location tags
+                vals['tag_ids'] = self._get_remove_abstract_tags_commands()
+            else:
+                _logger.warning("Could not find/create partner for venue raum_id=%s", raum_id)
+                
+        elif raum_id in ABSTRACT_TO_TAG:
+            # Type B: Abstract location → add tag, clear address
+            tag_xmlid = ABSTRACT_TO_TAG[raum_id]
+            try:
+                tag = self.env.ref(f'agenda_dasei.{tag_xmlid}')
+                vals['address_id'] = False
+                vals['tag_ids'] = [(4, tag.id)]
+            except ValueError:
+                _logger.warning("Tag %s not found for raum_id=%s", tag_xmlid, raum_id)
+        else:
+            # Unknown raum_id - log warning
+            _logger.debug("Unknown raum_id=%s, not in VENUE_IDS or ABSTRACT_TO_TAG", raum_id)
+        
+        return vals
+
+    def _get_remove_abstract_tags_commands(self):
+        """Get ORM commands to remove all abstract location tags"""
+        commands = []
+        for tag_xmlid in set(ABSTRACT_TO_TAG.values()):
+            try:
+                tag = self.env.ref(f'agenda_dasei.{tag_xmlid}')
+                commands.append((3, tag.id))  # Remove tag
+            except ValueError:
+                pass
+        return commands
+
+    def _create_location_partner(self, company, raum_id):
+        """L8: Create res.partner from SharePoint plan_raeume
+        
+        SP fields → Odoo:
+        - Title → name
+        - Feld1 (Beschreibung) → comment  
+        - Feld10 (Ort) → city
+        - Feld11 (Adresse) → street
+        - PLZ → zip
+        """
+        if not company.ms_list_raeume:
+            _logger.warning("Company %s missing ms_list_raeume, cannot sync locations", company.name)
+            return False
+        
+        try:
+            result = self._graph_request(
+                company, 'GET',
+                f"/lists/{company.ms_list_raeume}/items/{raum_id}?$expand=fields"
+            )
+            fields = result.get('fields', {})
+            
+            partner_vals = {
+                'name': fields.get('Title') or f'Location {raum_id}',
+                'is_event_location': True,
+                'sp_raum_id': raum_id,
+                'comment': fields.get('Feld1') or '',
+                'city': fields.get('Feld10') or '',
+                'street': fields.get('Feld11') or '',
+                'zip': fields.get('PLZ') or '',
+                'company_id': company.id,
+            }
+            
+            partner = self.env['res.partner'].create(partner_vals)
+            _logger.info("Created location partner: %s (sp_raum_id=%s)", partner.name, raum_id)
+            
+            # L9: Write-back oaddress_id to SharePoint
+            self._write_back_location(company, raum_id, partner.id)
+            
+            return partner
+            
+        except Exception as e:
+            _logger.error("Failed to create location partner for raum_id=%s: %s", raum_id, e)
+            return False
+
+    def _write_back_location(self, company, raum_id, partner_id):
+        """L9: Write-back Odoo partner ID to SharePoint plan_raeume"""
+        if not company.ms_list_raeume:
+            return
+        
+        try:
+            self._patch_list_item(company, company.ms_list_raeume, raum_id, {
+                'oaddress_id': partner_id,
+            })
+            _logger.debug("Wrote back oaddress_id=%s for raum_id=%s", partner_id, raum_id)
+        except Exception as e:
+            _logger.warning("Failed to write-back oaddress_id for raum_id=%s: %s", raum_id, e)
+
+    def sync_locations(self, company, dry_run=False):
+        """L8: Sync all venue locations from SharePoint plan_raeume
+        
+        Pre-syncs all VENUE_IDS to res.partner before event sync.
+        Use this for eager sync instead of lazy create.
+        """
+        if not company.ms_list_raeume:
+            _logger.warning("Company %s missing ms_list_raeume", company.name)
+            return {'created': 0, 'updated': 0, 'skipped': 0}
+        
+        stats = {'created': 0, 'updated': 0, 'skipped': 0}
+        
+        for raum_id in VENUE_IDS:
+            existing = self.env['res.partner'].search([
+                ('sp_raum_id', '=', raum_id),
+                ('is_event_location', '=', True),
+            ], limit=1)
+            
+            if existing:
+                stats['skipped'] += 1
+                _logger.debug("Location partner already exists: %s (raum_id=%s)", existing.name, raum_id)
+                continue
+            
+            if dry_run:
+                _logger.info("[DRY RUN] Would create partner for raum_id=%s", raum_id)
+                stats['created'] += 1
+                continue
+            
+            partner = self._create_location_partner(company, raum_id)
+            if partner:
+                stats['created'] += 1
+            else:
+                _logger.warning("Failed to create partner for raum_id=%s", raum_id)
+        
+        _logger.info("sync_locations complete: created=%s, updated=%s, skipped=%s",
+                    stats['created'], stats['updated'], stats['skipped'])
+        return stats
 
     def _fetch_seminarplan_text(self, company, seminarplan_id):
         """Fetch schedule text from plan_seminarzeiten by ID
@@ -968,17 +1187,29 @@ class AgendaSyncEngine(models.AbstractModel):
         - oheading: from heading (de)
         - oteasertext: from teasertext (de) - note: SharePoint has typo 'otesasertext'
         - omd: from md (de)
-        - oschedule: from schedule (de)
+        - oschedule: from schedule_data JSONB (serialized as text)
         - oversion: from version
         - cimg: direct sync
         - domain_code: direct sync
         - oevent_id: Odoo event ID
         """
+        import json
+        
+        # Serialize schedule_data to JSON for oschedule write-back
+        oschedule = ''
+        if odoo_record.schedule_data:
+            try:
+                oschedule = json.dumps(odoo_record.schedule_data, ensure_ascii=False, indent=2)
+            except Exception:
+                oschedule = odoo_record.schedule or ''
+        else:
+            oschedule = odoo_record.schedule or ''
+        
         return {
             'oheading': odoo_record.name or '',  # name is in "overline **headline**" format
-            'oteasertext': odoo_record.teasertext or '',
+            'otesasertext': odoo_record.teasertext or '',  # SP field has typo
             'omd': odoo_record.md or '',
-            'oschedule': odoo_record.schedule or '',
+            'oschedule': oschedule,
             'cimg': odoo_record.cimg or '',
             'domain_code': odoo_record.domain_code.domain_code if odoo_record.domain_code else '',
             'oevent_id': odoo_record.id,

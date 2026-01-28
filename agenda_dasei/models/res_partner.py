@@ -15,6 +15,12 @@ class ResPartner(models.Model):
     ms_kurs_level = fields.Char(string="Highest Kurs", help="Highest evaluated Kurs code (ME, MB, ZR, etc)")
     ms_version = fields.Char(string="SharePoint oversion")
 
+    # SharePoint location sync field (is_event_location is defined in crearis base)
+    sp_raum_id = fields.Integer(
+        string="SP Raum ID",
+        index=True,
+        help="SharePoint plan_raeume LookupId for location sync")
+
     # Computed highest domaincode for login routing
     dasei_domaincode = fields.Char(
         compute='_compute_dasei_domaincode',

@@ -1,0 +1,251 @@
+<?xml version="1.0"?>
+<!--  Copyright 2026 Theaterpedia E.V. / crearis.io -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<odoo>
+
+    <!-- ========================================================== -->
+    <!-- L16/L32: Online Sessions List View (Eleanora's view)       -->
+    <!-- ========================================================== -->
+    
+    <!-- Tree view for events with online sessions -->
+    <record id="view_event_online_sessions_tree" model="ir.ui.view">
+        <field name="name">event.event.online.sessions.tree</field>
+        <field name="model">event.event</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <tree string="Events with Online Sessions" decoration-warning="has_online_sessions">
+                <field name="name"/>
+                <field name="event_type_id"/>
+                <field name="date_begin" widget="date"/>
+                <field name="date_end" widget="date"/>
+                <field name="address_id"/>
+                <field name="has_online_sessions" invisible="1"/>
+                <field name="online_hours" string="Online (h)" optional="show"/>
+                <field name="venue_hours" string="Venue (h)" optional="show"/>
+                <field name="total_hours" string="Total (h)" optional="hide"/>
+                <field name="session_count" string="Sessions" optional="show"/>
+                <field name="stage_id"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Search view with schedule filters -->
+    <record id="view_event_online_sessions_search" model="ir.ui.view">
+        <field name="name">event.event.online.sessions.search</field>
+        <field name="model">event.event</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <search string="Online Sessions Search">
+                <field name="name"/>
+                <field name="event_type_id"/>
+                <field name="address_id"/>
+                <field name="user_id"/>
+                <separator/>
+                <filter string="Has Online Sessions" name="online" domain="[('has_online_sessions', '=', True)]"/>
+                <filter string="Hybrid (Online + Venue)" name="hybrid" domain="[('has_online_sessions', '=', True), ('venue_hours', '>', 0)]"/>
+                <filter string="Online Only" name="online_only" domain="[('has_online_sessions', '=', True), ('venue_hours', '=', 0)]"/>
+                <separator/>
+                <filter string="Upcoming" name="upcoming" domain="[('date_begin', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="This Month" name="this_month" domain="[
+                    ('date_begin', '>=', context_today().strftime('%Y-%m-01')),
+                    ('date_begin', '&lt;', (context_today() + relativedelta(months=1)).strftime('%Y-%m-01'))
+                ]"/>
+                <separator/>
+                <filter string="Schedule Issues" name="issues" domain="[('schedule_data', 'ilike', 'issue')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Event Type" name="group_type" context="{'group_by': 'event_type_id'}"/>
+                    <filter string="Venue" name="group_venue" context="{'group_by': 'address_id'}"/>
+                    <filter string="Responsible" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Month" name="group_month" context="{'group_by': 'date_begin:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action for Online Sessions view -->
+    <record id="action_event_online_sessions" model="ir.actions.act_window">
+        <field name="name">Online Sessions</field>
+        <field name="res_model">event.event</field>
+        <field name="view_mode">tree,form,calendar</field>
+        <field name="view_id" ref="view_event_online_sessions_tree"/>
+        <field name="search_view_id" ref="view_event_online_sessions_search"/>
+        <field name="domain">[('has_online_sessions', '=', True)]</field>
+        <field name="context">{'search_default_upcoming': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No events with online sessions found!
+            </p>
+            <p>
+                Events with <code>_online_</code> markers in their schedule will appear here.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu entry under Crearis → Settings -->
+    <menuitem id="menu_crearis_online_sessions" 
+              name="Online Sessions" 
+              parent="crearis.menu_crearis_settings" 
+              action="action_event_online_sessions"
+              sequence="20"/>
+
+    <!-- ========================================================== -->
+    <!-- L17: Event Tree View with Schedule Summary Columns         -->
+    <!-- ========================================================== -->
+    
+    <record id="view_event_tree_schedule" model="ir.ui.view">
+        <field name="name">event.event.tree.schedule</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_tree"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <!-- Add schedule summary columns after date_end -->
+            <xpath expr="//field[@name='date_end']" position="after">
+                <field name="has_online_sessions" widget="boolean_toggle" string="Online" optional="show"/>
+                <field name="session_count" string="Sessions" optional="hide"/>
+                <field name="total_hours" string="Hours" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ========================================================== -->
+    <!-- L31: Event Schedule Tab in Form View                       -->
+    <!-- ========================================================== -->
+    
+    <record id="view_event_form_schedule_tab" model="ir.ui.view">
+        <field name="name">event.event.form.schedule.tab</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="crearis.view_event_form"/>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='web_options']" position="before">
+                <page string="Schedule" name="schedule_tab">
+                    
+                    <!-- Hidden fields for computed values -->
+                    <field name="has_online_sessions" invisible="1"/>
+                    <field name="session_count" invisible="1"/>
+                    
+                    <!-- Schedule Summary Header -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="alert alert-info" role="alert" attrs="{'invisible': [('has_online_sessions', '=', False)]}">
+                                <i class="fa fa-video-camera"/> This event has <strong>online sessions</strong>. 
+                                Total: <field name="total_hours" class="oe_inline"/> hours 
+                                (<field name="online_hours" class="oe_inline"/> online, 
+                                <field name="venue_hours" class="oe_inline"/> venue)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <group col="2">
+                        <!-- Left: Raw Schedule Input -->
+                        <group string="Schedule Text (Raw Input)">
+                            <field name="schedule_raw" nolabel="1" placeholder="Enter schedule text here...
+Example:
+FR 18:00-21:00
+SA 10:00-18:00 _online_
+SO 10:00-15:00"/>
+                            <button name="action_parse_schedule" 
+                                    type="object" 
+                                    string="Parse Schedule" 
+                                    class="btn-primary"
+                                    icon="fa-magic"
+                                    help="Parse the raw text into structured session data"/>
+                        </group>
+                        
+                        <!-- Right: Parsed Preview -->
+                        <group string="Parsed Sessions">
+                            <field name="schedule_data" 
+                                   widget="json" 
+                                   nolabel="1" 
+                                   readonly="1"
+                                   attrs="{'invisible': [('schedule_data', '=', False)]}"/>
+                            <div attrs="{'invisible': [('schedule_data', '!=', False)]}">
+                                <p class="text-muted">
+                                    <i class="fa fa-info-circle"/> No parsed data yet. 
+                                    Enter schedule text and click "Parse Schedule".
+                                </p>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <!-- Session Flags -->
+                    <group string="Schedule Flags" attrs="{'invisible': [('schedule_data', '=', False)]}">
+                        <group>
+                            <field name="has_online_sessions" readonly="1"/>
+                            <field name="session_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_hours" readonly="1"/>
+                            <field name="online_hours" readonly="1"/>
+                            <field name="venue_hours" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ========================================================== -->
+    <!-- L30: Schedule Config in Company Settings                   -->
+    <!-- ========================================================== -->
+    
+    <!-- Extend res.company form with schedule shortcode config -->
+    <record id="view_company_form_schedule_config" model="ir.ui.view">
+        <field name="name">res.company.form.schedule.config</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Schedule Config" name="schedule_config">
+                    <group string="Online Provider">
+                        <group>
+                            <field name="online_provider"/>
+                        </group>
+                        <group>
+                            <p class="text-muted">
+                                Default provider for <code>_online_</code> sessions.
+                                Used when creating conference links.
+                            </p>
+                        </group>
+                    </group>
+                    
+                    <group string="Schedule Shortcodes">
+                        <field name="schedule_shortcodes" 
+                               widget="json" 
+                               nolabel="1"
+                               help="Custom shortcodes for schedule parsing. Format: {shortcode: {type, location_hint}}"/>
+                    </group>
+                    
+                    <group string="Schedule Parser Test">
+                        <p class="text-muted">
+                            Test the schedule parser with sample text. 
+                            This helps verify shortcode configuration.
+                        </p>
+                        <group>
+                            <field name="schedule_test_input" 
+                                   widget="text"
+                                   placeholder="FR 18:00-21:00
+SA 10:00-18:00 _online_
+SO 10:00-15:00"/>
+                        </group>
+                        <group>
+                            <button name="action_test_schedule_parser" 
+                                    type="object" 
+                                    string="Test Parser" 
+                                    class="btn-secondary"
+                                    icon="fa-play"/>
+                            <field name="schedule_test_output" 
+                                   widget="json" 
+                                   readonly="1"
+                                   nolabel="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

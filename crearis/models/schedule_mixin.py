@@ -50,7 +50,11 @@ class ScheduleParser:
     - Shortcodes (_online_, _TANZEREI_, _VENUE:ROOM_)
     - Date specifications (DD.MM or DD.MM.YY)
     - Section headers (online:, München:)
+    - Special shortcodes: _anfrage_, _individuell_, _reihe_
     """
+    
+    # Special shortcodes with custom behavior
+    SPECIAL_SHORTCODES = {'_anfrage_', '_individuell_', '_reihe_'}
     
     def __init__(self, locale='de', shortcodes=None):
         self.locale = locale
@@ -99,6 +103,11 @@ class ScheduleParser:
             'summary': {},
             'unparsed_notes': [],
         }
+        
+        # Check for special shortcodes FIRST
+        special_result = self._handle_special_shortcodes(text, date_begin, date_end, result)
+        if special_result:
+            return special_result
         
         # Track current context (set by section headers)
         current_context = None
@@ -263,6 +272,160 @@ class ScheduleParser:
             'session_count': len(sessions),
             'online_session_count': len(online_sessions),
         }
+    
+    def _handle_special_shortcodes(self, text, date_begin, date_end, result):
+        """
+        Handle special shortcodes (_anfrage_, _individuell_, _reihe_) that generate
+        sessions programmatically rather than parsing text.
+        
+        Returns:
+            dict: Complete result if special shortcode handled, None otherwise
+        """
+        text_lower = text.lower()
+        
+        # =========================
+        # _anfrage_ - Times on request
+        # =========================
+        if '_anfrage_' in text_lower:
+            result['source'] = 'shortcode:anfrage'
+            result['flags'] = ['issue_schedule']  # Tag for follow-up
+            
+            if not date_begin or not date_end:
+                result['unparsed_notes'].append('_anfrage_: Missing event dates')
+                return result
+            
+            # Convert to date objects
+            if isinstance(date_begin, datetime):
+                date_begin = date_begin.date()
+            if isinstance(date_end, datetime):
+                date_end = date_end.date()
+            
+            # Validate range (max 14 days)
+            day_span = (date_end - date_begin).days + 1
+            if day_span > 14:
+                result['unparsed_notes'].append(f'_anfrage_: Date range too long ({day_span} days)')
+                result['flags'].append('range_exceeded')
+                return result
+            
+            # Generate session per day: 09:00-18:00
+            current = date_begin
+            while current <= date_end:
+                result['sessions'].append({
+                    'day': WEEKDAY_NAMES[current.weekday()],
+                    'date': current.isoformat(),
+                    'start': '09:00',
+                    'end': '18:00',
+                    'duration_h': 9.0,
+                    'type': 'venue',
+                    'location_hint': None,
+                    'notes': 'Zeiten auf Anfrage',
+                })
+                current += timedelta(days=1)
+            
+            result['summary'] = self._calculate_summary(result['sessions'])
+            return result
+        
+        # =========================
+        # _individuell_ - Individual appointments
+        # =========================
+        if '_individuell_' in text_lower:
+            result['source'] = 'shortcode:individuell'
+            
+            # Extract original text after shortcode (preserve as notes)
+            notes_match = re.search(r'_individuell_\s*\|\s*(.+)', text, re.IGNORECASE | re.DOTALL)
+            original_notes = notes_match.group(1).strip() if notes_match else text.replace('_individuell_', '').strip()
+            
+            result['notes'] = original_notes  # Store original description
+            
+            if not date_begin:
+                result['unparsed_notes'].append('_individuell_: Missing event start date')
+                return result
+            
+            # Convert to date
+            if isinstance(date_begin, datetime):
+                date_begin = date_begin.date()
+            
+            # Generate single placeholder session on first day: 09:00-09:00
+            result['sessions'].append({
+                'day': WEEKDAY_NAMES[date_begin.weekday()],
+                'date': date_begin.isoformat(),
+                'start': '09:00',
+                'end': '09:00',
+                'duration_h': 0.0,
+                'type': 'individual',  # Special type for individual appointments
+                'location_hint': None,
+                'notes': original_notes,
+            })
+            
+            result['summary'] = self._calculate_summary(result['sessions'])
+            return result
+        
+        # =========================
+        # _reihe_ - Weekly series (Terminreihe)
+        # NOTE: Full parsing planned for next sprint
+        # Currently only recognizes the normalized format
+        # =========================
+        if '_reihe_' in text_lower:
+            result['source'] = 'shortcode:reihe'
+            result['flags'] = ['series_pending']  # Mark for future implementation
+            
+            # Try to parse: "_reihe_ N Termine WD HH:MM-HH:MM _online_"
+            reihe_match = re.search(
+                r'_reihe_\s+(\d+)\s+Termine?\s+([A-Z]{2})\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\s*(_online_)?',
+                text, re.IGNORECASE
+            )
+            
+            if reihe_match:
+                num_sessions = int(reihe_match.group(1))
+                weekday = reihe_match.group(2).upper()
+                start_h = int(reihe_match.group(3))
+                start_m = int(reihe_match.group(4))
+                end_h = int(reihe_match.group(5))
+                end_m = int(reihe_match.group(6))
+                is_online = bool(reihe_match.group(7))
+                
+                duration_h = (end_h * 60 + end_m - start_h * 60 - start_m) / 60
+                session_type = 'online' if is_online else 'venue'
+                
+                # For now, create a single "template" session representing the series
+                # Full implementation will generate N weekly sessions
+                result['series_info'] = {
+                    'num_sessions': num_sessions,
+                    'weekday': weekday,
+                    'start': f'{start_h:02d}:{start_m:02d}',
+                    'end': f'{end_h:02d}:{end_m:02d}',
+                    'duration_h': round(duration_h, 2),
+                    'type': session_type,
+                }
+                
+                # Create placeholder session for first occurrence
+                if date_begin:
+                    if isinstance(date_begin, datetime):
+                        date_begin = date_begin.date()
+                    
+                    result['sessions'].append({
+                        'day': weekday if weekday in WEEKDAY_NAMES else WEEKDAY_NAMES[WEEKDAYS.get(weekday, 0)],
+                        'date': date_begin.isoformat(),
+                        'start': f'{start_h:02d}:{start_m:02d}',
+                        'end': f'{end_h:02d}:{end_m:02d}',
+                        'duration_h': round(duration_h, 2),
+                        'type': session_type,
+                        'location_hint': None,
+                        'notes': f'Serie: {num_sessions} Termine',
+                    })
+                
+                result['unparsed_notes'].append(
+                    f'Terminreihe: {num_sessions}x {weekday} {start_h:02d}:{start_m:02d}-{end_h:02d}:{end_m:02d} '
+                    f'(full series generation pending)'
+                )
+            else:
+                result['unparsed_notes'].append(f'_reihe_: Could not parse format from: {text[:100]}')
+            
+            result['summary'] = self._calculate_summary(result['sessions'])
+            return result
+        
+        # No special shortcode found
+        return None
 
 
 # =============================================================================

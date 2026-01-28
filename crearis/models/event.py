@@ -71,7 +71,7 @@ class EventType(models.Model):
 
 class EventEvent(models.Model):
     _name = 'event.event'  # Add this line - it was missing!
-    _inherit = ["event.event", "web.options.abstract", "demo.data.mixin"]
+    _inherit = ["event.event", "web.options.abstract", "demo.data.mixin", "event.schedule.mixin"]
     _rec_name = "rectitle"
 
     # Teaching units
@@ -109,7 +109,13 @@ class EventEvent(models.Model):
 
     address_id = fields.Many2one(
         'res.partner', string='Venue', default=lambda self: self.env.company.partner_id.id,
-        tracking=True, domain="[('is_location_provider','=',True),'|',('company_id','=',False),('company_id','=',company_id)]")
+        tracking=True, domain="[('is_event_location','=',True),'|',('company_id','=',False),('company_id','=',company_id)]")
+    
+    # SharePoint location sync
+    sp_raum_id = fields.Integer(
+        string="SP Raum ID",
+        index=True,
+        help="SharePoint plan_raeume LookupId for location sync")
 
     domain_code = fields.Many2one('website', string='Domain', default=lambda self: self.env.company.domain_code, required=True, tracking=True)
 
