@@ -65,5 +65,51 @@
             <field name="color">2</field><!-- orange -->
         </record>
 
+        <!-- ========================================================== -->
+        <!-- Task 2: Issue Tags (Eleanora Location Management)          -->
+        <!-- ========================================================== -->
+        
+        <!-- Issue/Status Tag Category -->
+        <record id="event_tag_category_issues" model="event.tag.category">
+            <field name="name">Tasks &amp; Issues</field>
+            <field name="sequence">200</field>
+        </record>
+
+        <!-- Issue Tags for flagging events that need attention -->
+        <record id="event_tag_location_issue" model="event.tag">
+            <field name="name">Location Issue</field>
+            <field name="category_id" ref="event_tag_category_issues"/>
+            <field name="sequence">10</field>
+            <field name="color">1</field><!-- red -->
+        </record>
+
+        <record id="event_tag_schedule_issue" model="event.tag">
+            <field name="name">Schedule Issue</field>
+            <field name="category_id" ref="event_tag_category_issues"/>
+            <field name="sequence">20</field>
+            <field name="color">1</field><!-- red -->
+        </record>
+
+        <record id="event_tag_needs_confirmation" model="event.tag">
+            <field name="name">Needs Confirmation</field>
+            <field name="category_id" ref="event_tag_category_issues"/>
+            <field name="sequence">30</field>
+            <field name="color">2</field><!-- orange/warning -->
+        </record>
+
+        <record id="event_tag_cancellation_pending" model="event.tag">
+            <field name="name">Cancellation Pending</field>
+            <field name="category_id" ref="event_tag_category_issues"/>
+            <field name="sequence">40</field>
+            <field name="color">9</field><!-- dark red -->
+        </record>
+
+        <record id="event_tag_conference_missing" model="event.tag">
+            <field name="name">Conference Link Missing</field>
+            <field name="category_id" ref="event_tag_category_issues"/>
+            <field name="sequence">50</field>
+            <field name="color">2</field><!-- orange/warning -->
+        </record>
+
     </data>
 </odoo>

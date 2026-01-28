@@ -117,6 +117,13 @@ class EventEvent(models.Model):
         index=True,
         help="SharePoint plan_raeume LookupId for location sync")
 
+    # Session lines (flattened from schedule_data)
+    session_line_ids = fields.One2many(
+        'event.session.line', 'event_id',
+        string='Session Lines',
+        help='Flattened session records from schedule_data JSONB'
+    )
+
     domain_code = fields.Many2one('website', string='Domain', default=lambda self: self.env.company.domain_code, required=True, tracking=True)
 
     space_id = fields.Many2one(
@@ -323,3 +330,51 @@ class EventEvent(models.Model):
         self.invalidate_recordset()
 
         return res
+
+    # =========================
+    # Session Line Sync
+    # =========================
+    
+    def _sync_session_lines(self):
+        """
+        Sync session_line_ids from schedule_data.sessions[] JSONB.
+        
+        Called after parsing schedule_raw → schedule_data.
+        Clears and recreates all session lines (no incremental update).
+        """
+        SessionLine = self.env['event.session.line']
+        
+        for event in self:
+            # Clear existing lines
+            event.session_line_ids.unlink()
+            
+            # Get sessions from schedule_data
+            sessions = (event.schedule_data or {}).get('sessions', [])
+            if not sessions:
+                continue
+            
+            # Get default provider from company
+            default_provider = event.company_id.online_provider or 'msteams'
+            
+            # Create session lines
+            for idx, sess in enumerate(sessions):
+                vals = {
+                    'event_id': event.id,
+                    'sequence': idx * 10,
+                    'day': sess.get('day'),
+                    'date': sess.get('date'),
+                    'start': sess.get('start'),
+                    'end': sess.get('end'),
+                    'duration_h': sess.get('duration_h', 0),
+                    'type': sess.get('type', 'venue'),
+                    'location_hint': sess.get('location_hint'),
+                    'room': sess.get('room'),
+                    'notes': sess.get('notes'),
+                    # Conference fields from JSONB (if present)
+                    'conference_url': sess.get('conference_url'),
+                    'conference_id': sess.get('conference_id'),
+                    'conference_provider': sess.get('conference_provider') or (
+                        default_provider if sess.get('type') == 'online' else False
+                    ),
+                }
+                SessionLine.create(vals)

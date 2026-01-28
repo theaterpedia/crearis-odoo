@@ -56,6 +56,7 @@ Features:
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
         'views/event_schedule_views.xml',
+        'views/event_session_line_views.xml',
         'views/event_type_views.xml',
     ],
     'assets': {

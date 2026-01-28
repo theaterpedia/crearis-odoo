@@ -540,6 +540,7 @@ class EventScheduleMixin(models.AbstractModel):
         """
         Action to parse schedule_raw into schedule_data.
         Can be triggered from UI button.
+        Also syncs session_line_ids if the model supports it.
         """
         for record in self:
             if not record.schedule_raw:
@@ -562,6 +563,15 @@ class EventScheduleMixin(models.AbstractModel):
                     schedule_data.get('summary', {}).get('session_count', 0),
                     schedule_data.get('summary', {}).get('total_hours', 0)
                 )
+                
+                # Sync session lines if model supports it (event.event has this)
+                if hasattr(record, '_sync_session_lines'):
+                    record._sync_session_lines()
+                    _logger.info(
+                        "Synced %d session lines for %s",
+                        len(record.session_line_ids),
+                        record.display_name
+                    )
     
     def get_online_sessions(self):
         """Get all online sessions from schedule_data."""

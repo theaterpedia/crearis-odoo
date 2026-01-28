@@ -109,6 +109,27 @@
     </record>
 
     <!-- ========================================================== -->
+    <!-- Task 3: Extend main search view with venue grouping        -->
+    <!-- ========================================================== -->
+    
+    <record id="view_event_search_venue" model="ir.ui.view">
+        <field name="name">event.event.search.venue</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_search"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <!-- Add Venue grouping after Stage grouping -->
+            <xpath expr="//filter[@name='stage_id']" position="after">
+                <filter string="Venue" name="group_venue" context="{'group_by': 'address_id'}"/>
+            </xpath>
+            <!-- Add online sessions filter -->
+            <xpath expr="//filter[@name='filter_inactive']" position="before">
+                <filter string="Has Online Sessions" name="online_sessions" domain="[('has_online_sessions', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ========================================================== -->
     <!-- L31: Event Schedule Tab in Form View                       -->
     <!-- ========================================================== -->
     
@@ -153,33 +174,44 @@ SO 10:00-15:00"/>
                                     help="Parse the raw text into structured session data"/>
                         </group>
                         
-                        <!-- Right: Parsed Preview -->
-                        <group string="Parsed Sessions">
-                            <field name="schedule_data" 
-                                   widget="json" 
-                                   nolabel="1" 
-                                   readonly="1"
-                                   attrs="{'invisible': [('schedule_data', '=', False)]}"/>
-                            <div attrs="{'invisible': [('schedule_data', '!=', False)]}">
-                                <p class="text-muted">
-                                    <i class="fa fa-info-circle"/> No parsed data yet. 
-                                    Enter schedule text and click "Parse Schedule".
-                                </p>
-                            </div>
+                        <!-- Right: Quick Stats -->
+                        <group string="Session Summary">
+                            <field name="session_count" readonly="1"/>
+                            <field name="total_hours" readonly="1"/>
+                            <field name="online_hours" readonly="1" attrs="{'invisible': [('has_online_sessions', '=', False)]}"/>
+                            <field name="venue_hours" readonly="1" attrs="{'invisible': [('has_online_sessions', '=', False)]}"/>
                         </group>
                     </group>
                     
-                    <!-- Session Flags -->
-                    <group string="Schedule Flags" attrs="{'invisible': [('schedule_data', '=', False)]}">
-                        <group>
-                            <field name="has_online_sessions" readonly="1"/>
-                            <field name="session_count" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="total_hours" readonly="1"/>
-                            <field name="online_hours" readonly="1"/>
-                            <field name="venue_hours" readonly="1"/>
-                        </group>
+                    <!-- Session Lines Table (Eleanora wireframe: session-level rows) -->
+                    <field name="session_line_ids" 
+                           nolabel="1"
+                           attrs="{'invisible': [('session_count', '=', 0)]}">
+                        <tree editable="bottom" decoration-info="type == 'online'" create="false" delete="false">
+                            <field name="day" string="Day"/>
+                            <field name="date"/>
+                            <field name="start" string="Start"/>
+                            <field name="end" string="End"/>
+                            <field name="duration_h" string="Hours" sum="Total"/>
+                            <field name="type"/>
+                            <field name="location_hint"/>
+                            <field name="conference_url" widget="url" attrs="{'invisible': [('type', '!=', 'online')]}"/>
+                        </tree>
+                    </field>
+                    
+                    <div attrs="{'invisible': [('session_count', '!=', 0)]}">
+                        <p class="text-muted">
+                            <i class="fa fa-info-circle"/> No sessions yet. 
+                            Enter schedule text above and click "Parse Schedule".
+                        </p>
+                    </div>
+                    
+                    <!-- Raw JSON (collapsed, for debugging) -->
+                    <group string="Raw Data (Debug)" attrs="{'invisible': [('schedule_data', '=', False)]}">
+                        <field name="schedule_data" 
+                               widget="json" 
+                               nolabel="1" 
+                               readonly="1"/>
                     </group>
                     
                 </page>
