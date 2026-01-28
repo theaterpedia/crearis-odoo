@@ -158,6 +158,340 @@ class AgendaSyncEngine(models.AbstractModel):
         return self._graph_request(company, 'PATCH', endpoint, fields_data)
 
     # =========================================================================
+    # DIAGNOSTIC TOOLS
+    # =========================================================================
+
+    def diagnose_event_fields(self, company, limit=3):
+        """Dump raw SharePoint fields for a few events to discover field structure.
+        
+        Usage from shell:
+            company = env['res.company'].browse(1)
+            env['crearis.agenda.sync'].diagnose_event_fields(company)
+        """
+        list_guid = company.ms_list_veranstaltungen
+        if not list_guid:
+            _logger.warning("No plan_veranstaltungen list configured")
+            return []
+        
+        sp_items = self._get_list_items(company, list_guid, top=limit)
+        
+        results = []
+        for sp_item in sp_items:
+            sp_id = sp_item['id']
+            sp_fields = sp_item.get('fields', {})
+            
+            # Look for raum-related fields
+            raum_fields = {k: v for k, v in sp_fields.items() 
+                          if 'raum' in k.lower() or 'room' in k.lower() or 'location' in k.lower()}
+            
+            # Also grab title for context
+            result = {
+                'id': sp_id,
+                'Title': sp_fields.get('Title', ''),
+                'raum_fields': raum_fields,
+                'all_field_keys': sorted(sp_fields.keys()),
+            }
+            results.append(result)
+            
+            _logger.info(f"Event {sp_id} '{sp_fields.get('Title', '')}':")
+            _logger.info(f"  Raum-related fields: {raum_fields}")
+            _logger.info(f"  All fields: {sorted(sp_fields.keys())}")
+        
+        return results
+
+    def export_seminarzeiten_full(self, company):
+        """Export ALL plan_seminarzeiten items for documentation.
+        
+        Fields exported:
+        - id: SharePoint list item ID
+        - Title: Schedule template name
+        - Feld1: Short schedule description
+        - Feld12: Detailed schedule text (multiline)
+        
+        Usage from shell:
+            company = env['res.company'].browse(11)
+            data = env['crearis.agenda.sync'].export_seminarzeiten_full(company)
+            for r in data: print(f"{r['id']:>3} | {r['Title']}")
+        """
+        list_guid = company.ms_list_seminarzeiten
+        if not list_guid:
+            _logger.warning("ms_list_seminarzeiten not configured for company %s", company.name)
+            return []
+        
+        sp_items = self._get_list_items(company, list_guid, top=200)
+        
+        results = []
+        for sp_item in sp_items:
+            sp_id = sp_item['id']
+            f = sp_item.get('fields', {})
+            
+            result = {
+                'id': int(sp_id),
+                'Title': f.get('Title', ''),
+                'Feld1': f.get('Feld1', ''),  # Short description
+                'Feld12': f.get('Feld12', ''),  # Detailed schedule
+                'all_fields': list(f.keys()),
+            }
+            results.append(result)
+            
+            # Preview first 100 chars of detailed schedule
+            preview = (result['Feld12'] or '').replace('\n', ' | ')[:100]
+            _logger.info(
+                f"Seminarzeit {sp_id:>3}: {result['Title']:<30} | "
+                f"Feld1: {(result['Feld1'] or '')[:30]} | "
+                f"Feld12: {preview}..."
+            )
+        
+        results.sort(key=lambda x: x['id'])
+        _logger.info(f"Exported {len(results)} schedule templates from plan_seminarzeiten")
+        return results
+
+    def diagnose_hybrid_events(self, company, limit=50):
+        """Diagnose hybrid events (online + in-presence) to understand schedule patterns.
+        
+        Looks for events with:
+        - Seminarplan_Memo containing 'online' or 'Teams' 
+        - Multiple location types implied
+        
+        Usage from shell:
+            company = env['res.company'].browse(11)
+            data = env['crearis.agenda.sync'].diagnose_hybrid_events(company, limit=100)
+        """
+        list_guid = company.ms_list_veranstaltungen
+        sp_items = self._get_list_items(company, list_guid, top=limit)
+        
+        hybrid_events = []
+        for sp_item in sp_items:
+            sp_id = sp_item['id']
+            f = sp_item.get('fields', {})
+            
+            title = f.get('Title', '')
+            seminarplan_memo = f.get('Feld11', '') or ''  # Custom schedule text
+            seminarplan_id = f.get('SeminarplanLookupId')
+            raum_id = f.get('raum1LookupId')
+            date_begin = f.get('Feld17', '')
+            date_end = f.get('Feld18', '')
+            
+            # Check if schedule mentions online/Teams
+            memo_lower = seminarplan_memo.lower()
+            is_hybrid = any(kw in memo_lower for kw in ['online', 'teams', 'zoom', 'web', 'digital'])
+            
+            # Also check if raum_id = 5 (Web: Standard) but memo has in-presence hints
+            has_presence = any(kw in memo_lower for kw in ['vor ort', 'präsenz', 'tanzerei', 'khg', 'kineo'])
+            
+            if is_hybrid or (raum_id == 5 and has_presence) or (raum_id != 5 and 'online' in memo_lower):
+                result = {
+                    'id': int(sp_id),
+                    'Title': title,
+                    'SeminarplanLookupId': seminarplan_id,
+                    'raum1LookupId': raum_id,
+                    'date_begin': date_begin,
+                    'date_end': date_end,
+                    'Seminarplan_Memo': seminarplan_memo,
+                    'is_hybrid': is_hybrid,
+                    'has_presence': has_presence,
+                }
+                hybrid_events.append(result)
+                
+                _logger.info(
+                    f"HYBRID Event {sp_id}: {title[:40]} | "
+                    f"Raum: {raum_id} | SeminarplanId: {seminarplan_id} | "
+                    f"Dates: {date_begin[:10] if date_begin else 'N/A'} - {date_end[:10] if date_end else 'N/A'}"
+                )
+                _logger.info(f"  Memo: {seminarplan_memo[:150]}...")
+        
+        _logger.info(f"Found {len(hybrid_events)} potential hybrid events out of {len(sp_items)} scanned")
+        return hybrid_events
+
+    def diagnose_raeume_list(self, company, limit=10):
+        """Dump raw SharePoint fields from plan_raeume to discover field structure.
+        
+        Usage from shell:
+            company = env['res.company'].browse(1)
+            env['crearis.agenda.sync'].diagnose_raeume_list(company)
+        """
+        list_guid = '705952ee-bc5e-476f-88ea-31d21d5d3f7d'  # plan_raeume
+        
+        sp_items = self._get_list_items(company, list_guid, top=limit)
+        
+        results = []
+        for sp_item in sp_items:
+            sp_id = sp_item['id']
+            sp_fields = sp_item.get('fields', {})
+            
+            result = {
+                'id': sp_id,
+                'fields': sp_fields,
+            }
+            results.append(result)
+            
+            _logger.info(f"Raum {sp_id}: {sp_fields}")
+        
+        return results
+
+    def export_raeume_full(self, company):
+        """Export ALL plan_raeume items with relevant fields for documentation.
+        
+        Fields exported:
+        - id: SharePoint list item ID (used as LookupId)
+        - Title: Location short name (required)
+        - Feld1: Beschreibung (description)
+        - Feld10: Ort (city)
+        - Feld11: Adresse (address, multiline)
+        - PLZ: Postal code
+        - Anfahrt: Directions (richtext)
+        - CloudinaryCode: Image reference
+        - Koordination: Lookup to contacts list
+        - oaddress_id: Odoo res.partner ID (for sync)
+        
+        Usage from shell:
+            company = env['res.company'].browse(11)
+            data = env['crearis.agenda.sync'].export_raeume_full(company)
+            for r in data: print(f"{r['id']:>3} | {r['Title']:<25} | {r['Ort']:<15} | {r['PLZ']}")
+        """
+        list_guid = '705952ee-bc5e-476f-88ea-31d21d5d3f7d'  # plan_raeume
+        
+        # Fetch all items (no top limit)
+        sp_items = self._get_list_items(company, list_guid, top=500)
+        
+        results = []
+        for sp_item in sp_items:
+            sp_id = sp_item['id']
+            f = sp_item.get('fields', {})
+            
+            result = {
+                'id': int(sp_id),
+                'Title': f.get('Title', ''),
+                'Beschreibung': f.get('Feld1', ''),
+                'Ort': f.get('Feld10', ''),
+                'Adresse': f.get('Feld11', ''),
+                'PLZ': f.get('PLZ', ''),
+                'Anfahrt': f.get('Anfahrt', ''),
+                'CloudinaryCode': f.get('CloudinaryCode', ''),
+                'Koordination': f.get('KoordinationLookupId'),
+                'oaddress_id': f.get('oaddress_id'),
+            }
+            results.append(result)
+            
+            _logger.info(
+                f"Raum {sp_id:>3}: {result['Title']:<25} | "
+                f"Ort: {result['Ort']:<15} | PLZ: {result['PLZ']} | "
+                f"Koordination: {result['Koordination']} | "
+                f"Beschreibung: {(result['Beschreibung'] or '')[:30]} | "
+                f"Adresse: {(result['Adresse'] or '').replace(chr(10), ' ')[:40]} | "
+                f"Anfahrt: {'Yes' if result['Anfahrt'] else 'No'} | "
+                f"oaddress_id: {result['oaddress_id']}"
+            )
+        
+        # Sort by ID for consistent output
+        results.sort(key=lambda x: x['id'])
+        
+        _logger.info(f"Exported {len(results)} locations from plan_raeume")
+        return results
+
+    def diagnose_update_raum(self, company, event_sp_id, raum_lookup_id):
+        """Test updating Raum field on an event.
+        
+        Usage from shell:
+            company = env['res.company'].browse(11)
+            env['crearis.agenda.sync'].diagnose_update_raum(company, '1616', 1)
+        """
+        list_guid = company.ms_list_veranstaltungen
+        
+        # Try different formats - SharePoint lookup fields can be picky
+        formats_to_try = [
+            # Format 1: Array of {id: value} objects (from MS docs)
+            ('Raum with id', {'Raum': [{'id': raum_lookup_id}]}),
+            # Format 2: RaumLookupId with array of IDs
+            ('RaumLookupId array', {'RaumLookupId': [raum_lookup_id]}),
+            # Format 3: RaumLookupId as single value (for single-select mode)
+            ('RaumLookupId single', {'RaumLookupId': raum_lookup_id}),
+            # Format 4: Array of {LookupId: value}
+            ('Raum with LookupId', {'Raum': [{'LookupId': raum_lookup_id}]}),
+        ]
+        
+        for fmt_name, fields_data in formats_to_try:
+            try:
+                _logger.info(f"Trying format '{fmt_name}': {fields_data}")
+                result = self._patch_list_item(company, list_guid, event_sp_id, fields_data)
+                _logger.info(f"SUCCESS with '{fmt_name}'! Result: {result}")
+                return {'success': True, 'format': fmt_name, 'result': result}
+            except Exception as e:
+                _logger.warning(f"Format '{fmt_name}' failed: {e}")
+                continue
+        
+        return {'success': False, 'message': 'All formats failed'}
+
+    def migrate_raum_to_raum1(self, company, dry_run=True):
+        """Migrate Raum[0] multivalue to raum1 single-value lookup.
+        
+        Usage from shell:
+            company = env['res.company'].browse(11)
+            # Dry run first:
+            env['crearis.agenda.sync'].migrate_raum_to_raum1(company, dry_run=True)
+            # Then execute:
+            env['crearis.agenda.sync'].migrate_raum_to_raum1(company, dry_run=False)
+        """
+        list_guid = company.ms_list_veranstaltungen
+        if not list_guid:
+            return {'error': 'No plan_veranstaltungen list configured'}
+        
+        _logger.info(f"Starting Raum → raum1 migration (dry_run={dry_run})")
+        
+        # Fetch all events
+        sp_items = self._get_list_items(company, list_guid)
+        _logger.info(f"Fetched {len(sp_items)} events")
+        
+        stats = {'total': 0, 'migrated': 0, 'skipped_empty': 0, 'skipped_already': 0, 'errors': 0}
+        errors = []
+        
+        for sp_item in sp_items:
+            stats['total'] += 1
+            sp_id = sp_item['id']
+            sp_fields = sp_item.get('fields', {})
+            
+            # Get Raum multivalue field
+            raum_list = sp_fields.get('Raum', [])
+            
+            # Skip if no Raum value
+            if not raum_list or len(raum_list) == 0:
+                stats['skipped_empty'] += 1
+                continue
+            
+            # Extract first LookupId
+            raum_id = raum_list[0].get('LookupId')
+            if not raum_id:
+                stats['skipped_empty'] += 1
+                continue
+            
+            # Check if raum1 already set
+            existing_raum1 = sp_fields.get('raum1LookupId')
+            if existing_raum1:
+                stats['skipped_already'] += 1
+                continue
+            
+            # Update raum1LookupId
+            if dry_run:
+                _logger.info(f"[DRY RUN] Would update event {sp_id}: raum1LookupId = {raum_id}")
+                stats['migrated'] += 1
+            else:
+                try:
+                    self._patch_list_item(company, list_guid, sp_id, {'raum1LookupId': raum_id})
+                    _logger.info(f"Updated event {sp_id}: raum1LookupId = {raum_id}")
+                    stats['migrated'] += 1
+                except Exception as e:
+                    _logger.error(f"Failed to update event {sp_id}: {e}")
+                    stats['errors'] += 1
+                    errors.append({'id': sp_id, 'error': str(e)})
+            
+            # Progress logging
+            if stats['total'] % 50 == 0:
+                _logger.info(f"Progress: {stats['total']} processed, {stats['migrated']} migrated")
+        
+        _logger.info(f"Migration complete: {stats}")
+        return {'stats': stats, 'errors': errors[:10] if errors else []}
+
+    # =========================================================================
     # EVENT TYPE SYNC
     # =========================================================================
 

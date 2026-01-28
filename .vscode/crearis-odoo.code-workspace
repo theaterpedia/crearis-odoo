@@ -395,6 +395,23 @@
                     "--max-cron-threads=1",
                 ]
             },
+            {
+                "name": "Shell (Fast)",
+                "type": "debugpy",
+                "request": "launch",
+                "console": "integratedTerminal",
+                "program": "./odoo/odoo-bin",
+                "cwd": "${workspaceFolder:odoo}",
+                "args": [
+                    "shell",
+                    "--database=${config:odoo.module}",
+                    "--addons-path=${config:odoo.addonsPaths}",
+                    "--no-http",
+                    "--limit-time-cpu=0",
+                    "--limit-time-real=0",
+                    "--max-cron-threads=0",
+                ]
+            },
         ]
     },
 }

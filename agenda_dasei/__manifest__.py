@@ -36,6 +36,7 @@ Features:
         'data/ir_cron_data.xml',  # D6: Cron jobs for course and registration sync
         'data/website_data.xml',  # DASEi website check/create server actions
         'data/product_template_data.xml',  # Grundkurs module products (A, B, C, D)
+        'data/event_tag_data.xml',  # Location type tags (online, on_request_*, tbd)
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
         'views/res_partner_views.xml',
         'views/course_views.xml',  # D3: Course model views

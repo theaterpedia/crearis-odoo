@@ -116,9 +116,9 @@ ${workspaceFolder:project}
 - Then launches Odoo normally
 - **Use this after Python model changes**
 
-### 3. Shell
+### 3. Shell (with Update)
 
-**Use when:** Need interactive Python shell with Odoo environment loaded.
+**Use when:** Need interactive Python shell AND want to update module first.
 
 ```json
 {
@@ -131,6 +131,32 @@ ${workspaceFolder:project}
     ]
 }
 ```
+
+**Note:** This runs `--update` which can be slow. Use "Shell (Fast)" for quick access.
+
+### 4. Shell (Fast) ⭐ RECOMMENDED
+
+**Use when:** Need quick interactive shell without waiting for module updates.
+
+```json
+{
+    "name": "Shell (Fast)",
+    "args": [
+        "shell",
+        "--database=crearis",
+        "--addons-path=<paths>",
+        "--no-http",
+        "--max-cron-threads=0"
+    ]
+}
+```
+
+**Key behavior:**
+- No `--update` flag = instant startup (~5 seconds vs ~30+ seconds)
+- `--no-http` = don't start web server
+- `--max-cron-threads=0` = don't start cron workers
+- Use this for running diagnostic scripts, data queries, sync commands
+- **Tip:** If paste doesn't work well, type commands directly or use smaller chunks
 
 ---
 

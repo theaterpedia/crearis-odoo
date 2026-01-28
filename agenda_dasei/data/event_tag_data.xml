@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Location Type Tag Category -->
+        <record id="event_tag_category_location_type" model="event.tag.category">
+            <field name="name">Location Type</field>
+            <field name="sequence">100</field>
+        </record>
+
+        <!-- Location Type Tags -->
+        <record id="event_tag_online" model="event.tag">
+            <field name="name">Online</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">10</field>
+            <field name="color">3</field><!-- green -->
+        </record>
+
+        <record id="event_tag_on_request_nbg" model="event.tag">
+            <field name="name">Nürnberg (auf Anfrage)</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">20</field>
+            <field name="color">4</field><!-- blue -->
+        </record>
+
+        <record id="event_tag_on_request_mue" model="event.tag">
+            <field name="name">München (auf Anfrage)</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">21</field>
+            <field name="color">4</field><!-- blue -->
+        </record>
+
+        <record id="event_tag_on_request_bay" model="event.tag">
+            <field name="name">Bayern (auf Anfrage)</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">30</field>
+            <field name="color">5</field><!-- purple -->
+        </record>
+
+        <record id="event_tag_on_request_deu" model="event.tag">
+            <field name="name">Deutschland (auf Anfrage)</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">40</field>
+            <field name="color">5</field><!-- purple -->
+        </record>
+
+        <record id="event_tag_on_request_czb" model="event.tag">
+            <field name="name">Bayern-Tschechien (auf Anfrage)</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">41</field>
+            <field name="color">5</field><!-- purple -->
+        </record>
+
+        <record id="event_tag_on_request_eu" model="event.tag">
+            <field name="name">Europa (auf Anfrage)</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">50</field>
+            <field name="color">5</field><!-- purple -->
+        </record>
+
+        <record id="event_tag_tbd" model="event.tag">
+            <field name="name">Ort wird bekannt gegeben</field>
+            <field name="category_id" ref="event_tag_category_location_type"/>
+            <field name="sequence">99</field>
+            <field name="color">2</field><!-- orange -->
+        </record>
+
+    </data>
+</odoo>
