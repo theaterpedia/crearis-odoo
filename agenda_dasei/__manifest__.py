@@ -44,8 +44,7 @@ Features:
         # TODO: Refactor to crearis_event_package module
         # 'views/product_template_views.xml',
         'views/course_participation_views.xml',
-        # TODO: Fix xpath issues in website templates
-        # 'views/website_event_templates.xml',  # W3/W4: DASEi event card + detail templates
+        'views/website_event_templates.xml',  # W3/W4: DASEi event card + detail templates (xpath needs fix)
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,
