@@ -104,6 +104,41 @@ Example: `MÜ 4.-6.4 // Kurzbeschreibung **Am Anfang war der Kreis**`
 
 ---
 
+## Simple Event UI Patterns (Defaults)
+
+From website images (checkout-stepper.png, event-cards-gallery.png):
+
+### Card Pattern (CardsGallery)
+```
+┌─────────────────────┐
+│     [Image]         │  ← Hero image with hover accent
+│─────────────────────│  ← 0.5rem accent bar
+│ _OVERLINE_          │  ← Location + date (small, muted)
+│ **Title**           │  ← Event name (bold)
+└─────────────────────┘
+```
+
+**Key simplicity**:
+- Fixed width: 21rem (336px)
+- Minimal info: image + overline + title
+- Hover: accent bar color change
+- No description in card (click for details)
+
+### Stepper Pattern (DataViewDetails)
+```
+┌─────────────────────────────────────┐
+│ Step 1: Programm                    │  ← Collapsible sections
+│ Step 2: Konditionen                 │
+│ Step 3: Kontakt ← [form fields]     │  ← Input form
+│ Step 4: Bestätigung ← [checkboxes]  │
+│         [Anmelden Button]           │
+└─────────────────────────────────────┘
+```
+
+**Start with these simple patterns** before building complex Odoo views.
+
+---
+
 ## Source Files
 
 Vue components in [files/agenda_extended/](files/agenda_extended/):

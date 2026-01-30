@@ -56,9 +56,24 @@ The agenda model extends session-lines into a unified timeline system. Line-item
 - Option B: Table is source → JSON is representation for GraphQL
 - **Proposed**: Bidirectional with `locked_edits` flag for controlled table-edits
 
+### 5. Sub-Event Grouping (from MS Access reports)
+**Finding**: 2 event types grouped together as parent-child
+
+```
+Block 1 (Parent event)
+├── A1: Am Anfang war der Kreis
+└── A2: Die Bühne kommt von selbst
+```
+
+This implies agenda.line needs:
+- `parent_line_id` or grouping field
+- Display logic for collapsed/expanded views
+- See [ui_ms_access_reports](ui_ms_access_reports.md) for visual reference
+
 ---
 
 ## Source References
 
 - [Intro](2026-01-30-agenda_extended_intro.md) lines 70-100: Naming and line-item-providers
 - [Intro](2026-01-30-agenda_extended_intro.md) lines 25-45: Sync pattern discussion
+- [Images](2026-01-30-agenda_extended_images.md): MS Access report sub-event grouping

@@ -6,9 +6,33 @@
 
 ---
 
-## Overview
+## Purpose
 
-MS Access currently generates PDF reports for contracts and portfolios. These need migration to Odoo QWeb reports while preserving the effective design language.
+**LOW PRIORITY for reproduction** — These reports are design reference only.
+
+Use to understand:
+- General design approach (3-col, lines & squares)
+- Data relationships (sub-event grouping)
+- Information hierarchy
+
+Actual implementation will use simpler Odoo views + website card patterns.
+
+---
+
+## Key Finding: Sub-Event Logic
+
+**From Agenda_Main report: 2 event types grouped together**
+
+This reveals the sub-event pattern:
+- Parent event (e.g., "Block 1") groups child events
+- Example: A1+A2 shown as single block in schedule
+- Important for agenda.line model design
+
+```
+Block 1 (Parent)
+├── A1: Am Anfang war der Kreis (Do. 19:00-21:30, Fr. 09:00-18:30)
+└── A2: Die Bühne kommt von selbst (Sa. 09:00-18:00, So. 09:00-15:00)
+```
 
 ---
 
