@@ -1,7 +1,8 @@
 # Three Customer Transitions
 
 **Type**: master  
-**Stage**: task
+**Stage**: task  
+**Original Prompts**: [journeys](2026-01-30-agenda_extended_journeys.md), [core](2026-01-30-agenda_extended_core.md)
 
 ---
 

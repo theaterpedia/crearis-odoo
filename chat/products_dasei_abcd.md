@@ -1,7 +1,8 @@
 # DASEi Products A,B,C,D
 
 **Type**: master  
-**Stage**: task
+**Stage**: task  
+**Original Prompts**: [urls_and_code](2026-01-30-agenda_extended_urls_and_code.md) (fetched from dasei.eu)
 
 ---
 

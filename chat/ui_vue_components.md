@@ -1,7 +1,8 @@
 # Vue Component Architecture
 
 **Type**: master  
-**Stage**: task
+**Stage**: task  
+**Original Prompts**: [urls_and_code](2026-01-30-agenda_extended_urls_and_code.md), [images](2026-01-30-agenda_extended_images.md)
 
 ---
 

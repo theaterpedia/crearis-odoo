@@ -1,7 +1,8 @@
 # Email Templates
 
 **Type**: master  
-**Stage**: task
+**Stage**: task  
+**Original Prompts**: [emails](2026-01-30-agenda_extended_emails.md)
 
 ---
 

@@ -18,6 +18,7 @@ The UI centers on a 3-tab sidebar navigation (Agenda | Curriculum | Service) tha
 | [ui_responsive_breakpoints](ui_responsive_breakpoints.md) | mobile/tablet/desktop, strategic gaps | task | | |
 | [ui_odoo_integration](ui_odoo_integration.md) | Sidebar widget question, bootstrap respect | task | | |
 | [ui_vue_components](ui_vue_components.md) | Vue component architecture from dasei.eu | task | DataView, Cards | |
+| [ui_ms_access_reports](ui_ms_access_reports.md) | MS Access report migration, 3-col design | task | Lines & squares | |
 
 ---
 

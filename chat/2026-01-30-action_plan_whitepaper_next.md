@@ -35,7 +35,7 @@
 
 ### Immediate: Research & Decisions Needed
 
-1. **agenda.line model architecture** (Chapter 2)
+1. **agenda.line model architecture** (Chapter 2) ← **PRIORITY: START HERE**
    - [ ] Create master doc: agenda_lines_architecture.md
    - [ ] Define fields, relations, computed properties
    - [ ] Decide: JSON source vs table source
@@ -45,15 +45,26 @@
    - [ ] Which chatter events → agenda.lines?
    - [ ] Leverage Odoo's existing workflow engine
 
-3. **SharePoint table cross-check** (Chapter 7)
-   - [ ] Review ref_sharepoint_plan_veranstaltungen.md
-   - [ ] Cross-validate our thinking
-   - [ ] Not to sync, but to understand original planning
+3. **SharePoint table cross-check** (Chapter 7) — **DEFERRED**
+   - Revisit only after Odoo planning is sound
+   - User will provide more schema then
+   - Not a distraction right now
 
 4. **Backoffice sidebar navigation** (Chapter 4)
    - [ ] Create master doc: ui_sidebar_spec.md
    - [ ] "Next actions" functionality investigation
-   - [ ] Check MS Access report structure from images
+   - [x] MS Access report analysis → [ui_ms_access_reports.md](ui_ms_access_reports.md)
+
+---
+
+### Decisions Made (2026-01-30)
+
+| Question | Answer |
+|----------|--------|
+| agenda.line vs checkout controller first? | **agenda.line model** |
+| SharePoint analysis now? | **No** — defer until Odoo planning solid |
+| German content timing? | **After essentials** |
+| MS Access report analysis? | **Yes** — 3-col design, lines & squares aesthetic |
 
 ---
 

@@ -1,7 +1,8 @@
 # Document Staging
 
 **Type**: master  
-**Stage**: task
+**Stage**: task  
+**Original Prompts**: [meta](2026-01-30-agenda_extended_meta.md)
 
 ---
 
