@@ -5,7 +5,7 @@
 {
     'name': 'Agenda DASEi',
     'version': '16.0.1.2.0',
-    'summary': 'DASEi-specific partner status and domaincode mapping',
+    'summary': 'DASEi-specific partner status, course products, and MDC generation',
     'description': """
 DASEi-specific extensions for Crearis Agenda sync.
 
@@ -15,10 +15,13 @@ Features:
 - Computed highest domaincode for login routing
 - Sync of plan_kursteilnehmer and contacts
 - Course products (M18, N18, ZR, ZT profiles)
+- Course-Event mapping (JSONB) from plan_veranstaltungsteilnehmer
 - Module progress tracking (A, B, C, D modules)
 - Event registration sync from plan_veranstaltungsteilnehmer
 - Status mapping: SharePoint StatusLookupId → Odoo registration state
 - Auto-creates DASEi websites (dasei0, dasei1, dasei2, dasei3) on install
+- REST API for MDC file generation (/api/v1/mdc/*)
+- Support for Offenes Programm (standalone events)
     """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',

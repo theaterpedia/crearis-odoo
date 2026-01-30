@@ -21,6 +21,24 @@
                         </group>
                     </group>
                 </page>
+                <page string="Course Events" name="course_events"
+                      attrs="{'invisible': [('ms_contact_id', '=', False)]}">
+                    <group>
+                        <field name="course_event_count" string="Linked Events"/>
+                    </group>
+                    <field name="course_event_records" readonly="1" nolabel="1">
+                        <tree>
+                            <field name="name"/>
+                            <field name="event_type_id"/>
+                            <field name="date_begin"/>
+                            <field name="date_end"/>
+                            <field name="seats_available"/>
+                        </tree>
+                    </field>
+                    <group string="Raw Event Mapping (JSON)" groups="base.group_no_one">
+                        <field name="course_event_ids" widget="json" nolabel="1"/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

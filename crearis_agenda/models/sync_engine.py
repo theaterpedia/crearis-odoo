@@ -999,6 +999,7 @@ class AgendaSyncEngine(models.AbstractModel):
             'cimg': sp_fields.get('cimg', ''),
             'units': sp_fields.get('UE', 0) or 0,
             'domain_code': website.id if website else False,
+            'company_id': company.id,
             **location_vals,  # sp_raum_id, address_id, tag_ids
         }
 

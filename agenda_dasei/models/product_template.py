@@ -21,6 +21,12 @@ MODULE_GROUPS = {
     'Z': 'Modul Z - Specials',
 }
 
+# Standard order for event types in course
+EVENT_ORDER = {
+    'a0': 1, 'a1': 2, 'a2': 3, 'a3': 4, 'a4': 5, 'a5': 6,
+    'aa': 0, 'info': 0,
+}
+
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
@@ -51,6 +57,79 @@ class ProductTemplate(models.Model):
         ('day', 'Tageskurs'),
         ('profile', 'Aufbaustufe'),
     ], string='Course Type')
+
+    # =========================================================================
+    # COURSE EVENT MAPPING (JSONB with metadata)
+    # =========================================================================
+    
+    course_event_ids = fields.Json(
+        string='Course Events',
+        help='JSON mapping of event shortcodes to event metadata (id, order, etc.)',
+        default=dict,
+    )
+    # Example value (with metadata):
+    # {
+    #   "a0": {"event_id": 1328, "order": 1},
+    #   "a1": {"event_id": 1178, "order": 2},
+    #   "a2": {"event_id": 1190, "order": 3},
+    #   ...
+    # }
+
+    # Computed: M2M relation for UI display
+    course_event_records = fields.Many2many(
+        'event.event',
+        string='Course Events (Records)',
+        compute='_compute_course_event_records',
+        store=False,
+    )
+
+    course_event_count = fields.Integer(
+        string='Event Count',
+        compute='_compute_course_event_records',
+        store=False,
+    )
+
+    @api.depends('course_event_ids')
+    def _compute_course_event_records(self):
+        Event = self.env['event.event']
+        for record in self:
+            if record.course_event_ids:
+                # Extract event_ids from metadata structure
+                event_ids = []
+                for shortcode, meta in record.course_event_ids.items():
+                    event_id = meta.get('event_id') if isinstance(meta, dict) else meta
+                    if event_id:
+                        event_ids.append(event_id)
+                record.course_event_records = Event.browse(event_ids)
+                record.course_event_count = len(event_ids)
+            else:
+                record.course_event_records = Event.browse()
+                record.course_event_count = 0
+
+    def get_course_events_ordered(self):
+        """Get course events sorted by order field in metadata.
+        
+        Returns: recordset of event.event, sorted by order
+        """
+        self.ensure_one()
+        Event = self.env['event.event']
+        
+        if not self.course_event_ids:
+            return Event.browse()
+        
+        # Extract event_ids and order from metadata structure
+        events_with_order = []
+        for shortcode, meta in self.course_event_ids.items():
+            event_id = meta.get('event_id') if isinstance(meta, dict) else meta
+            order = meta.get('order', 99) if isinstance(meta, dict) else 99
+            if event_id:
+                events_with_order.append((event_id, order, shortcode))
+        
+        # Sort by order field
+        events_with_order.sort(key=lambda x: x[1])
+        
+        event_ids = [e[0] for e in events_with_order]
+        return Event.browse(event_ids)
 
     @api.model
     def _parse_course_fullname(self, fullname):
