@@ -147,23 +147,72 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ---
 
+## Decision → Module Correlation Matrix
+
+This matrix shows how each decision point affects module implementation:
+
+| Decision | crearis | crearis_event_package | agenda_dasei | Notes |
+|----------|---------|----------------------|--------------|-------|
+| D1. Model Name | ✓ | — | — | Rename in core |
+| D2. Provider Fields | ✓ | — | — | Generic relation pattern |
+| D3. Source of Truth | ✓ | — | — | JSONB sync in core |
+| D4. Two Sources | ✓ (event-driven) | ✓ (product-driven) | — | Split implementation |
+| D5. CRM Workflow | — | ✓ | ✓ (templates) | Infrastructure + content |
+| D6. Existing Fields | ✓ | — | — | Keep in core model |
+| D7. Type + Mode | ✓ | — | — | Core selection fields |
+| D8. Template Inheritance | ✓ | — | ✓ (data) | Engine + defaults |
+| D9. Attendance | ✓ | — | — | Future: core model |
+| D10. Posts Provider | ? | — | — | Investigation needed |
+
+### Key Correlations
+
+1. **D4 + D5 Correlation**: The two sources (Product/Event) create different CRM needs:
+   - Product-driven → needs Resolution Queue (in `crearis_event_package`)
+   - Event-driven → simpler (just Meldefrist milestone in `crearis`)
+
+2. **D3 + D8 Correlation**: Both involve JSONB storage:
+   - D3 (schedule_json) lives on `event.event` 
+   - D8 (schedule_template) lives on `event.type`
+   - Both managed in `crearis`, template content from `agenda_dasei`
+
+3. **D5 + D6.6 Correlation**: CRM workflow email templates:
+   - Infrastructure (cron, mail.template record) → `crearis_event_package`
+   - German content (body_html) → `agenda_dasei` data files
+
+---
+
 ## Implementation Phases
+
+---
+
+### Module Location Legend
+
+| Module | Purpose | Key Models |
+|--------|---------|------------|
+| **crearis** | Core agenda.line model, generic relations | agenda.line, event extensions |
+| **crearis_event_package** | Product/package-driven functionality | product.package.event.line, stornierungsfrist |
+| **agenda_dasei** | DASEi-specific defaults and templates | Data files, German email templates |
+
+---
 
 ### Phase 1: Model Refactoring (Foundation)
 
+**Module**: `crearis`
+**Rationale**: `event.session.line` already lives in crearis, natural home for agenda.line
+
 **Goal**: Rename and extend `event.session.line` → `agenda.line`
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 1.1 | Create migration script for model rename | — | 2h |
-| 1.2 | Update model file: `event_session_line.py` → `agenda_line.py` | 1.1 | 1h |
-| 1.3 | Add `type` field with 5 types (session, meeting, milestone, info, action) | 1.2 | 1h |
-| 1.4 | Add `mode` field (online/venue/individual/tbd) | 1.2 | 0.5h |
-| 1.5 | Add `source` field (json/template/manual/chatter) | 1.2 | 0.5h |
-| 1.6 | Add `locked_edits` boolean | 1.5 | 0.5h |
-| 1.7 | Update all view references (`event_session_line` → `agenda_line`) | 1.2 | 2h |
-| 1.8 | Update security rules (ir.model.access.csv) | 1.2 | 0.5h |
-| 1.9 | Run tests, fix breakages | 1.7, 1.8 | 2h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 1.1 | Create migration script for model rename | crearis | — | 2h |
+| 1.2 | Update model file: `event_session_line.py` → `agenda_line.py` | crearis | 1.1 | 1h |
+| 1.3 | Add `type` field with 5 types (session, meeting, milestone, info, action) | crearis | 1.2 | 1h |
+| 1.4 | Add `mode` field (online/venue/individual/tbd) | crearis | 1.2 | 0.5h |
+| 1.5 | Add `source` field (json/template/manual/chatter) | crearis | 1.2 | 0.5h |
+| 1.6 | Add `locked_edits` boolean | crearis | 1.5 | 0.5h |
+| 1.7 | Update all view references (`event_session_line` → `agenda_line`) | crearis | 1.2 | 2h |
+| 1.8 | Update security rules (ir.model.access.csv) | crearis | 1.2 | 0.5h |
+| 1.9 | Run tests, fix breakages | crearis | 1.7, 1.8 | 2h |
 
 **Deliverable**: `agenda.line` model with backward-compatible fields.
 
@@ -171,16 +220,19 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 2: Provider Relations
 
+**Module**: `crearis`
+**Rationale**: Generic relation pattern belongs in core, not package-specific
+
 **Goal**: Add multi-provider support (event, post, product)
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 2.1 | Keep `event_id` as primary provider (existing) | Phase 1 | — |
-| 2.2 | Add `post_id` Many2one field | Phase 1 | 0.5h |
-| 2.3 | Add `product_id` Many2one field | Phase 1 | 0.5h |
-| 2.4 | Add `provider_type` computed field | 2.1-2.3 | 1h |
-| 2.5 | Add constraint: exactly one provider set | 2.4 | 0.5h |
-| 2.6 | Update JSONB sync to use event_id provider | 2.1 | 1h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 2.1 | Keep `event_id` as primary provider (existing) | crearis | Phase 1 | — |
+| 2.2 | Add `post_id` Many2one field | crearis | Phase 1 | 0.5h |
+| 2.3 | Add `product_id` Many2one field | crearis | Phase 1 | 0.5h |
+| 2.4 | Add `provider_type` computed field | crearis | 2.1-2.3 | 1h |
+| 2.5 | Add constraint: exactly one provider set | crearis | 2.4 | 0.5h |
+| 2.6 | Update JSONB sync to use event_id provider | crearis | 2.1 | 1h |
 
 **Deliverable**: agenda.line can be linked to event, post, or product.
 
@@ -188,17 +240,20 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 3: Product-Driven agenda.lines (Option A)
 
+**Module**: `crearis_event_package`
+**Rationale**: Extends `product.package.event.line` which already lives there
+
 **Goal**: Extend `product.package.event.line` to create agenda.lines
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 3.1 | Add `agenda_line_id` M2O on `product.package.event.line` | Phase 2 | 0.5h |
-| 3.2 | Override `create()` to auto-create agenda.line | 3.1 | 2h |
-| 3.3 | Override `write()` to sync event_id changes | 3.2 | 1h |
-| 3.4 | Add `stornierungsfrist_days` on `product.template` | Phase 2 | 0.5h |
-| 3.5 | Add `stornierungsfrist_date` computed on `sale.order.line` | 3.4 | 1h |
-| 3.6 | Add `is_stornierungsfrist_passed` computed | 3.5 | 0.5h |
-| 3.7 | Create Stornierungsfrist milestone agenda.line on purchase | 3.2, 3.5 | 2h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 3.1 | Add `agenda_line_id` M2O on `product.package.event.line` | crearis_event_package | Phase 2 | 0.5h |
+| 3.2 | Override `create()` to auto-create agenda.line | crearis_event_package | 3.1 | 2h |
+| 3.3 | Override `write()` to sync event_id changes | crearis_event_package | 3.2 | 1h |
+| 3.4 | Add `stornierungsfrist_days` on `product.template` | crearis_event_package | Phase 2 | 0.5h |
+| 3.5 | Add `stornierungsfrist_date` computed on `sale.order.line` | crearis_event_package | 3.4 | 1h |
+| 3.6 | Add `is_stornierungsfrist_passed` computed | crearis_event_package | 3.5 | 0.5h |
+| 3.7 | Create Stornierungsfrist milestone agenda.line on purchase | crearis_event_package | 3.2, 3.5 | 2h |
 
 **Deliverable**: Module purchase creates agenda.lines with Stornierungsfrist tracking.
 
@@ -206,16 +261,26 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 4: Event-Driven agenda.lines
 
+**Module**: `crearis` (base), `agenda_dasei` (defaults)
+**Rationale**: Event registration extension is generic; Meldefrist defaults are DASEi-specific
+
 **Goal**: Extend `event.registration` for Offenes Programm
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 4.1 | Add `agenda_line_ids` O2M on `event.registration` | Phase 2 | 0.5h |
-| 4.2 | Override `create()` to auto-create agenda.line for direct registration | 4.1 | 2h |
-| 4.3 | Add `meldefrist_days_before` on `event.type` | Phase 2 | 0.5h |
-| 4.4 | Add `meldefrist_date` computed on `event.event` | 4.3 | 1h |
-| 4.5 | Create Meldefrist milestone agenda.line on event create | 4.4 | 2h |
-| 4.6 | Extend `event.mail` with `interval_type='before_meldefrist'` | 4.4 | 2h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 4.1 | Add `agenda_line_ids` O2M on `event.registration` | crearis | Phase 2 | 0.5h |
+| 4.2 | Override `create()` to auto-create agenda.line for direct registration | crearis | 4.1 | 2h |
+| 4.3 | Add `meldefrist_days_before` on `event.type` | crearis | Phase 2 | 0.5h |
+| 4.4 | Add `meldefrist_date` computed on `event.event` | crearis | 4.3 | 1h |
+| 4.5 | Create Meldefrist milestone agenda.line on event create | crearis | 4.4 | 2h |
+| 4.6 | Extend `event.mail` with `interval_type='before_meldefrist'` | crearis | 4.4 | 2h |
+| 4.7 | **[NEW]** Set `meldefrist_days_before=60` for DASEi event types | agenda_dasei | 4.3 | 0.5h |
+
+**Open Question Q4**: Should Meldefrist defaults be in crearis (generic) or agenda_dasei (DASEi-specific)?
+- If generic → Set sensible defaults (0) in crearis, override in agenda_dasei
+- If DASEi-only → Only add field in agenda_dasei
+
+**Current Decision**: Field in crearis (generic), defaults in agenda_dasei (specific)
 
 **Deliverable**: Event registration creates agenda.line with Meldefrist tracking.
 
@@ -223,16 +288,20 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 5: Template System
 
+**Module**: `crearis` (template engine), `agenda_dasei` (DASEi templates)
+**Rationale**: Template engine is generic; DASEi schedule patterns are specific
+
 **Goal**: Event types generate agenda.lines from schedule templates
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 5.1 | Add `schedule_template` JSONB on `event.type` | Phase 1 | 1h |
-| 5.2 | Implement block date resolution algorithm | 5.1 | 3h |
-| 5.3 | Override `event.event.create()` to generate session lines | 5.2 | 2h |
-| 5.4 | Add "Regenerate from Template" action button | 5.3 | 1h |
-| 5.5 | Add "Unlock for Editing" action (sets locked_edits=False) | 5.3 | 0.5h |
-| 5.6 | [PLACEHOLDER] Event type hierarchy inheritance | 5.1 | TBD |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 5.1 | Add `schedule_template` JSONB on `event.type` | crearis | Phase 1 | 1h |
+| 5.2 | Implement block date resolution algorithm | crearis | 5.1 | 3h |
+| 5.3 | Override `event.event.create()` to generate session lines | crearis | 5.2 | 2h |
+| 5.4 | Add "Regenerate from Template" action button | crearis | 5.3 | 1h |
+| 5.5 | Add "Unlock for Editing" action (sets locked_edits=False) | crearis | 5.3 | 0.5h |
+| 5.6 | [PLACEHOLDER] Event type hierarchy inheritance | crearis | 5.1 | TBD |
+| 5.7 | **[NEW]** Define Grundlagenkurs schedule template (Fri+Sat+Sun pattern) | agenda_dasei | 5.1 | 1h |
 
 **Deliverable**: Creating event from type auto-generates session agenda.lines.
 
@@ -240,16 +309,19 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 6: CRM Workflow (Unresolved Slots)
 
+**Module**: `crearis_event_package` (workflow), `agenda_dasei` (German templates)
+**Rationale**: Unresolved slots are package-specific; email content is DASEi-specific
+
 **Goal**: Help resolve `event_id=False` package lines
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 6.1 | Add color state field (resolved/pending/overdue/cancelled) | Phase 3 | 1h |
-| 6.2 | Create "Ambiguous Agendas Report" wizard | 6.1 | 3h |
-| 6.3 | Add `resolution_reminder_count` tracking | 6.1 | 0.5h |
-| 6.4 | Create automated reminder cron job | 6.3 | 2h |
-| 6.5 | Create "Resolution Queue" dashboard widget | 6.1 | 2h |
-| 6.6 | Define reminder email template | 6.4 | 1h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 6.1 | Add color state field (resolved/pending/overdue/cancelled) | crearis_event_package | Phase 3 | 1h |
+| 6.2 | Create "Ambiguous Agendas Report" wizard | crearis_event_package | 6.1 | 3h |
+| 6.3 | Add `resolution_reminder_count` tracking | crearis_event_package | 6.1 | 0.5h |
+| 6.4 | Create automated reminder cron job | crearis_event_package | 6.3 | 2h |
+| 6.5 | Create "Resolution Queue" dashboard widget | crearis_event_package | 6.1 | 2h |
+| 6.6 | Define reminder email template (German) | agenda_dasei | 6.4 | 1h |
 
 **Deliverable**: CRM tools to track and resolve unresolved event selections.
 
@@ -257,16 +329,19 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 7: Core Views (Events)
 
+**Module**: `crearis`
+**Rationale**: Event views are part of core agenda functionality
+
 **Goal**: Event form shows agenda.lines
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 7.1 | Create agenda.line tree view (for event form embed) | Phase 1 | 1h |
-| 7.2 | Create agenda.line form view | 7.1 | 1h |
-| 7.3 | Add "Schedule" tab to event form with agenda.lines | 7.1, 7.2 | 1h |
-| 7.4 | Add Meldefrist milestone display in form header | Phase 4 | 1h |
-| 7.5 | Add color-coding for session modes (online/venue icons) | 7.1 | 1h |
-| 7.6 | Create "All Online Sessions" filtered view (Eleanora requirement) | 7.1 | 1h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 7.1 | Create agenda.line tree view (for event form embed) | crearis | Phase 1 | 1h |
+| 7.2 | Create agenda.line form view | crearis | 7.1 | 1h |
+| 7.3 | Add "Schedule" tab to event form with agenda.lines | crearis | 7.1, 7.2 | 1h |
+| 7.4 | Add Meldefrist milestone display in form header | crearis | Phase 4 | 1h |
+| 7.5 | Add color-coding for session modes (online/venue icons) | crearis | 7.1 | 1h |
+| 7.6 | Create "All Online Sessions" filtered view (Eleanora requirement) | crearis | 7.1 | 1h |
 
 **Deliverable**: Event form with embedded agenda.line schedule view.
 
@@ -274,15 +349,18 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 8: Core Views (Products/Modules)
 
+**Module**: `crearis_event_package`
+**Rationale**: Product/package views extend existing package functionality
+
 **Goal**: Product form shows module milestones
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 8.1 | Add "Module Milestones" tab to product form | Phase 3 | 1h |
-| 8.2 | Show Stornierungsfrist configuration | 8.1 | 0.5h |
-| 8.3 | Create sale.order.line view with package event selections | Phase 3 | 2h |
-| 8.4 | Add color-coded resolution status on package lines | Phase 6 | 1h |
-| 8.5 | Link "Configure Events" button to configurator wizard | 8.3 | 0.5h |
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 8.1 | Add "Module Milestones" tab to product form | crearis_event_package | Phase 3 | 1h |
+| 8.2 | Show Stornierungsfrist configuration | crearis_event_package | 8.1 | 0.5h |
+| 8.3 | Create sale.order.line view with package event selections | crearis_event_package | Phase 3 | 2h |
+| 8.4 | Add color-coded resolution status on package lines | crearis_event_package | Phase 6 | 1h |
+| 8.5 | Link "Configure Events" button to configurator wizard | crearis_event_package | 8.3 | 0.5h |
 
 **Deliverable**: Product/Module form with milestone and package configuration views.
 
@@ -290,36 +368,58 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ### Phase 9: Investigation & Future
 
-| # | Task | Depends On | Estimate |
-|---|------|------------|----------|
-| 9.1 | **Investigation: posts model as agenda.line provider** | — | TBD |
-| 9.2 | [PLACEHOLDER] Post-driven info lines implementation | 9.1 | TBD |
-| 9.3 | [PLACEHOLDER] Chatter → Action lines wizard | Phase 2 | TBD |
-| 9.4 | [PLACEHOLDER] Attendance tracking model | Phase 4 | TBD |
-| 9.5 | [PLACEHOLDER] Participant personal agenda view | Phase 7 | TBD |
+**Module**: TBD per investigation
+**Rationale**: Future scope depends on findings
+
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 9.1 | **Investigation: posts model as agenda.line provider** | TBD | — | TBD |
+| 9.2 | [PLACEHOLDER] Post-driven info lines implementation | crearis | 9.1 | TBD |
+| 9.3 | [PLACEHOLDER] Chatter → Action lines wizard | crearis | Phase 2 | TBD |
+| 9.4 | [PLACEHOLDER] Attendance tracking model | crearis | Phase 4 | TBD |
+| 9.5 | [PLACEHOLDER] Participant personal agenda view | crearis | Phase 7 | TBD |
 
 ---
 
 ## Priority Order
 
 ```
-Phase 1 (Foundation)     ████████████████████  MUST HAVE
+Phase 1 (Foundation)     ████████████████████  MUST HAVE     [crearis]
     ↓
-Phase 2 (Providers)      ████████████████      MUST HAVE
+Phase 2 (Providers)      ████████████████      MUST HAVE     [crearis]
     ↓
-Phase 3 (Product)        ████████████████      MUST HAVE (enables CRM)
+Phase 3 (Product)        ████████████████      MUST HAVE     [crearis_event_package]
     ↓
-Phase 4 (Event)          ████████████████      MUST HAVE (enables Meldefrist)
+Phase 4 (Event)          ████████████████      MUST HAVE     [crearis + agenda_dasei]
     ↓
-Phase 5 (Templates)      ████████████          SHOULD HAVE
+Phase 5 (Templates)      ████████████          SHOULD HAVE   [crearis + agenda_dasei]
     ↓
-Phase 6 (CRM)            ████████████          SHOULD HAVE (retention critical)
+Phase 6 (CRM)            ████████████          SHOULD HAVE   [crearis_event_package + agenda_dasei]
     ↓
-Phase 7 (Event Views)    ████████              SHOULD HAVE
+Phase 7 (Event Views)    ████████              SHOULD HAVE   [crearis]
     ↓
-Phase 8 (Product Views)  ████████              SHOULD HAVE
+Phase 8 (Product Views)  ████████              SHOULD HAVE   [crearis_event_package]
     ↓
-Phase 9 (Investigation)  ████                  COULD HAVE
+Phase 9 (Investigation)  ████                  COULD HAVE    [TBD]
+```
+
+---
+
+## Module Distribution Summary
+
+| Module | Phases | % of Work |
+|--------|--------|-----------|
+| **crearis** | 1, 2, 4 (base), 5 (engine), 7, 9 (placeholders) | ~60% |
+| **crearis_event_package** | 3, 6, 8 | ~30% |
+| **agenda_dasei** | 4 (defaults), 5 (templates), 6 (email) | ~10% |
+
+### Dependency Flow
+
+```
+crearis (core agenda.line)
+    ├─► crearis_event_package (package-driven logic)
+    │       └─► agenda_dasei (German email templates)
+    └─► agenda_dasei (Meldefrist defaults, schedule templates)
 ```
 
 ---
@@ -331,6 +431,18 @@ Phase 9 (Investigation)  ████                  COULD HAVE
 | Q1 | Confirm 80% attendance threshold for "completed" | Phase 9.4 | Later |
 | Q2 | How to handle event type hierarchy inheritance? | Phase 5.6 | Before Phase 5 |
 | Q3 | What triggers post→agenda.line creation? | Phase 9.2 | Before Phase 9 |
+| **Q4** | **Should Meldefrist field be generic (crearis) or DASEi-only (agenda_dasei)?** | Phase 4.3 | Before Phase 4 |
+| **Q5** | **Should reminder email template infrastructure be generic (crearis_event_package) or DASEi-specific (agenda_dasei)?** | Phase 6.6 | Before Phase 6 |
+
+### Q4/Q5 Decision Correlations
+
+Both questions have the same pattern:
+- **Infrastructure** (field/cron) → Generic module (crearis/crearis_event_package)
+- **Content** (defaults/templates) → Specific module (agenda_dasei)
+
+**Recommendation**: 
+- Q4: Field in `crearis`, default value (60 days) in `agenda_dasei` data files
+- Q5: Cron + mail.template base in `crearis_event_package`, German content override in `agenda_dasei`
 
 ---
 
