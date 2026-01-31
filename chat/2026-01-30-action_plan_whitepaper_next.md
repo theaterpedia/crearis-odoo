@@ -33,6 +33,32 @@
 
 ## Next Actions (from Meta document)
 
+### 🚨 BLOCKING: Monday 2026-02-02
+
+**Domain Code Assignment to Events**
+- [ ] Investigate: Are domain codes being assigned to `event.event` records?
+- [ ] Check: Does SP sync need to be retriggered?
+- [ ] Check: Is there logic missing in sync or model?
+- **Why blocking**: Domain code system + event grouping requires this data on existing events
+- **Context**: See [2026-01-26-action_plan_website_templates.md](2026-01-26-action_plan_website_templates.md) — domain codes control website visibility
+
+---
+
+### Architecture Insight: Courses = Website Experiences
+
+> **Key Principle (2026-01-31)**: Courses should NOT be implemented at model-level. They are "designed" as website experiences with filter-configs on default models.
+
+| Level | Implementation | Example |
+|-------|----------------|---------|
+| Events | `event.event` model | A1 Kreisanimation München März 2026 |
+| Event Types | `event.type` model | A1 Kreisanimation (template) |
+| Modules | Website filter + domain_code | "Einstiege ins Theaterspiel" = filter A0-A5 events |
+| Courses | Website experience | "Grundlagenbildung" = dasei1→dasei2 journey through A,B,C,D |
+
+**Prototype target**: "Grundlagenbildung" (A),B,C,D as website experience
+
+---
+
 ### Immediate: Research & Decisions Needed
 
 1. **agenda.line model architecture** (Chapter 2) ← **PRIORITY: START HERE**
@@ -45,12 +71,32 @@
    - [ ] Which chatter events → agenda.lines?
    - [ ] Leverage Odoo's existing workflow engine
 
-3. **SharePoint table cross-check** (Chapter 7) — **DEFERRED**
+3. **Meldefrist + Stornierungsfrist as Milestone Examples** (Chapter 2 + Chapter 5)
+   - [ ] Create master doc or section: deadlines_meldefrist_stornierung.md
+   
+   **Meldefrist (Event-level)**:
+   - Confirmation deadline per event (A1, A2, A3...)
+   - Computed: `event.date_begin - event_type.meldefrist_days_before` (typically 60 days)
+   - Participants must confirm or opt-out before this date
+   - Batch processed: 2-4 events per 3-month cycle
+   - Creates: `agenda.line(type='milestone')` + reminder emails
+   
+   **Stornierungsfrist (Module/Product-level)**:
+   - Cancellation deadline for module purchase
+   - Computed: `first_event_attendance_date + 10 days`
+   - Before: Customer can cancel, loses only first Kursrate (~EUR 220)
+   - After: Module purchase binding, full fee applies
+   - Creates: `agenda.line(type='milestone')` on product
+   - Syncs: Accounting, consulting, customer portal
+   
+   **Status**: Meldefrist implemented in SP (not activated). Stornierungsfrist = "10-Tage-Regel" in team doc.
+
+4. **SharePoint table cross-check** (Chapter 7) — **DEFERRED**
    - Revisit only after Odoo planning is sound
    - User will provide more schema then
    - Not a distraction right now
 
-4. **Backoffice sidebar navigation** (Chapter 4)
+5. **Backoffice sidebar navigation** (Chapter 4)
    - [ ] Create master doc: ui_sidebar_spec.md
    - [ ] "Next actions" functionality investigation
    - [x] MS Access report analysis → [ui_ms_access_reports.md](ui_ms_access_reports.md)
@@ -97,6 +143,12 @@ Per Meta document guidance:
 Per Meta document:
 > After creating essentials, before 'unlock dasei' → create German text with example interactions for all customer stories
 
+**Input Sources for German Text**:
+- [dasei_team_report_de.md](dasei_team_report_de.md) — Key terminology, pricing, 10-Tage-Regel, customer path
+- [workflow_email_templates.md](../_meta/Whitepaper/workflow_email_templates.md) — Email patterns
+- [products_dasei_abcd.md](../_meta/Whitepaper/products_dasei_abcd.md) — Module structure
+
+**Journeys to document**:
 - [ ] Karo's journey (first contact → INFO-Teaser)
 - [ ] Ida's journey (Basistag → Module A)
 - [ ] Jolanda's journey (Module A → full Grundlagenbildung)
@@ -125,6 +177,7 @@ Per Meta document:
 - 2026-01-30-agenda_extended_emails.md ✓
 - 2026-01-30-agenda_extended_images.md ✓
 - 2026-01-30-agenda_extended_urls_and_code.md ✓
+- dasei_team_report_de.md ✓ (German terminology, pricing, customer path)
 
 ### Reference Files (not yet deeply analyzed)
 - ref_sharepoint_plan_veranstaltungen.md
