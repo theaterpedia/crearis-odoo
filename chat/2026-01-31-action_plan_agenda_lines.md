@@ -125,14 +125,33 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ---
 
-### D9. Attendance Tracking 🔶 NEEDS DETAIL
+### D9. Attendance Tracking ⚡ DECIDED (Simple First)
 
-| Question | Status |
-|----------|--------|
-| How to mark sessions completed? | Conceptually decided (attendance-based), needs model |
-| Threshold for "completed" vs "partial"? | 80% proposed, needs confirmation |
+**Core Insight**: Attendance tracking is an **automation feature** — but `completed`/`partial` can be manually altered after automation sets it on the event.registration level.
 
-**Placeholder**: `agenda.line.attendance` model in Phase 4.
+**Phase 1 (Simple)**:
+| Config | Level | Description |
+|--------|-------|-------------|
+| `attendance_completion_mode` | Company | Selection: `manual`, `threshold`, `full_attendance` |
+| `attendance_threshold` | Company | Integer (default 80%) — only used if mode=`threshold` |
+
+**Phase 2 (Extension, non-breaking)**:
+| Config | Level | Description |
+|--------|-------|-------------|
+| Override rules | Company | Can override + set defaults |
+| `attendance_completion_mode` | Event Type | Optional override of company default |
+
+**Status Field** (on `event.registration`):
+```python
+completion_status = fields.Selection([
+    ('pending', 'Pending'),      # Event not yet finished
+    ('completed', 'Completed'),  # Met threshold (auto or manual)
+    ('partial', 'Partial'),      # Below threshold (auto or manual)
+], default='pending')
+completion_status_manual = fields.Boolean(default=False)  # True if manually overridden
+```
+
+**Module**: `crearis` (field + automation), company config in base settings.
 
 ---
 
@@ -423,7 +442,7 @@ crearis (core agenda.line)
 
 | # | Question | Blocking Phase | Status |
 |---|----------|----------------|--------|
-| Q1 | Confirm 80% attendance threshold for "completed" | Phase 9.4 | Later |
+| ~~Q1~~ | ~~Confirm 80% attendance threshold~~ | ~~Phase 9.4~~ | ⚡ DECIDED (D9) |
 | Q2 | How to handle event type hierarchy inheritance? | Phase 5.6 | Before Phase 5 |
 | Q3 | What triggers post→agenda.line creation? | Phase 9.2 | Before Phase 9 |
 | ~~Q4~~ | ~~Meldefrist field location~~ | ~~Phase 4.3~~ | ⚡ DECIDED |
