@@ -460,52 +460,110 @@ order.with_context(send_email=True).action_confirm()
   - At order confirmation (commits the purchase)
   - At registration creation (late, only for confirmed events)
 
-### 7.5 Recommendation: Integrate with Existing Flow
+### 7.5 Two Distinct agenda.line Sources
+
+| Source | Trigger Model | Trigger Point | Lines Created | Key Deadline |
+|--------|---------------|---------------|---------------|--------------|
+| **Product** (Module A/B/C/D) | `product.package.event.line` | `sale.order.line.create()` | Multiple (6-9 per module) | **Stornierungsfrist** |
+| **Event** (Offenes Programm) | `event.registration` | `registration.create()` | One per registration | **Meldefrist** |
+
+**Product-driven** agenda.lines are created when customer purchases a Module package. Each event type slot in the package becomes an agenda.line, initially **without a resolved event** (`event_id=False`).
+
+**Event-driven** agenda.lines are created when customer registers directly for a standalone event. The event is already known, so `event_id` is set immediately.
+
+### 7.6 CRITICAL: Unresolved Event Slots (CRM/After-Sales)
+
+**Problem:** Product-driven agenda.lines start in `state='pending'` with `event_id=False`. Customers must select specific events for each slot, but many procrastinate or struggle to decide.
+
+**Real-world pattern:** "Hanging around with ambiguous, undecided phases" → if not resolved properly → **tends to cancellation**.
+
+#### Recommended Workflow Features
+
+**1. Visual UI: Color-coded agenda.line states**
+```
+🟢 Green  = resolved (event selected, registration created)
+🟡 Yellow = pending (event type known, event not selected)
+🔴 Red    = overdue (Meldefrist approaching, still unresolved)
+⚫ Gray   = cancelled
+```
+
+**2. CRM Report: "Ambiguous Agendas Report"**
+```python
+# Report: Participants with unresolved agenda.lines in next 6 months
+class AmbiguousAgendasReport(models.TransientModel):
+    _name = 'agenda.ambiguous.report'
+    
+    def _get_ambiguous_lines(self):
+        six_months = fields.Date.today() + timedelta(days=180)
+        return self.env['agenda.line'].search([
+            ('event_id', '=', False),  # Unresolved
+            ('event_type_id.next_event_date', '<=', six_months),  # Has upcoming events
+            ('state', '!=', 'cancelled'),
+        ])
+    
+    def action_generate_report(self):
+        """Group by partner, show count of unresolved slots per person."""
+        lines = self._get_ambiguous_lines()
+        # Group by partner_id, count unresolved, sort by urgency
+        ...
+```
+
+**3. Automated Reminder Workflow**
+- Cron: Check for agenda.lines with `event_id=False` where next available event is within 30 days
+- Send reminder email: "Please select your event for [Event Type] - options available: [list]"
+- Escalate to course coordinator if no action after 2 reminders
+
+**4. Dashboard Widget: "Resolution Queue"**
+```
+┌─────────────────────────────────────────────────────┐
+│ UNRESOLVED EVENT SELECTIONS                    🔴 23 │
+├─────────────────────────────────────────────────────┤
+│ Within 30 days:  8 participants (urgent)            │
+│ Within 60 days: 12 participants (attention needed)  │
+│ Within 90 days:  3 participants                     │
+│                                                     │
+│ [View All] [Send Bulk Reminder] [Export CSV]        │
+└─────────────────────────────────────────────────────┘
+```
+
+### 7.7 Recommendation: Extend product.package.event.line (Option A)
 
 ```python
-# Option A: Extend product.package.event.line
 class ProductPackageEventLine(models.Model):
     _inherit = 'product.package.event.line'
     
     agenda_line_id = fields.Many2one('agenda.line', string="Agenda Line")
     
+    # Resolution tracking
+    resolution_reminder_count = fields.Integer(default=0)
+    resolution_reminder_last = fields.Date()
+    
     @api.model_create_multi
     def create(self, vals_list):
         lines = super().create(vals_list)
         for line in lines:
-            # Create agenda.line for this package event slot
+            # Create agenda.line immediately (unresolved)
             line.agenda_line_id = self.env['agenda.line'].create({
                 'partner_id': line.partner_id.id,
                 'event_type_id': line.event_type_id.id,
+                'event_id': False,  # UNRESOLVED - needs CRM follow-up
                 'source_type': 'product',
                 'source_ref': f'product.package.event.line,{line.id}',
-                # Meldefrist and Stornierungsfrist come from product config
+                'state': 'pending',
             })
         return lines
-```
-
-**OR**
-
-```python
-# Option B: agenda.line watches product.package.event.line
-class AgendaLine(models.Model):
-    _name = 'agenda.line'
     
-    source_package_line_id = fields.Many2one(
-        'product.package.event.line',
-        string="Package Event Line"
-    )
-    
-    @api.model
-    def create_from_package_lines(self, package_lines):
-        """Batch create agenda.lines from package event selections."""
-        for pline in package_lines:
-            self.create({
-                'partner_id': pline.partner_id.id,
-                'event_type_id': pline.event_type_id.id,
-                'event_id': pline.event_id.id,
-                'source_package_line_id': pline.id,
-            })
+    def write(self, vals):
+        res = super().write(vals)
+        # Sync event_id to agenda.line when resolved
+        if 'event_id' in vals:
+            for line in self:
+                if line.agenda_line_id:
+                    line.agenda_line_id.write({
+                        'event_id': vals['event_id'],
+                        'state': 'selected' if vals['event_id'] else 'pending',
+                    })
+        return res
 ```
 
 ---
