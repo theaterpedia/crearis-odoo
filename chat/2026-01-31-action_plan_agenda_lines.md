@@ -274,15 +274,10 @@ This matrix shows how each decision point affects module implementation:
 | 4.4 | Add `meldefrist_date` computed on `event.event` | crearis | 4.3 | 1h |
 | 4.5 | Create Meldefrist milestone agenda.line on event create | crearis | 4.4 | 2h |
 | 4.6 | Extend `event.mail` with `interval_type='before_meldefrist'` | crearis | 4.4 | 2h |
-| 4.7 | **[NEW]** Set `meldefrist_days_before=60` for DASEi event types | agenda_dasei | 4.3 | 0.5h |
+| 4.7 | Add `use_meldefrist` boolean on domain-code (default=False) | crearis | 4.3 | 0.5h |
+| 4.8 | Set `use_meldefrist=True` + `meldefrist_days_before=60` for DASEi | agenda_dasei | 4.7 | 0.5h |
 
-**Open Question Q4**: Should Meldefrist defaults be in crearis (generic) or agenda_dasei (DASEi-specific)?
-- If generic → Set sensible defaults (0) in crearis, override in agenda_dasei
-- If DASEi-only → Only add field in agenda_dasei
-
-**Current Decision**: Field in crearis (generic), defaults in agenda_dasei (specific)
-
-**Deliverable**: Event registration creates agenda.line with Meldefrist tracking.
+**Deliverable**: Event registration creates agenda.line with Meldefrist tracking (opt-in per domain).
 
 ---
 
@@ -426,23 +421,20 @@ crearis (core agenda.line)
 
 ## Open Questions for Decision
 
-| # | Question | Blocking Phase | Deadline |
-|---|----------|----------------|----------|
+| # | Question | Blocking Phase | Status |
+|---|----------|----------------|--------|
 | Q1 | Confirm 80% attendance threshold for "completed" | Phase 9.4 | Later |
 | Q2 | How to handle event type hierarchy inheritance? | Phase 5.6 | Before Phase 5 |
 | Q3 | What triggers post→agenda.line creation? | Phase 9.2 | Before Phase 9 |
-| **Q4** | **Should Meldefrist field be generic (crearis) or DASEi-only (agenda_dasei)?** | Phase 4.3 | Before Phase 4 |
-| **Q5** | **Should reminder email template infrastructure be generic (crearis_event_package) or DASEi-specific (agenda_dasei)?** | Phase 6.6 | Before Phase 6 |
+| ~~Q4~~ | ~~Meldefrist field location~~ | ~~Phase 4.3~~ | ⚡ DECIDED |
+| ~~Q5~~ | ~~Email template infrastructure location~~ | ~~Phase 6.6~~ | ⚡ DECIDED |
 
-### Q4/Q5 Decision Correlations
+### Q4/Q5 Decisions (Confirmed)
 
-Both questions have the same pattern:
-- **Infrastructure** (field/cron) → Generic module (crearis/crearis_event_package)
-- **Content** (defaults/templates) → Specific module (agenda_dasei)
+**Pattern**: Infrastructure in generic module, Content in specific module.
 
-**Recommendation**: 
-- Q4: Field in `crearis`, default value (60 days) in `agenda_dasei` data files
-- Q5: Cron + mail.template base in `crearis_event_package`, German content override in `agenda_dasei`
+- **Q4**: Field `meldefrist_days_before` in `crearis` + `use_meldefrist` boolean (default=False) at domain-code level. Enabled + default (60 days) set in `agenda_dasei` data files.
+- **Q5**: Cron + mail.template base in `crearis_event_package`, German content in `agenda_dasei` data files.
 
 ---
 
