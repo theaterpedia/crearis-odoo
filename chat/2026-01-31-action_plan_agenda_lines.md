@@ -511,24 +511,146 @@ event.type: "A1 Kreisanimation" (abstract parent, is_template_code=False)
 | **B. Computed Fallback** | Child fields compute `self.value or parent.value` | DRY, but magic |
 | **C. Related Fields** | Use `related='template_parent_id.field'` with store=True | Odoo-native, auto-sync |
 
-**Recommendation**: **Option C (Related Fields)** for simple fields, **Option A (Explicit Copy)** for `schedule_template` which must always be defined on the bookable variant.
+---
 
-**Implementation Pattern**:
+#### Option C Variants with Data Examples
+
+**Sample Data** (3 event.type records):
+
+| id | name | is_template_code | template_parent_id | product_template_id | template_units | template_cimg |
+|----|------|------------------|-------------------|---------------------|----------------|---------------|
+| 1 | A1 Kreisanimation | False | — | 42 (Module A) | 22 | hero_a1.jpg |
+| 2 | A1 Block | True | 1 | ? | ? | ? |
+| 3 | A1 Tageskurs | True | 1 | ? | 10 | tageskurs.jpg |
+
+---
+
+**C1. Pure Related (no override possible)**
+
 ```python
-# In crearis/models/event.py
+# Child ALWAYS shows parent value, cannot override
 product_template_id = fields.Many2one(
-    'product.template',
-    compute='_compute_inherited_fields',
-    store=True,
+    related='template_parent_id.product_template_id',
+    store=True, readonly=True
+)
+template_units = fields.Float(
+    related='template_parent_id.template_units',
+    store=True, readonly=True
+)
+```
+
+**Resulting Data**:
+| id | name | product_template_id | template_units | template_cimg |
+|----|------|---------------------|----------------|---------------|
+| 1 | A1 Kreisanimation | 42 | 22 | hero_a1.jpg |
+| 2 | A1 Block | 42 *(from parent)* | 22 *(from parent)* | hero_a1.jpg *(from parent)* |
+| 3 | A1 Tageskurs | 42 *(from parent)* | 22 *(WRONG! wanted 10)* | hero_a1.jpg *(WRONG! wanted tageskurs.jpg)* |
+
+❌ **Problem**: Cannot override `template_units` or `template_cimg` on Tageskurs.
+
+---
+
+**C2. Related with Local Override Field**
+
+```python
+# Separate "own" field + computed "effective" field
+template_units_own = fields.Float(string="Own Units (override)")
+template_units = fields.Float(
+    compute='_compute_template_units', store=True
 )
 
-@api.depends('template_parent_id', 'template_parent_id.product_template_id')
-def _compute_inherited_fields(self):
+@api.depends('template_units_own', 'template_parent_id.template_units')
+def _compute_template_units(self):
     for rec in self:
-        if rec.is_template_code and rec.template_parent_id:
-            rec.product_template_id = rec.template_parent_id.product_template_id
-        # else: keep own value
+        if rec.template_units_own:
+            rec.template_units = rec.template_units_own
+        elif rec.template_parent_id:
+            rec.template_units = rec.template_parent_id.template_units
+        else:
+            rec.template_units = rec.template_units  # keep own
 ```
+
+**Resulting Data**:
+| id | name | template_units_own | template_units (computed) |
+|----|------|--------------------|---------------------------|
+| 1 | A1 Kreisanimation | 22 | 22 |
+| 2 | A1 Block | — | 22 *(from parent)* |
+| 3 | A1 Tageskurs | 10 | 10 *(own override)* |
+
+✅ **Works**: Child inherits by default, can override with `_own` field.
+⚠️ **Downside**: Two fields per inheritable value (verbose).
+
+---
+
+**C3. Computed with Fallback (single field, editable)**
+
+```python
+# Single field, editable, falls back to parent if empty
+template_units = fields.Float()
+template_units_effective = fields.Float(
+    compute='_compute_effective_fields', store=True
+)
+
+@api.depends('template_units', 'template_parent_id.template_units')
+def _compute_effective_fields(self):
+    for rec in self:
+        rec.template_units_effective = rec.template_units or (
+            rec.template_parent_id.template_units if rec.template_parent_id else 0
+        )
+```
+
+**Resulting Data**:
+| id | name | template_units (editable) | template_units_effective |
+|----|------|---------------------------|--------------------------|
+| 1 | A1 Kreisanimation | 22 | 22 |
+| 2 | A1 Block | 0 (empty) | 22 *(from parent)* |
+| 3 | A1 Tageskurs | 10 | 10 |
+
+✅ **Works**: Single editable field, separate computed for display/logic.
+⚠️ **Downside**: Must use `_effective` in business logic, not raw field.
+
+---
+
+**C4. Hybrid: Related for mandatory, Computed for optional**
+
+```python
+# product_template_id: ALWAYS from parent (no override)
+product_template_id = fields.Many2one(
+    related='template_parent_id.product_template_id',
+    store=True, readonly=True
+)
+
+# template_units: own field with fallback
+template_units = fields.Float()
+
+@api.depends('template_units', 'template_parent_id.template_units')
+def _compute_display_units(self):
+    for rec in self:
+        rec.display_units = rec.template_units or (
+            rec.template_parent_id.template_units if rec.template_parent_id else 0
+        )
+```
+
+**Resulting Data**:
+| id | name | product_template_id | template_units | display_units |
+|----|------|---------------------|----------------|---------------|
+| 1 | A1 Kreisanimation | 42 | 22 | 22 |
+| 2 | A1 Block | 42 *(related)* | — | 22 *(fallback)* |
+| 3 | A1 Tageskurs | 42 *(related)* | 10 | 10 |
+
+✅ **Recommended**: Clean separation — mandatory fields use `related`, optional use fallback.
+
+---
+
+**Recommendation Summary**:
+
+| Field Type | Pattern | Example Fields |
+|------------|---------|----------------|
+| **Mandatory inherit** | C1 (pure related) | `product_template_id` |
+| **Optional override** | C3 or C4 (fallback) | `template_units`, `template_cimg`, `meldefrist_days_before` |
+| **Child-only** | Regular field | `schedule_template` |
+
+**Decision Needed**: Confirm C4 (Hybrid) pattern?
 
 **Decision Needed**: Confirm Option C pattern, or choose A/B?
 
