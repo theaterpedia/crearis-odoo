@@ -235,6 +235,28 @@ This matrix shows how each decision point affects module implementation:
 
 ---
 
+### Phase 0: Field Rename (Prerequisite)
+
+**Module**: `crearis`, `crearis_agenda`
+**Goal**: Rename `template_units` → `teaching_units` for semantic clarity
+
+| # | Task | Module | Depends On | Estimate |
+|---|------|--------|------------|----------|
+| 0.1 | Rename field in `event.py`: `template_units` → `teaching_units` | crearis | — | 0.5h |
+| 0.2 | Update view reference in `event_type_views.xml` | crearis | 0.1 | 0.5h |
+| 0.3 | Update sync_engine.py references (3 occurrences) | crearis_agenda | 0.1 | 0.5h |
+| 0.4 | Create migration script for column rename | crearis | 0.1 | 1h |
+| 0.5 | Update documentation references in chat/*.md | — | 0.4 | 0.5h |
+
+**Files affected**:
+- `crearis/models/event.py` (field definition)
+- `crearis/views/event_type_views.xml` (view)
+- `crearis_agenda/models/sync_engine.py` (sync logic)
+
+**Deliverable**: Field renamed with data preserved, clearer semantics (UE = Unterrichtseinheiten).
+
+---
+
 ### Phase 1: Model Refactoring (Foundation)
 
 **Module**: `crearis`
@@ -244,7 +266,7 @@ This matrix shows how each decision point affects module implementation:
 
 | # | Task | Module | Depends On | Estimate |
 |---|------|--------|------------|----------|
-| 1.1 | Create migration script for model rename | crearis | — | 2h |
+| 1.1 | Create migration script for model rename | crearis | Phase 0 | 2h |
 | 1.2 | Update model file: `event_session_line.py` → `agenda_line.py` | crearis | 1.1 | 1h |
 | 1.3 | Add `type` field with 5 types (session, meeting, milestone, info, action) | crearis | 1.2 | 1h |
 | 1.4 | Add `mode` field (online/venue/individual/tbd) | crearis | 1.2 | 0.5h |
