@@ -464,10 +464,75 @@ crearis (core agenda.line)
 | # | Question | Blocking Phase | Status |
 |---|----------|----------------|--------|
 | ~~Q1~~ | ~~Confirm 80% attendance threshold~~ | ~~Phase 9.4~~ | ⚡ DECIDED (D9) |
-| Q2 | How to handle event type hierarchy inheritance? | Phase 5.6 | Before Phase 5 |
+| Q2 | How to handle event type hierarchy inheritance? | Phase 5.6 | 🔶 DETAIL BELOW |
 | Q3 | What triggers post→agenda.line creation? | Phase 9.2 | Before Phase 9 |
 | ~~Q4~~ | ~~Meldefrist field location~~ | ~~Phase 4.3~~ | ⚡ DECIDED |
 | ~~Q5~~ | ~~Email template infrastructure location~~ | ~~Phase 6.6~~ | ⚡ DECIDED |
+
+---
+
+### Q2 Detail: Event Type Hierarchy Inheritance
+
+**Current State** (already in `crearis/models/event.py`):
+```python
+is_template_code = fields.Boolean(default=False)  # True = shortcode variant
+template_parent_id = fields.Many2one('event.type', domain=[('is_template_code', '=', False)])
+```
+
+**Hierarchy Example**:
+```
+event.type: "A1 Kreisanimation" (abstract parent, is_template_code=False)
+    │       Linked to: Module "Einstiege ins Theaterspiel" (product.template)
+    │       schedule_template: None (abstract)
+    │
+    ├── event.type: "A1 Block" (is_template_code=True, template_parent_id → parent)
+    │       schedule_template: DO-FR-SA-SO + Online pattern
+    │
+    └── event.type: "A1 Tageskurs" (is_template_code=True, template_parent_id → parent)
+            schedule_template: SA 10:00-17:00 (single day)
+```
+
+**Question**: When creating an event from "A1 Block", what inherits from the parent?
+
+| Field | Inherit from Parent? | Override in Child? | Notes |
+|-------|---------------------|-------------------|-------|
+| `product_template_id` | ✅ Yes | ❌ No | Module link comes from parent |
+| `template_units` | ✅ Yes | ✅ Yes | Child can have reduced UE |
+| `schedule_template` | ❌ No | ✅ Required | Child defines own schedule |
+| `template_cimg` | ✅ Yes | ✅ Yes | Child can override image |
+| `template_teasertext` | ✅ Yes | ✅ Yes | Child can override text |
+| `meldefrist_days_before` | ✅ Yes | ✅ Yes | Usually same across variants |
+
+**Options**:
+
+| Option | Description | Complexity |
+|--------|-------------|------------|
+| **A. Explicit Copy** | On child create, copy inherited fields from parent | Simple, explicit |
+| **B. Computed Fallback** | Child fields compute `self.value or parent.value` | DRY, but magic |
+| **C. Related Fields** | Use `related='template_parent_id.field'` with store=True | Odoo-native, auto-sync |
+
+**Recommendation**: **Option C (Related Fields)** for simple fields, **Option A (Explicit Copy)** for `schedule_template` which must always be defined on the bookable variant.
+
+**Implementation Pattern**:
+```python
+# In crearis/models/event.py
+product_template_id = fields.Many2one(
+    'product.template',
+    compute='_compute_inherited_fields',
+    store=True,
+)
+
+@api.depends('template_parent_id', 'template_parent_id.product_template_id')
+def _compute_inherited_fields(self):
+    for rec in self:
+        if rec.is_template_code and rec.template_parent_id:
+            rec.product_template_id = rec.template_parent_id.product_template_id
+        # else: keep own value
+```
+
+**Decision Needed**: Confirm Option C pattern, or choose A/B?
+
+---
 
 ### Q4/Q5 Decisions (Confirmed)
 
