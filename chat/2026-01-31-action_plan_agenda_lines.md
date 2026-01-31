@@ -127,7 +127,9 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 1. **Anchor**: First in-presence slot in template → anchored to `date_begin`
 2. **In-presence block**: Consecutive days from `date_begin` (Fri→Sat→Sun)
 3. **Pre-event online**: If no explicit date inline, find first matching weekday **before** `date_begin`
-4. **Post-event online**: Find first matching weekday **after** `date_end`
+4. **Post-event online**: Find **next** matching weekday after last resolved slot (simple consecutive logic)
+
+*Note: Future validation could detect if `date_end` falls too early/late compared to template schedule.*
 
 **Example** (Grundlagenkurs, `date_begin` = Friday March 13):
 ```
