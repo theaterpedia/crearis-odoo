@@ -114,14 +114,33 @@ From CONSIDERATION 3 (Hybrid Event Problem):
 
 ---
 
-### D8. Template Inheritance 🔶 NEEDS DETAIL
+### D8. Template Inheritance ⚡ DECIDED (Consecutive Days)
 
-| Question | Status |
-|----------|--------|
-| How do event types inherit schedule templates? | Conceptually decided, needs technical spec |
-| Block date resolution algorithm? | Designed in imagination_scenario_a, needs implementation |
+**Approach**: Consecutive days pattern with in-presence anchor.
 
-**Placeholder**: Technical spec for template inheritance in Phase 3.
+**Key Insight**: `date_begin`/`date_end` = first/last **in-presence** day, not first/last session overall.
+- Online sessions may fall **before** `date_begin` or **after** `date_end`
+- This is intentional: if online session shifts, event display dates stay stable
+
+**Date Resolution Algorithm**:
+
+1. **Anchor**: First in-presence slot in template → anchored to `date_begin`
+2. **In-presence block**: Consecutive days from `date_begin` (Fri→Sat→Sun)
+3. **Pre-event online**: If no explicit date inline, find first matching weekday **before** `date_begin`
+4. **Post-event online**: Find first matching weekday **after** `date_end`
+
+**Example** (Grundlagenkurs, `date_begin` = Friday March 13):
+```
+Template slot          | Resolved date      | Notes
+-----------------------|--------------------|-------
+online (Thu 19:00)     | Thu March 5        | Week before, matching weekday
+venue (Fri 17:00)      | Fri March 13       | = date_begin (anchor)
+venue (Sat 09:00)      | Sat March 14       | Consecutive
+venue (Sun 09:00)      | Sun March 15       | = date_end
+online (Thu 19:00)     | Thu March 19       | Week after, matching weekday
+```
+
+**Module**: `crearis` (algorithm), `agenda_dasei` (Grundlagenkurs template data)
 
 ---
 
