@@ -351,6 +351,165 @@ class SaleOrderLine(models.Model):
 
 ---
 
+---
+
+## 7. Cross-Check: graphql_theaterpedia & crearis_event_package
+
+### 7.1 Existing Product/Order Implementation
+
+The workspace already has a sophisticated product-line implementation for event packages:
+
+#### crearis_event_package Module
+
+**Key Models:**
+
+| Model | Purpose |
+|-------|---------|
+| `product.template` extended | `detailed_type='event_package'`, `package_event_type_ids` (M2M to event.type) |
+| `product.package.event.line` | Links sale.order.line → event.type → event.event → event.registration |
+| `sale.order.line` extended | Auto-creates package_event_line_ids on create |
+
+**Flow:**
+```
+Customer purchases Module A (event_package product)
+    ↓
+sale.order.line.create() triggers _create_package_event_lines()
+    ↓
+Creates product.package.event.line for each event_type in package
+    state='pending', event_id=False
+    ↓
+Configurator wizard allows event selection
+    state='selected', event_id=chosen_event
+    ↓
+action_confirm_and_register() creates event.registration
+    state='registered', registration_id=created_reg
+```
+
+**Source:** [crearis_event_package/models/sale_order.py](crearis_event_package/models/sale_order.py#L64-L85)
+
+```python
+def _create_package_event_lines(self):
+    """Create pending event selections for each event type in the package."""
+    for sequence, event_type in enumerate(product_tmpl.package_event_type_ids, start=10):
+        PackageEventLine.create({
+            'sale_order_line_id': self.id,
+            'event_type_id': event_type.id,
+            'sequence': sequence,
+            'state': 'pending',
+        })
+```
+
+### 7.2 graphql_theaterpedia API
+
+**Relevant Endpoints:**
+
+| GraphQL | Action | Hook Point |
+|---------|--------|------------|
+| `cartAddItem(product_id, quantity)` | Adds product to cart | `_cart_update()` |
+| `cart` query | Returns current order | `website.sale_get_order()` |
+| `payment_confirmation` | Order after payment | `action_confirm()` called |
+| `register` mutation | Creates user account | `res.users.signup()` |
+
+**Order Confirmation Trigger:**
+```python
+# graphql_theaterpedia/schemas/payment.py:122
+order.with_context(send_email=True).action_confirm()
+```
+
+### 7.3 Key Insight: When to Create agenda.line Records
+
+**CRITICAL DISCOVERY:** The existing `product.package.event.line` model is essentially a **proto-agenda.line**!
+
+| product.package.event.line | agenda.line equivalent |
+|---------------------------|------------------------|
+| `sale_order_line_id` | Module purchase link |
+| `event_type_id` | Event slot to fill |
+| `event_id` | Selected event |
+| `registration_id` | Created registration |
+| `state` (pending→selected→registered) | Progress tracking |
+
+**Trigger Point for agenda.line Creation:**
+
+```
+1. TRIGGER: sale.order.line.create() for event_package product
+   └─> Creates product.package.event.line (proto-agenda.line)
+   
+2. TRIGGER: Configurator wizard action_confirm_and_register()
+   └─> Creates event.registration linked to package line
+
+3. NEW TRIGGER NEEDED: Map product.package.event.line → agenda.line
+   └─> Could be done in _create_package_event_lines()
+   └─> Or in a compute field that watches package_event_line_ids
+```
+
+### 7.4 Customer Onboarding Workflow (graphql_theaterpedia)
+
+**Flow:**
+```
+1. Register mutation → Creates res.users + res.partner
+2. Cart mutations → Creates draft sale.order
+3. Payment flow → Confirms order (action_confirm)
+4. Package lines already created by sale.order.line.create()
+```
+
+**Implication for agenda.line:**
+- The package lines are created at **cart add** time (draft order)
+- Registrations are created at **configurator confirm** time
+- agenda.line should be created either:
+  - At package line creation (early, allows planning)
+  - At order confirmation (commits the purchase)
+  - At registration creation (late, only for confirmed events)
+
+### 7.5 Recommendation: Integrate with Existing Flow
+
+```python
+# Option A: Extend product.package.event.line
+class ProductPackageEventLine(models.Model):
+    _inherit = 'product.package.event.line'
+    
+    agenda_line_id = fields.Many2one('agenda.line', string="Agenda Line")
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        for line in lines:
+            # Create agenda.line for this package event slot
+            line.agenda_line_id = self.env['agenda.line'].create({
+                'partner_id': line.partner_id.id,
+                'event_type_id': line.event_type_id.id,
+                'source_type': 'product',
+                'source_ref': f'product.package.event.line,{line.id}',
+                # Meldefrist and Stornierungsfrist come from product config
+            })
+        return lines
+```
+
+**OR**
+
+```python
+# Option B: agenda.line watches product.package.event.line
+class AgendaLine(models.Model):
+    _name = 'agenda.line'
+    
+    source_package_line_id = fields.Many2one(
+        'product.package.event.line',
+        string="Package Event Line"
+    )
+    
+    @api.model
+    def create_from_package_lines(self, package_lines):
+        """Batch create agenda.lines from package event selections."""
+        for pline in package_lines:
+            self.create({
+                'partner_id': pline.partner_id.id,
+                'event_type_id': pline.event_type_id.id,
+                'event_id': pline.event_id.id,
+                'source_package_line_id': pline.id,
+            })
+```
+
+---
+
 ## Appendix: Key Odoo Source References
 
 | File | Key Pattern |
@@ -362,3 +521,14 @@ class SaleOrderLine(models.Model):
 | [sale/models/sale_order.py](../../versions/16.0/odoo/addons/sale/models/sale_order.py#L571) | `_compute_is_expired()` |
 | [membership/models/membership.py](../../versions/16.0/odoo/addons/membership/models/membership.py#L25) | date_from, date_to, date_cancel pattern |
 | [membership/models/product.py](../../versions/16.0/odoo/addons/membership/models/product.py#L11) | membership_date_from/to on product |
+
+### Workspace-Specific References
+
+| File | Key Pattern |
+|------|-------------|
+| [crearis_event_package/models/sale_order.py](crearis_event_package/models/sale_order.py#L64) | `_create_package_event_lines()` — trigger point |
+| [crearis_event_package/models/product_package_event_line.py](crearis_event_package/models/product_package_event_line.py#L97) | `action_create_registration()` |
+| [crearis_event_package/wizard/event_package_configurator.py](crearis_event_package/wizard/event_package_configurator.py#L84) | `action_confirm_and_register()` |
+| [graphql_theaterpedia/schemas/shop.py](graphql_theaterpedia/schemas/shop.py#L43) | `CartAddItem` mutation — cart update |
+| [graphql_theaterpedia/schemas/payment.py](graphql_theaterpedia/schemas/payment.py#L122) | `action_confirm()` — order confirmation |
+| [agenda_dasei/data/product_template_data.xml](agenda_dasei/data/product_template_data.xml) | Module A/B/C/D product definitions |
