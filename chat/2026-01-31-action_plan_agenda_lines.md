@@ -464,14 +464,19 @@ crearis (core agenda.line)
 | # | Question | Blocking Phase | Status |
 |---|----------|----------------|--------|
 | ~~Q1~~ | ~~Confirm 80% attendance threshold~~ | ~~Phase 9.4~~ | ⚡ DECIDED (D9) |
-| Q2 | How to handle event type hierarchy inheritance? | Phase 5.6 | 🔶 DETAIL BELOW |
+| ~~Q2~~ | ~~Event type hierarchy inheritance~~ | ~~Phase 5.6~~ | ⚡ DECIDED (C4) |
 | Q3 | What triggers post→agenda.line creation? | Phase 9.2 | Before Phase 9 |
 | ~~Q4~~ | ~~Meldefrist field location~~ | ~~Phase 4.3~~ | ⚡ DECIDED |
 | ~~Q5~~ | ~~Email template infrastructure location~~ | ~~Phase 6.6~~ | ⚡ DECIDED |
 
 ---
 
-### Q2 Detail: Event Type Hierarchy Inheritance
+### Q2 Detail: Event Type Hierarchy Inheritance ⚡ DECIDED (C4 Hybrid)
+
+**Decision**: C4 Hybrid pattern confirmed.
+- **Mandatory inherit** → pure `related` (e.g., `product_template_id`)
+- **Optional override** → editable field with fallback compute (e.g., `template_units`)
+- **Child-only** → regular field, no inheritance (e.g., `schedule_template`)
 
 **Current State** (already in `crearis/models/event.py`):
 ```python
@@ -647,10 +652,8 @@ def _compute_display_units(self):
 | Field Type | Pattern | Example Fields |
 |------------|---------|----------------|
 | **Mandatory inherit** | C1 (pure related) | `product_template_id` |
-| **Optional override** | C3 or C4 (fallback) | `template_units`, `template_cimg`, `meldefrist_days_before` |
+| **Optional override** | C4 (fallback) | `template_units`, `template_cimg`, `meldefrist_days_before` |
 | **Child-only** | Regular field | `schedule_template` |
-
-**Decision Needed**: Confirm C4 (Hybrid) pattern?
 
 **Decision Needed**: Confirm Option C pattern, or choose A/B?
 
