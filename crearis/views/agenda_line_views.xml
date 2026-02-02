@@ -31,7 +31,7 @@
                        decoration-success="mode == 'venue'"
                        decoration-warning="mode == 'individual'"
                        optional="show"/>
-                <field name="event_name"/>
+                <field name="event_id" string="Event Name"/>
                 <field name="address_id" string="Venue" optional="show"/>
                 <field name="location_hint" optional="hide"/>
                 <field name="gate_state" widget="badge" 

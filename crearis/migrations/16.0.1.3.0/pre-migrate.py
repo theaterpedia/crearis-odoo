@@ -29,10 +29,10 @@ def migrate(cr, version):
     """)
     _logger.info("Renamed table event_session_line → agenda_line")
     
-    # Step 2: Update ir.model
+    # Step 2: Update ir.model (name is JSONB for translations)
     cr.execute("""
         UPDATE ir_model 
-        SET model = 'agenda.line', name = 'Agenda Line'
+        SET model = 'agenda.line', name = '{"en_US": "Agenda Line"}'::jsonb
         WHERE model = 'event.session.line'
     """)
     

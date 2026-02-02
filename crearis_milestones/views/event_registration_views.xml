@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- 
+    Event Registration Views for Milestone Checks
+    
+    Extended fields: check_state, check_comment, has_blockers
+    See: architecture_milestones_and_actions.md "Für Anwender"
+    -->
+    
+    <!-- Inherit event.registration form to add check fields -->
+    <record id="view_event_registration_form_milestone" model="ir.ui.view">
+        <field name="name">event.registration.form.milestone</field>
+        <field name="model">event.registration</field>
+        <field name="inherit_id" ref="event.view_event_registration_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_confirm_check" 
+                        string="✓ Confirm Check" 
+                        type="object"
+                        class="btn-primary"
+                        attrs="{'invisible': ['|', ('check_state', '!=', 'ready'), ('has_blockers', '=', True)]}"/>
+                <button name="action_confirm_override" 
+                        string="⚡ Override &amp; Confirm" 
+                        type="object"
+                        class="btn-warning"
+                        attrs="{'invisible': ['|', ('check_state', 'not in', ['ready', 'issue']), ('has_blockers', '=', False)]}"/>
+                <button name="action_flag_issue" 
+                        string="⚠️ Flag Issue" 
+                        type="object"
+                        attrs="{'invisible': [('check_state', 'not in', ['ready', 'pending'])]}"/>
+                <field name="check_state" widget="statusbar" statusbar_visible="pending,ready,sent"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group name="milestone_info" string="Milestone Check" 
+                       attrs="{'invisible': [('check_state', '=', 'pending')]}">
+                    <group>
+                        <field name="check_state" readonly="1"/>
+                        <field name="has_blockers" invisible="1"/>
+                        <field name="blocker_count" string="Blockers" 
+                               attrs="{'invisible': [('has_blockers', '=', False)]}"/>
+                    </group>
+                    <group>
+                        <field name="check_comment" placeholder="Notes for coordinator..."/>
+                    </group>
+                </group>
+                <group name="blockers" string="Blockers" 
+                       attrs="{'invisible': [('has_blockers', '=', False)]}">
+                    <field name="blocker_ids" nolabel="1">
+                        <tree>
+                            <field name="blocker_type"/>
+                            <field name="severity" widget="badge" 
+                                   decoration-danger="severity == 'high'"
+                                   decoration-warning="severity == 'medium'"
+                                   decoration-info="severity == 'low'"/>
+                            <field name="data_display" string="Details"/>
+                            <field name="resolved"/>
+                            <button name="action_resolve" string="✓ Resolve" type="object"
+                                    attrs="{'invisible': [('resolved', '=', True)]}"/>
+                            <button name="action_open_related" string="→" type="object"
+                                    title="Open related record"/>
+                        </tree>
+                    </field>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Inherit event.registration tree to show check_state -->
+    <record id="view_event_registration_tree_milestone" model="ir.ui.view">
+        <field name="name">event.registration.tree.milestone</field>
+        <field name="model">event.registration</field>
+        <field name="inherit_id" ref="event.view_event_registration_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="check_state" widget="badge"
+                       decoration-muted="check_state == 'pending'"
+                       decoration-info="check_state == 'ready'"
+                       decoration-success="check_state == 'sent'"
+                       decoration-danger="check_state == 'issue'"
+                       optional="show"/>
+                <field name="has_blockers" invisible="1"/>
+                <field name="blocker_count" string="⚠️" 
+                       attrs="{'invisible': [('has_blockers', '=', False)]}"
+                       optional="show"/>
+            </xpath>
+        </field>
+    </record>
+    
+</odoo>

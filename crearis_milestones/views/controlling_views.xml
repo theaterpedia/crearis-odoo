@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- 
+    Controlling Dashboard Views
+    
+    Main UI for coordinators (Eleanora) to manage milestones.
+    Groups registrations by event = Milestone level.
+    Individual registrations = Check level.
+    
+    See: architecture_milestones_and_actions.md "Für Anwender"
+    
+    Terminology:
+    - Meilenstein = Event group header (e.g., "A3 — Meldefrist 14.11")
+    - Check / TN = Individual registration line
+    - BEREIT = Ready to confirm (no blockers)
+    - TRIAGE = Has blockers, needs attention
+    -->
+    
+    <!-- Controlling Tree View (grouped by event = milestone) -->
+    <record id="view_registration_controlling_tree" model="ir.ui.view">
+        <field name="name">event.registration.controlling.tree</field>
+        <field name="model">event.registration</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="check_state == 'sent'"
+                  decoration-warning="check_state == 'issue' or has_blockers"
+                  decoration-muted="check_state == 'pending'">
+                <!-- Hidden fields for grouping/filtering -->
+                <field name="event_id" invisible="1"/>
+                <field name="has_blockers" invisible="1"/>
+                
+                <!-- Main columns -->
+                <field name="partner_id" string="Participant"/>
+                <field name="check_state" widget="badge"
+                       decoration-muted="check_state == 'pending'"
+                       decoration-info="check_state == 'ready'"
+                       decoration-success="check_state == 'sent'"
+                       decoration-danger="check_state == 'issue'"/>
+                <field name="blocker_summary" string="⚠️" 
+                       attrs="{'invisible': [('has_blockers', '=', False)]}"/>
+                <field name="check_comment" string="Notes" optional="show"/>
+                
+                <!-- Action buttons -->
+                <button name="action_confirm_check" 
+                        string="✓" 
+                        type="object"
+                        title="Confirm"
+                        class="btn-link text-success"
+                        attrs="{'invisible': ['|', ('check_state', '!=', 'ready'), ('has_blockers', '=', True)]}"/>
+                <button name="action_show_blockers" 
+                        string="⚠️" 
+                        type="object"
+                        title="Show Blockers"
+                        class="btn-link text-warning"
+                        attrs="{'invisible': [('has_blockers', '=', False)]}"/>
+                <button name="action_confirm_override" 
+                        string="⚡" 
+                        type="object"
+                        title="Override"
+                        class="btn-link text-danger"
+                        attrs="{'invisible': ['|', ('check_state', 'not in', ['ready', 'issue']), ('has_blockers', '=', False)]}"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Controlling Search View -->
+    <record id="view_registration_controlling_search" model="ir.ui.view">
+        <field name="name">event.registration.controlling.search</field>
+        <field name="model">event.registration</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="event_id"/>
+                <field name="check_comment"/>
+                
+                <!-- State filters -->
+                <separator/>
+                <filter name="bereit" string="✓ Bereit" 
+                        domain="[('check_state', '=', 'ready'), ('has_blockers', '=', False)]"/>
+                <filter name="triage" string="⚠️ Triage" 
+                        domain="['|', ('check_state', '=', 'issue'), ('has_blockers', '=', True)]"/>
+                <filter name="sent" string="✉️ Gesendet" 
+                        domain="[('check_state', '=', 'sent')]"/>
+                <filter name="pending" string="⏳ Ausstehend" 
+                        domain="[('check_state', '=', 'pending')]"/>
+                
+                <!-- Blocker filters -->
+                <separator/>
+                <filter name="has_blockers" string="Mit Blockern" 
+                        domain="[('has_blockers', '=', True)]"/>
+                
+                <!-- Date filters -->
+                <separator/>
+                <filter name="this_week" string="Diese Woche"
+                        domain="[('event_id.date_begin', '!=', False)]"/>
+                
+                <!-- Group by -->
+                <group expand="1" string="Group By">
+                    <filter name="group_by_event" string="Event (Milestone)" 
+                            context="{'group_by': 'event_id'}"/>
+                    <filter name="group_by_state" string="Check State" 
+                            context="{'group_by': 'check_state'}"/>
+                    <filter name="group_by_partner" string="Partner" 
+                            context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Controlling Action (main entry point) -->
+    <record id="action_registration_controlling" model="ir.actions.act_window">
+        <field name="name">Controlling</field>
+        <field name="res_model">event.registration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_registration_controlling_tree"/>
+        <field name="search_view_id" ref="view_registration_controlling_search"/>
+        <field name="domain">[('state', '=', 'open'), ('check_state', 'in', ['ready', 'issue'])]</field>
+        <field name="context">{
+            'search_default_group_by_event': 1,
+            'search_default_bereit': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                All milestone checks complete!
+            </p>
+            <p>
+                No registrations need confirmation right now.
+                Checks appear here when milestones become ready.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Server Action: Bulk confirm all ready (no blockers) -->
+    <record id="action_confirm_all_ready" model="ir.actions.server">
+        <field name="name">Alle bestätigen</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_confirm_all_ready()
+        </field>
+    </record>
+    
+    <!-- Menu Items -->
+    <menuitem id="menu_controlling_root"
+              name="Controlling"
+              parent="event.event_main_menu"
+              sequence="5"/>
+    
+    <menuitem id="menu_controlling_dashboard"
+              name="Meilensteine"
+              parent="menu_controlling_root"
+              action="action_registration_controlling"
+              sequence="10"/>
+    
+    <menuitem id="menu_controlling_blockers"
+              name="Blockers"
+              parent="menu_controlling_root"
+              action="action_agenda_line_blocker"
+              sequence="20"/>
+    
+</odoo>

@@ -16,13 +16,16 @@
         <field name="code">
 # Set German milestone labels for all DASEi companies
 for company in env['res.company'].search([]):
+    vals = {}
     # Only update if labels are still English defaults or empty
     if company.milestone_label_activation in ('Activation', '', False):
-        company.milestone_label_activation = 'Aktivierung'
+        vals['milestone_label_activation'] = 'Aktivierung'
     if company.milestone_label_deadline in ('Deadline', '', False):
-        company.milestone_label_deadline = 'Meldefrist'
+        vals['milestone_label_deadline'] = 'Meldefrist'
     if company.milestone_label_completion in ('Completion', '', False):
-        company.milestone_label_completion = 'Abschluss'
+        vals['milestone_label_completion'] = 'Abschluss'
+    if vals:
+        company.write(vals)
         </field>
     </record>
     
@@ -36,7 +39,7 @@ for company in env['res.company'].search([]):
 dasei_codes = ['dasei', 'dasei0', 'dasei1', 'dasei2', 'dasei3']
 for website in env['website'].search([('domain_code', 'in', dasei_codes)]):
     if hasattr(website, 'use_milestones'):
-        website.use_milestones = True
+        website.write({'use_milestones': True})
         </field>
     </record>
     

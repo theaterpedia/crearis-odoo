@@ -31,6 +31,7 @@ Features:
     'depends': [
         'crearis_agenda',
         'crearis_event_package',  # For event package products
+        'crearis_milestones',     # For milestone labels and Controlling UI
         'product',
         'event',
         'website_event',  # For website event templates
@@ -48,7 +49,8 @@ Features:
         # TODO: Refactor to crearis_event_package module
         # 'views/product_template_views.xml',
         'views/course_participation_views.xml',
-        'views/website_event_templates.xml',  # W3/W4: DASEi event card + detail templates (xpath needs fix)
+        # TODO: Fix xpath - Odoo 16 events_list structure changed
+        # 'views/website_event_templates.xml',  # W3/W4: DASEi event card + detail templates
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

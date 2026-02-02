@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- 
+        Milestone Email Templates (English base)
+        
+        German/Czech translations via Odoo i18n (.po files)
+        See: architecture_milestones_and_actions.md Phase 4A
+        
+        Tone: Du/Ihr pattern (individual reader = Du, group = Ihr)
+        -->
+        
+        <!-- Activation Milestone: Registration opens -->
+        <record id="mail_template_milestone_activation" model="mail.template">
+            <field name="name">Milestone: Activation</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Registration confirmed: {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or object.event_id.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 14px;">
+    <p>Hello {{ object.partner_id.name or object.name }},</p>
+    
+    <p>Your registration for <strong>{{ object.event_id.name }}</strong> has been confirmed.</p>
+    
+    <table style="margin: 20px 0; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 5px 15px 5px 0; color: #666;">Event:</td>
+            <td style="padding: 5px 0;"><strong>{{ object.event_id.name }}</strong></td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 15px 5px 0; color: #666;">Date:</td>
+            <td style="padding: 5px 0;">{{ object.event_id.date_begin.strftime('%d.%m.%Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 15px 5px 0; color: #666;">Location:</td>
+            <td style="padding: 5px 0;">{{ object.event_id.address_id.city or 'Online' }}</td>
+        </tr>
+    </table>
+    
+    <p>We look forward to seeing you!</p>
+    
+    <p>Best regards,<br/>
+    {{ object.event_id.organizer_id.name or object.event_id.company_id.name }}</p>
+</div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+        
+        <!-- Deadline Milestone: Final reminder / Meldefrist -->
+        <record id="mail_template_milestone_deadline" model="mail.template">
+            <field name="name">Milestone: Deadline (Meldefrist)</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Reminder: {{ object.event_id.name }} is coming up!</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or object.event_id.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 14px;">
+    <p>Hello {{ object.partner_id.name or object.name }},</p>
+    
+    <p>This is a friendly reminder that <strong>{{ object.event_id.name }}</strong> is coming up soon!</p>
+    
+    <table style="margin: 20px 0; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 5px 15px 5px 0; color: #666;">Event:</td>
+            <td style="padding: 5px 0;"><strong>{{ object.event_id.name }}</strong></td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 15px 5px 0; color: #666;">Date:</td>
+            <td style="padding: 5px 0;">{{ object.event_id.date_begin.strftime('%d.%m.%Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 15px 5px 0; color: #666;">Location:</td>
+            <td style="padding: 5px 0;">{{ object.event_id.address_id.city or 'Online' }}</td>
+        </tr>
+    </table>
+    
+    <p>Please confirm your attendance by replying to this email if you haven't already.</p>
+    
+    <p>See you soon!<br/>
+    {{ object.event_id.organizer_id.name or object.event_id.company_id.name }}</p>
+</div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+        
+        <!-- Completion Milestone: Follow-up / Certificate -->
+        <record id="mail_template_milestone_completion" model="mail.template">
+            <field name="name">Milestone: Completion</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Thank you for attending {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or object.event_id.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 14px;">
+    <p>Hello {{ object.partner_id.name or object.name }},</p>
+    
+    <p>Thank you for participating in <strong>{{ object.event_id.name }}</strong>!</p>
+    
+    <p>We hope you found the experience valuable and look forward to seeing you again.</p>
+    
+    <p>Best regards,<br/>
+    {{ object.event_id.organizer_id.name or object.event_id.company_id.name }}</p>
+</div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+        
+    </data>
+</odoo>

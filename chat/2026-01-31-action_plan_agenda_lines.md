@@ -1,13 +1,54 @@
 # Action Plan: agenda.line Implementation
 
 **Date**: 2026-01-31  
-**Updated**: 2026-02-02  
-**Status**: ✅ Phase 1 IMPLEMENTED  
+**Updated**: 2026-02-02 (afternoon)  
+**Status**: ✅ Phase 1 IMPLEMENTED, ✅ Phase 4A IMPLEMENTED, ✅ Phase 6A IMPLEMENTED  
 **Blocking**: ~~Domain codes task (Monday)~~ RESOLVED
 
 ---
 
-## ⚡ February 2 Implementation Summary
+## ⚡ February 2 Afternoon: crearis_milestones Module
+
+### New Module Created: `crearis_milestones` v16.0.1.0.0
+
+```
+crearis_milestones/
+├── __init__.py
+├── __manifest__.py              # depends: crearis, account
+├── data/
+│   └── mail_template_data.xml   # 3 email templates (ready, triage, reminder)
+├── models/
+│   ├── __init__.py
+│   ├── agenda_line.py           # Extended cron + helper methods
+│   ├── agenda_line_blocker.py   # NEW model: blocker tracking
+│   └── event_registration.py    # Check fields + actions
+├── security/
+│   └── ir.model.access.csv      # Blocker model access rights
+└── views/
+    ├── agenda_line_blocker_views.xml    # Blocker CRUD views
+    ├── controlling_views.xml             # Main Controlling dashboard
+    └── event_registration_views.xml      # Check form extension
+```
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Check States** | `pending` → `ready` → `confirmed` (+ `issue` for problems) |
+| **Blocker Detection** | Automatic: payment_overdue, event_unresolved, confirmation_pending |
+| **Controlling Dashboard** | Tree view grouped by Event (= Milestone) |
+| **Bulk Confirmation** | Server action to confirm all BEREIT checks at once |
+| **Override Flow** | Explicit manager override for checks with blockers |
+
+### Next Steps
+
+1. **Install test**: `./odoo/odoo-bin -d testdb -u crearis_milestones --stop-after-init`
+2. **Add translations**: German (de) and Czech (cz) .po files (4A.3, 4A.4)
+3. **Phase 3**: Product-driven agenda.lines (crearis_event_package)
+
+---
+
+## ⚡ February 2 Morning: crearis Phase 1 Summary
 
 ### Files Changed
 
@@ -145,6 +186,47 @@ locked_edits = fields.Boolean(default=False)  # True for json/template sources
 
 **Product-driven**: Extends `product.package.event.line` with `agenda_line_id`.
 **Event-driven**: Extends `event.registration` to create agenda.line on direct registration.
+
+---
+
+### D4A. Milestone vs Check Architecture ⚡ DECIDED (2026-02-02)
+
+**Reference**: [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md) Section "Für Anwender"
+
+**Problem**: The Controlling UI needs two levels:
+1. **Milestone** = Event-level (e.g., "A3 — Meldefrist 14.11")
+2. **Check** = Participant-level (e.g., "Max ✓", "Selma ⚠️")
+
+**Decision**: Registration IS the Check
+
+| Level | Model | Key Fields |
+|-------|-------|------------|
+| **Milestone** | `agenda.line` (type='milestone') | `event_id`, `gate_state`, `milestone_days_before` |
+| **Check** | `event.registration` | `check_state`, `check_comment`, `has_blockers` |
+
+**Why not separate `agenda.line` per registration?**
+- Registration already has `partner_id` (for blocker detection)
+- Registration already has `event_id` (for grouping)
+- Avoids N×M explosion of records
+- Odoo tree views naturally group by `event_id`
+
+**Controlling View Pattern**:
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Model: event.registration                                                  │
+│  Group by: event_id (= Milestone)                                          │
+│  Filters: BEREIT (check_state=ready, has_blockers=False)                   │
+│           TRIAGE (check_state=issue OR has_blockers=True)                  │
+│  Bulk action: action_confirm_all (on filtered selection)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Terminology** (German UI):
+| English | German | Model |
+|---------|--------|-------|
+| Milestone | Meilenstein | agenda.line |
+| Check | Prüfpunkt / TN | event.registration |
+| Blocker | Blocker | agenda.line.blocker (linked via partner) |
 
 ---
 
@@ -354,30 +436,26 @@ This matrix shows how each decision point affects module implementation:
 
 ---
 
-### Phase 2: Provider Relations
+### Phase 2: Provider Relations ✅ COMPLETE (2026-02-02)
 
 **Module**: `crearis`
-**Rationale**: Generic relation pattern belongs in core, not package-specific
+**Status**: Implemented in Phase 1 commit (433c9b4)
 
-**Goal**: Add multi-provider support (event, post, product)
-
-| # | Task | Module | Depends On | Estimate |
-|---|------|--------|------------|----------|
-| 2.1 | Keep `event_id` as primary provider (existing) | crearis | Phase 1 | — |
-| 2.2 | Add `post_id` Many2one field | crearis | Phase 1 | 0.5h |
-| 2.3 | Add `product_id` Many2one field | crearis | Phase 1 | 0.5h |
-| 2.4 | Add `provider_type` computed field | crearis | 2.1-2.3 | 1h |
-| 2.5 | Add constraint: exactly one provider set | crearis | 2.4 | 0.5h |
-| 2.6 | Update JSONB sync to use event_id provider | crearis | 2.1 | 1h |
-
-**Deliverable**: agenda.line can be linked to event, post, or product.
+**Deliverable**: ✅ agenda.line can be linked to event, post, or product.
 
 ---
 
-### Phase 3: Product-Driven agenda.lines (Option A)
+### Phase 3: Product-Driven agenda.lines (Cancellation Period)
 
 **Module**: `crearis_event_package`
 **Rationale**: Extends `product.package.event.line` which already lives there
+
+**Terminology** (German → English):
+| German | English Field | Description |
+|--------|---------------|-------------|
+| Stornierungsfrist | `cancellation_period_days` | Days after first attendance (default: 10) |
+| Stornierungsfrist-Datum | `cancellation_deadline_date` | Computed deadline per sale |
+| Stornierungsfrist verstrichen | `is_cancellation_deadline_passed` | Boolean check |
 
 **Goal**: Extend `product.package.event.line` to create agenda.lines
 
@@ -386,34 +464,156 @@ This matrix shows how each decision point affects module implementation:
 | 3.1 | Add `agenda_line_id` M2O on `product.package.event.line` | crearis_event_package | Phase 2 | 0.5h |
 | 3.2 | Override `create()` to auto-create agenda.line | crearis_event_package | 3.1 | 2h |
 | 3.3 | Override `write()` to sync event_id changes | crearis_event_package | 3.2 | 1h |
-| 3.4 | Add `stornierungsfrist_days` on `product.template` | crearis_event_package | Phase 2 | 0.5h |
-| 3.5 | Add `stornierungsfrist_date` computed on `sale.order.line` | crearis_event_package | 3.4 | 1h |
-| 3.6 | Add `is_stornierungsfrist_passed` computed | crearis_event_package | 3.5 | 0.5h |
-| 3.7 | Create Stornierungsfrist milestone agenda.line on purchase | crearis_event_package | 3.2, 3.5 | 2h |
+| 3.4 | Add `cancellation_period_days` on `product.template` | crearis_event_package | Phase 2 | 0.5h |
+| 3.5 | Add `cancellation_deadline_date` computed on `sale.order.line` | crearis_event_package | 3.4 | 1h |
+| 3.6 | Add `is_cancellation_deadline_passed` computed | crearis_event_package | 3.5 | 0.5h |
+| 3.7 | Create Cancellation Period milestone agenda.line on purchase | crearis_event_package | 3.2, 3.5 | 2h |
 
-**Deliverable**: Module purchase creates agenda.lines with Stornierungsfrist tracking.
+**Deliverable**: Module purchase creates agenda.lines with Cancellation Period tracking.
 
 ---
 
-### Phase 4: Event-Driven agenda.lines
+### Phase 4: Event-Driven agenda.lines ✅ MOSTLY COMPLETE (2026-02-02)
 
 **Module**: `crearis` (base), `agenda_dasei` (defaults)
-**Rationale**: Event registration extension is generic; Meldefrist defaults are DASEi-specific
+**Rationale**: Event registration extension is generic; Milestone defaults are DASEi-specific
 
-**Goal**: Extend `event.registration` for Offenes Programm
+**Status**: Core milestone infrastructure implemented in Phase 1. Remaining: registration-level agenda lines (deferred - not needed for event milestones).
 
-| # | Task | Module | Depends On | Estimate |
-|---|------|--------|------------|----------|
-| 4.1 | Add `agenda_line_ids` O2M on `event.registration` | crearis | Phase 2 | 0.5h |
-| 4.2 | Override `create()` to auto-create agenda.line for direct registration | crearis | 4.1 | 2h |
-| 4.3 | Add `meldefrist_days_before` on `event.type` | crearis | Phase 2 | 0.5h |
-| 4.4 | Add `meldefrist_date` computed on `event.event` | crearis | 4.3 | 1h |
-| 4.5 | Create Meldefrist milestone agenda.line on event create | crearis | 4.4 | 2h |
-| 4.6 | Extend `event.mail` with `interval_type='before_meldefrist'` | crearis | 4.4 | 2h |
-| 4.7 | Add `use_meldefrist` boolean on domain-code (default=False) | crearis | 4.3 | 0.5h |
-| 4.8 | Set `use_meldefrist=True` + `meldefrist_days_before=60` for DASEi | agenda_dasei | 4.7 | 0.5h |
+**Goal**: ~~Extend `event.registration` for Offenes Programm~~ Event-level milestones
 
-**Deliverable**: Event registration creates agenda.line with Meldefrist tracking (opt-in per domain).
+| # | Task | Module | Depends On | Estimate | Status |
+|---|------|--------|------------|----------|--------|
+| ~~4.1~~ | ~~Add `agenda_line_ids` O2M on `event.registration`~~ | — | — | — | ❌ Deferred |
+| ~~4.2~~ | ~~Override `create()` to auto-create agenda.line for direct registration~~ | — | — | — | ❌ Deferred |
+| 4.3 | Add `milestone_days_before` on `event.type` | crearis | Phase 2 | 0.5h | ✅ Done |
+| 4.4 | Add computed milestone trigger date on `event.event` | crearis | 4.3 | 1h | ✅ Done |
+| 4.5 | Create Milestone agenda.line on event create | crearis | 4.4 | 2h | ✅ Done |
+| 4.6 | ~~Extend `event.mail` with `interval_type='before_milestone'`~~ | — | — | — | ❌ Not needed |
+| 4.7 | Add `use_milestones` boolean on domain-code (default=False) | crearis | 4.3 | 0.5h | ✅ Done |
+| 4.8 | Set `use_milestones=True` + defaults for DASEi | agenda_dasei | 4.7 | 0.5h | ✅ Done |
+
+**Note on 4.1-4.2**: Event milestones are on `event.event`, not per-registration. For product/post providers, individual agenda.lines will be created at sale/post level (Phase 3). Meeting lines (`type='meeting'`) can be attached to any provider for individual/small-group sessions.
+
+**Deliverable**: ✅ Event creation generates milestone agenda.lines (opt-in per domain).
+
+---
+
+### Phase 4B: German Customer Journeys (Documentation)
+
+**Module**: Documentation only (`_meta/Whitepaper/`)
+**Rationale**: Before implementing crearis_milestones, document complete customer journeys with German text
+
+**Goal**: Create detailed journey documents with example interactions (Du/Ihr tone)
+
+| # | Task | Location | Depends On | Estimate |
+|---|------|----------|------------|----------|
+| 4B.1 | Create master doc: `journey_karo_first_contact.md` | Whitepaper | — | 1.5h |
+| 4B.2 | Create master doc: `journey_ida_basistag_to_module.md` | Whitepaper | — | 1.5h |
+| 4B.3 | Create master doc: `journey_jolanda_full_grundlagenbildung.md` | Whitepaper | — | 2h |
+| 4B.4 | Create master doc: `journey_selma_issue_driver.md` | Whitepaper | — | 1.5h |
+
+**Personas**:
+| Name | Journey | Description |
+|------|---------|-------------|
+| **Karo** | First contact → INFO-Teaser | Discovery, not yet committed |
+| **Ida** | Basistag → Module A | Entry via taster day |
+| **Jolanda** | Module A → full Grundlagenbildung | Long-term A,B,C,D path |
+| **Selma** | Issue-driver | 41, Bamberg, problem-focused entry |
+
+**Deliverable**: 4 journey master docs with German example interactions, email texts, portal views.
+
+---
+
+### Phase 4A: crearis_milestones Module (Gate Business Logic) ✅ IMPLEMENTED
+
+**Module**: `crearis_milestones` (NEW)
+**Status**: ✅ All tasks implemented (2026-02-02 afternoon)
+**Rationale**: Separates enhanced milestone workflow from core agenda.line model
+**Dependencies**: `agenda_dasei` will depend on `crearis_milestones` (not the other way around)
+
+**Architecture Reference**: [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md)
+- Section 10: Blocker Pattern
+- Section "Für Anwender": UI mockups and terminology
+
+**Key Terminology** (from architecture doc):
+| Term | Model | Description |
+|------|-------|-------------|
+| **Meilenstein** | `agenda.line` (type='milestone') | Event-level decision point |
+| **Check** | `event.registration` + milestone fields | Participant-level within milestone |
+
+**Goal**: Implement gate pattern business logic for milestone transitions
+
+| # | Task | Module | Depends On | Estimate | Status |
+|---|------|--------|------------|----------|--------|
+| 4A.1 | Create `crearis_milestones` module scaffold | crearis_milestones | Phase 4 | 0.5h | ✅ Done |
+| 4A.2 | Create English `mail.template` records for 3 milestone types | crearis_milestones | 4A.1 | 2h | ✅ Done |
+| 4A.3 | Add German (de) translations for templates | crearis_milestones | 4A.2 | 1h | 🔜 Next |
+| 4A.4 | Add Czech (cz) translations for templates | crearis_milestones | 4A.2 | 1h | 🔜 Next |
+| 4A.5 | Implement `action_confirm_and_send()` business logic | crearis_milestones | 4A.2 | 2h | ✅ Done |
+| 4A.6 | Implement `action_flag_issue()` method | crearis_milestones | 4A.1 | 1h | ✅ Done |
+| 4A.7 | Implement `_maybe_advance_event_stage()` | crearis_milestones | 4A.5 | 2h | ⏸️ Deferred |
+| 4A.8 | Add activity creation to cron (when gate_state → ready) | crearis_milestones | 4A.1 | 1h | ✅ Done |
+| 4A.9 | Add "Confirm & Send" / "Flag Issue" buttons to views | crearis_milestones | 4A.5, 4A.6 | 1h | ✅ Done |
+| 4A.10 | Create "Milestones Ready" dashboard/action | crearis_milestones | 4A.8 | 1.5h | ✅ Done |
+
+**Check-Level Implementation** (UI from architecture doc Section "Für Anwender") ✅ IMPLEMENTED:
+
+| # | Task | Module | Depends On | Estimate | Status |
+|---|------|--------|------------|----------|--------|
+| 4A.11 | Add `check_state` field on `event.registration` | crearis_milestones | 4A.1 | 0.5h | ✅ Done |
+| 4A.12 | Add `check_comment` field on `event.registration` | crearis_milestones | 4A.11 | 0.5h | ✅ Done |
+| 4A.13 | Add `has_blockers` computed on registration | crearis_milestones | 4A.11, 6A.4 | 1h | ✅ Done |
+| 4A.14 | Create Controlling tree view (registrations grouped by event) | crearis_milestones | 4A.11 | 2h | ✅ Done |
+| 4A.15 | Add BEREIT/TRIAGE sections via domain filters | crearis_milestones | 4A.14 | 1h | ✅ Done |
+| 4A.16 | Add bulk "Alle bestätigen" server action | crearis_milestones | 4A.14 | 1h | ✅ Done |
+| 4A.17 | Add milestone summary line per event group | crearis_milestones | 4A.14 | 1.5h | ⏸️ Deferred |
+
+**View Implementation Pattern** (Odoo-native):
+
+```xml
+<!-- Controlling: Registration list grouped by event (=milestone) -->
+<record id="view_registration_controlling_tree" model="ir.ui.view">
+    <field name="model">event.registration</field>
+    <field name="arch" type="xml">
+        <tree default_group_by="event_id">
+            <field name="event_id" invisible="1"/>
+            <field name="partner_id"/>
+            <field name="check_state" widget="badge"/>
+            <field name="check_comment" optional="show"/>
+            <field name="has_blockers" invisible="1"/>
+            <button name="action_confirm_check" type="object" 
+                    string="✓" attrs="{'invisible': [('has_blockers', '=', True)]}"/>
+            <button name="action_show_blockers" type="object"
+                    string="⚠️" attrs="{'invisible': [('has_blockers', '=', False)]}"/>
+        </tree>
+    </field>
+</record>
+
+<!-- Filters for BEREIT / TRIAGE -->
+<filter name="bereit" string="✓ Bereit" 
+        domain="[('check_state', '=', 'ready'), ('has_blockers', '=', False)]"/>
+<filter name="triage" string="⚠️ Triage" 
+        domain="['|', ('check_state', '=', 'issue'), ('has_blockers', '=', True)]"/>
+```
+
+**Dashboard Header** (custom widget or action with context):
+```python
+# In action definition
+'context': {
+    'search_default_group_by_event': True,
+    'search_default_bereit': True,  # Default to BEREIT filter
+}
+```
+
+**Template Language Strategy**:
+- English base templates in `crearis_milestones/data/mail_template_data.xml`
+- German/Czech as Odoo translations (`.po` files or inline `<field name="body_html" lang="de">...</field>`)
+- `agenda_dasei` depends on `crearis_milestones` and can override templates if needed
+
+**Email Tone**: Du/Ihr pattern (individual reader = Du, group references = Ihr)
+
+**Deliverable**: Full gate workflow — cron triggers ready state, human confirms via button, email sent, stage advances.
 
 ---
 
@@ -455,6 +655,99 @@ This matrix shows how each decision point affects module implementation:
 | 6.6 | Define reminder email template (German) | agenda_dasei | 6.4 | 1h |
 
 **Deliverable**: CRM tools to track and resolve unresolved event selections.
+
+---
+
+### Phase 6A: Blocker Detection (Issue-Driver Support) ✅ IMPLEMENTED
+
+**Module**: `crearis_milestones`
+**Status**: ✅ All core tasks implemented (2026-02-02 afternoon)
+**Rationale**: Blocker detection is milestone-specific, extends gate pattern
+
+**Architecture References**:
+- [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md) Section 10: Blocker Pattern (code examples)
+- [journey_selma_issue_driver.md](../_meta/Whitepaper/journey_selma_issue_driver.md): Full issue-driver scenario with all 3 blocker types
+
+**Goal**: Detect and track blockers that prevent milestone completion
+
+| # | Task | Module | Depends On | Estimate | Status |
+|---|------|--------|------------|----------|--------|
+| 6A.1 | Create `agenda.line.blocker` model (type, severity, resolved) | crearis_milestones | Phase 4 | 2h | ✅ Done |
+| 6A.2 | Add `blocker_ids` One2many on registration (via partner) | crearis_milestones | 6A.1 | 0.5h | ✅ Done |
+| 6A.3 | Add `has_blockers` computed field | crearis_milestones | 6A.2 | 0.5h | ✅ Done |
+| 6A.4 | Implement `_check_blockers()` method | crearis_milestones | 6A.2 | 3h | ✅ Done |
+| 6A.5 | Add payment_overdue detection (invoice lookup) | crearis_milestones | 6A.4 | 1h | ✅ Done |
+| 6A.6 | Add event_unresolved detection (pending package selections) | crearis_milestones | 6A.4, Phase 3 | 1h | ⏸️ Needs Phase 3 |
+| 6A.7 | Add confirmation_pending detection (overdue activities) | crearis_milestones | 6A.4 | 1h | ✅ Done |
+| 6A.8 | Extend cron to call _check_blockers when setting ready | crearis_milestones | 6A.4, Phase 4 | 1h | ✅ Done |
+| 6A.9 | Create blocker resolution action (sets resolved, resets gate) | crearis_milestones | 6A.1 | 1h | ✅ Done |
+| 6A.10 | Add "Issues" filter to Controlling view | crearis_milestones | 6A.3, 4A.14 | 0.5h | ✅ Done |
+| 6A.11 | Add blocker badges to tree/kanban (severity color-coded) | crearis_milestones | 6A.10 | 1h | ✅ Done |
+| 6A.12 | Create activity on blocker creation (for coordinator) | crearis_milestones | 6A.8 | 1h | ⏸️ Deferred |
+
+**Three Blocker Types** (from journey_selma_issue_driver.md):
+
+| Type | Severity | Detection | Selma Example |
+|------|----------|-----------|---------------|
+| `payment_overdue` | High | Partner has overdue invoices | EUR 660, 3 invoices |
+| `event_unresolved` | Medium | Pending event selections in package | A4 not chosen |
+| `confirmation_pending` | Low | Overdue confirmation request activities | Employer letter 3x requested |
+
+**Blocker → Check Integration**:
+
+The `_check_blockers()` method is called on the **registration** (not agenda.line) because:
+- Registration has `partner_id` → needed for invoice/activity lookup
+- Registration has `event_id` → needed for package event lookup
+
+```python
+# On event.registration (in crearis_milestones)
+def _check_blockers(self):
+    """Check blockers for this registration's partner."""
+    blockers = []
+    partner = self.partner_id
+    
+    # 1. payment_overdue (see arch doc 10.3)
+    # 2. event_unresolved (see arch doc 10.3)  
+    # 3. confirmation_pending (see arch doc 10.3)
+    
+    return blockers
+```
+
+**View: TRIAGE Section** (from arch doc "Für Anwender"):
+
+```xml
+<!-- TRIAGE: 3 rows per blocked registration -->
+<record id="view_registration_triage_form" model="ir.ui.view">
+    <field name="model">event.registration</field>
+    <field name="arch" type="xml">
+        <form>
+            <header>
+                <button name="action_resolve_and_confirm" string="⚡ Freigeben"/>
+                <button name="action_show_partner" string="📞 Kontaktieren"/>
+            </header>
+            <group>
+                <field name="partner_id"/>
+                <field name="event_id"/>
+                <field name="check_comment"/>
+            </group>
+            <notebook>
+                <page string="Blocker">
+                    <field name="blocker_ids">
+                        <tree>
+                            <field name="blocker_type"/>
+                            <field name="severity" widget="badge"/>
+                            <field name="data_display"/>
+                            <button name="action_resolve" string="✓"/>
+                        </tree>
+                    </field>
+                </page>
+            </notebook>
+        </form>
+    </field>
+</record>
+```
+
+**Deliverable**: Gates can detect and refuse to open when blockers exist; coordinators see issues in Controlling view with actionable TRIAGE cards.
 
 ---
 
@@ -515,17 +808,21 @@ This matrix shows how each decision point affects module implementation:
 ## Priority Order
 
 ```
-Phase 1 (Foundation)     ████████████████████  MUST HAVE     [crearis]
+Phase 1 (Foundation)     ████████████████████  ✅ DONE       [crearis]
     ↓
-Phase 2 (Providers)      ████████████████      MUST HAVE     [crearis]
+Phase 2 (Providers)      ████████████████      ✅ DONE       [crearis]
     ↓
 Phase 3 (Product)        ████████████████      MUST HAVE     [crearis_event_package]
     ↓
-Phase 4 (Event)          ████████████████      MUST HAVE     [crearis + agenda_dasei]
+Phase 4 (Event)          ████████████████      ✅ DONE       [crearis + agenda_dasei]
+    ↓
+Phase 4A (Milestones)    ████████████████      ✅ DONE       [crearis_milestones]
     ↓
 Phase 5 (Templates)      ████████████          SHOULD HAVE   [crearis + agenda_dasei]
     ↓
 Phase 6 (CRM)            ████████████          SHOULD HAVE   [crearis_event_package + agenda_dasei]
+    ↓
+Phase 6A (Blockers)      ████████████          ✅ DONE       [crearis_milestones]
     ↓
 Phase 7 (Event Views)    ████████              SHOULD HAVE   [crearis]
     ↓
@@ -538,20 +835,42 @@ Phase 9 (Investigation)  ████                  COULD HAVE    [TBD]
 
 ## Module Distribution Summary
 
-| Module | Phases | % of Work |
-|--------|--------|-----------|
-| **crearis** | 1, 2, 4 (base), 5 (engine), 7, 9 (placeholders) | ~60% |
-| **crearis_event_package** | 3, 6, 8 | ~30% |
-| **agenda_dasei** | 4 (defaults), 5 (templates), 6 (email) | ~10% |
+| Module | Phases | % of Work | Status |
+|--------|--------|-----------|--------|
+| **crearis** | 1, 2, 4 (base), 5 (engine), 7, 9 (placeholders) | ~45% | ✅ Core done |
+| **crearis_event_package** | 3, 6, 8 | ~20% | 🔜 Next |
+| **crearis_milestones** | 4A (templates + Check fields), 6A (blockers) | ~25% | ✅ Implemented |
+| **agenda_dasei** | 4 (defaults), 5 (templates), 6 (email) | ~10% | ✅ Defaults done |
 
 ### Dependency Flow
 
 ```
-crearis (core agenda.line)
+crearis (core agenda.line, gate_state)
+    ├─► crearis_milestones (Check fields on registration, blockers, Controlling UI)
+    │       └─► agenda_dasei (German/Czech translations)
     ├─► crearis_event_package (package-driven logic)
     │       └─► agenda_dasei (German email templates)
     └─► agenda_dasei (Meldefrist defaults, schedule templates)
 ```
+
+### crearis_milestones Scope (NEW)
+
+**Models extended**:
+- `event.registration`: `check_state`, `check_comment`, `has_blockers`
+- `agenda.line`: Business logic methods (already has `gate_state` from crearis)
+
+**New models**:
+- `agenda.line.blocker`: Blocker tracking per partner
+
+**Views**:
+- Controlling tree: Registrations grouped by event
+- BEREIT filter: Ready to confirm
+- TRIAGE filter: Has blockers
+- Blocker resolution form
+
+**Reference docs**:
+- [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md) — Full spec
+- [journey_selma_issue_driver.md](../_meta/Whitepaper/journey_selma_issue_driver.md) — Issue-driver scenario
 
 ---
 

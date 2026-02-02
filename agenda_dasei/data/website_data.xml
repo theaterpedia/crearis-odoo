@@ -83,6 +83,8 @@ for code, config in DASEI_CONFIGS.items():
             'domain_code': code,
             'company_id': dasei_company.id,
             'sequence': config.get('sequence', 10),
+            'use_template_codes': True,
+            'use_milestones': True,
         })
         created.append(ws)
 

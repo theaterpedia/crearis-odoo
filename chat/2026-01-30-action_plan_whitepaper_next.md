@@ -1,7 +1,27 @@
 # Action Plan: Whitepaper Next Steps
 
 **Date**: 2026-01-30  
+**Status**: ⚠️ OUTDATED (2026-02-02)  
 **Context**: After processing 7 input files into whitepaper structure
+
+---
+
+> **⚠️ OUTDATED NOTICE**
+> 
+> This document has been superseded by:
+> - [action_plan_agenda_lines.md](2026-01-31-action_plan_agenda_lines.md) — Main implementation plan
+> - [architecture_agenda_lines.md](../_meta/Whitepaper/architecture_agenda_lines.md) — Master doc
+> - [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md) — Gate pattern
+> 
+> **Terminology changes**:
+> - `meldefrist_days_before` → `milestone_days_before`
+> - `use_meldefrist` → `use_milestones`
+> - "Meldefrist" → `milestone_key='deadline'` (one of 3 milestone types)
+> 
+> **Still valid** (tracked in agenda_lines plan):
+> - Stornierungsfrist (Phase 3) — product/module-level, different from event milestones
+> - Posts investigation (Phase 9.1-9.2)
+> - Chatter integration (Phase 9.3)
 
 ---
 

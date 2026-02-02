@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- 
+    Blocker Views
+    
+    See: journey_selma_issue_driver.md for Selma's blocker examples
+    -->
+    
+    <!-- Blocker Tree View -->
+    <record id="view_agenda_line_blocker_tree" model="ir.ui.view">
+        <field name="name">agenda.line.blocker.tree</field>
+        <field name="model">agenda.line.blocker</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="partner_id"/>
+                <field name="blocker_type"/>
+                <field name="severity" widget="badge"
+                       decoration-danger="severity == 'high'"
+                       decoration-warning="severity == 'medium'"
+                       decoration-info="severity == 'low'"/>
+                <field name="data_display" string="Details"/>
+                <field name="resolved"/>
+                <field name="resolved_by" attrs="{'invisible': [('resolved', '=', False)]}"/>
+                <field name="resolved_date" attrs="{'invisible': [('resolved', '=', False)]}"/>
+                <button name="action_resolve" string="✓ Resolve" type="object"
+                        class="btn-success"
+                        attrs="{'invisible': [('resolved', '=', True)]}"/>
+                <button name="action_open_related" string="→ Open" type="object"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Blocker Form View -->
+    <record id="view_agenda_line_blocker_form" model="ir.ui.view">
+        <field name="name">agenda.line.blocker.form</field>
+        <field name="model">agenda.line.blocker</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_resolve" string="✓ Resolve Blocker" type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('resolved', '=', True)]}"/>
+                    <button name="action_open_related" string="→ Open Related Record" type="object"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_related" type="object"
+                                class="oe_stat_button" icon="fa-external-link">
+                            <span>Related</span>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Blocker">
+                            <field name="partner_id"/>
+                            <field name="registration_id"/>
+                            <field name="blocker_type"/>
+                            <field name="severity" widget="radio"/>
+                        </group>
+                        <group string="Status">
+                            <field name="resolved"/>
+                            <field name="resolved_by" attrs="{'invisible': [('resolved', '=', False)]}"/>
+                            <field name="resolved_date" attrs="{'invisible': [('resolved', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <group string="Details">
+                        <field name="data_display" nolabel="1"/>
+                    </group>
+                    <group string="Resolution" attrs="{'invisible': [('resolved', '=', False)]}">
+                        <field name="resolution_note" nolabel="1" placeholder="How was this resolved?"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Blocker Search View -->
+    <record id="view_agenda_line_blocker_search" model="ir.ui.view">
+        <field name="name">agenda.line.blocker.search</field>
+        <field name="model">agenda.line.blocker</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="blocker_type"/>
+                <filter name="unresolved" string="Unresolved" domain="[('resolved', '=', False)]"/>
+                <filter name="resolved" string="Resolved" domain="[('resolved', '=', True)]"/>
+                <separator/>
+                <filter name="high_severity" string="High Severity" domain="[('severity', '=', 'high')]"/>
+                <filter name="payment" string="Payment Issues" domain="[('blocker_type', '=', 'payment_overdue')]"/>
+                <filter name="event" string="Event Issues" domain="[('blocker_type', '=', 'event_unresolved')]"/>
+                <filter name="confirmation" string="Confirmation Issues" domain="[('blocker_type', '=', 'confirmation_pending')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_partner" string="Partner" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'blocker_type'}"/>
+                    <filter name="group_severity" string="Severity" context="{'group_by': 'severity'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Blocker Action -->
+    <record id="action_agenda_line_blocker" model="ir.actions.act_window">
+        <field name="name">Blockers</field>
+        <field name="res_model">agenda.line.blocker</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_agenda_line_blocker_search"/>
+        <field name="context">{'search_default_unresolved': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No blockers found
+            </p>
+            <p>
+                Blockers are issues that prevent milestone confirmation, such as
+                overdue payments, pending event selections, or unanswered requests.
+            </p>
+        </field>
+    </record>
+    
+</odoo>
