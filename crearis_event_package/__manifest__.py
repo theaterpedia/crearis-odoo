@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis Event Package',
-    'version': '16.0.1.1.0',
+    'version': '16.0.1.2.0',
     'summary': 'Event Package Products with Cancellation Period',
     'description': """
 Crearis Event Package - Sell bundled events as products.

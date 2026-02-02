@@ -55,6 +55,17 @@ class EventType(models.Model):
         help="Default days before event start for deadline milestone (Meldefrist)"
     )
 
+    # Schedule Template (Phase 5)
+    schedule_template = fields.Json(
+        string="Schedule Template",
+        default=dict,
+        help="Template for generating agenda lines. Structure: {sessions: [{day, start, end, mode, ...}]}"
+    )
+    schedule_template_note = fields.Text(
+        string="Template Notes",
+        help="Human-readable schedule pattern description (e.g., 'FR-SA-SO Block + Online vor/nach')"
+    )
+
     # Sync tracking
     ms_id = fields.Char(string="SharePoint ID", index=True)
     ms_synced = fields.Boolean(string="Synced from SharePoint", default=False)
@@ -216,6 +227,48 @@ class EventEvent(models.Model):
     use_overline = fields.Boolean(compute=_compute_use_overline)
     use_teasertext = fields.Boolean(compute=_compute_use_teasertext)
     use_milestones = fields.Boolean('Use Milestones', compute=_compute_use_milestones)
+
+    # ----------------------------------
+    # Milestone Status (for E2 view)
+    # ----------------------------------
+    
+    current_milestone_key = fields.Selection([
+        ('deadline', 'Deadline'),
+        ('info_mail', 'Info Mail'),
+        ('wrap_up', 'Wrap-Up'),
+    ], string='Current Milestone', compute='_compute_current_milestone_key', store=True,
+       help="Which milestone type is currently active based on event stage")
+    
+    @api.depends('stage_id', 'stage_id.pipe_end')
+    def _compute_current_milestone_key(self):
+        """
+        Determine current milestone based on event stage.
+        
+        Stage mapping (from 2026-02-02-details.md):
+        - draft (sysreg 64) → deadline (Meldefrist)
+        - confirmed (sysreg 512) → info_mail
+        - released (sysreg 4096) → wrap_up
+        - completed (sysreg 8192) → None
+        """
+        for event in self:
+            if not event.stage_id:
+                event.current_milestone_key = 'deadline'
+                continue
+            
+            # Check stage by pipe_end (completed stages)
+            if event.stage_id.pipe_end:
+                event.current_milestone_key = False
+                continue
+            
+            # Map stage sequence to milestone
+            # Lower sequence = earlier stage
+            seq = event.stage_id.sequence or 0
+            if seq < 20:  # draft stages
+                event.current_milestone_key = 'deadline'
+            elif seq < 40:  # confirmed stages
+                event.current_milestone_key = 'info_mail'
+            else:  # released stages
+                event.current_milestone_key = 'wrap_up'
 
     # ----------------------------------
     # crearis-interface
@@ -413,6 +466,147 @@ class EventEvent(models.Model):
     def _sync_session_lines(self):
         """DEPRECATED: Use _sync_agenda_lines instead."""
         return self._sync_agenda_lines()
+    
+    # =========================
+    # Phase 5: Template-based Agenda Generation
+    # =========================
+    
+    def _generate_agenda_from_template(self):
+        """
+        Generate agenda lines from event type's schedule_template.
+        
+        Algorithm (D8 Consecutive Days pattern):
+        1. Anchor: First in-presence slot → anchored to date_begin
+        2. In-presence block: Consecutive days from date_begin
+        3. Pre-event online: Find matching weekday BEFORE date_begin
+        4. Post-event online: Find next matching weekday AFTER last slot
+        """
+        from datetime import datetime, timedelta
+        AgendaLine = self.env['agenda.line']
+        
+        for event in self:
+            if not event.event_type_id or not event.date_begin:
+                continue
+            
+            template = event.event_type_id.schedule_template or {}
+            sessions = template.get('sessions', [])
+            if not sessions:
+                continue
+            
+            # Clear existing template-sourced lines
+            event.agenda_line_ids.filtered(
+                lambda l: l.type == 'session' and l.source == 'template'
+            ).unlink()
+            
+            # Get event anchor date
+            anchor_date = event.date_begin.date() if hasattr(event.date_begin, 'date') else event.date_begin
+            
+            # Separate online and venue sessions
+            venue_sessions = [s for s in sessions if s.get('mode') != 'online']
+            online_sessions = [s for s in sessions if s.get('mode') == 'online']
+            
+            # Map weekday codes to integers
+            WEEKDAYS = {'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6,
+                        'MO': 0, 'DI': 1, 'MI': 2, 'DO': 3, 'FR': 4, 'SA': 5, 'SO': 6}
+            
+            # Resolve venue sessions (consecutive days from anchor)
+            resolved = []
+            for idx, sess in enumerate(venue_sessions):
+                session_date = anchor_date + timedelta(days=idx)
+                resolved.append({
+                    **sess,
+                    'resolved_date': session_date,
+                    'sequence': (idx + 1) * 10,
+                })
+            
+            # Resolve online sessions
+            for sess in online_sessions:
+                day_code = sess.get('day', '').upper()
+                target_weekday = WEEKDAYS.get(day_code)
+                if target_weekday is None:
+                    continue
+                
+                position = sess.get('position', 'before')  # 'before' or 'after'
+                
+                if position == 'before':
+                    # Find matching weekday BEFORE anchor
+                    days_back = (anchor_date.weekday() - target_weekday) % 7
+                    if days_back == 0:
+                        days_back = 7  # Full week back
+                    session_date = anchor_date - timedelta(days=days_back)
+                    sequence = 5  # Before venue sessions
+                else:
+                    # Find matching weekday AFTER last resolved date
+                    last_date = resolved[-1]['resolved_date'] if resolved else anchor_date
+                    days_forward = (target_weekday - last_date.weekday()) % 7
+                    if days_forward == 0:
+                        days_forward = 7  # Full week forward
+                    session_date = last_date + timedelta(days=days_forward)
+                    sequence = len(resolved) * 10 + 50
+                
+                resolved.append({
+                    **sess,
+                    'resolved_date': session_date,
+                    'sequence': sequence,
+                })
+            
+            # Sort by date and create agenda lines
+            resolved.sort(key=lambda x: (x['resolved_date'], x.get('start', '00:00')))
+            
+            for idx, sess in enumerate(resolved):
+                session_date = sess['resolved_date']
+                weekday_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+                
+                vals = {
+                    'event_id': event.id,
+                    'sequence': (idx + 1) * 10,
+                    'type': 'session',
+                    'source': 'template',
+                    'locked_edits': True,
+                    'day': weekday_names[session_date.weekday()],
+                    'date': session_date,
+                    'start': sess.get('start'),
+                    'end': sess.get('end'),
+                    'duration_h': sess.get('duration_h', 0),
+                    'mode': sess.get('mode', 'venue'),
+                    'location_hint': sess.get('location_hint'),
+                    'room': sess.get('room'),
+                    'notes': sess.get('notes'),
+                    'teaching_units': sess.get('teaching_units', 0),
+                }
+                AgendaLine.create(vals)
+        
+        return True
+    
+    def action_regenerate_from_template(self):
+        """Action button: Regenerate agenda lines from event type template."""
+        self._generate_agenda_from_template()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Template Applied',
+                'message': f'Regenerated {len(self.agenda_line_ids.filtered(lambda l: l.source == "template"))} sessions from template.',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+    
+    def action_unlock_for_editing(self):
+        """Action button: Unlock template-generated lines for manual editing."""
+        self.agenda_line_ids.filtered(
+            lambda l: l.source == 'template'
+        ).write({'locked_edits': False, 'source': 'manual'})
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Unlocked',
+                'message': 'Agenda lines are now editable.',
+                'type': 'info',
+                'sticky': False,
+            }
+        }
 
     # ----------------------------------
     # Kanban Actions

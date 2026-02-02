@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis',
-    'version': '16.0.1.3.0',
+    'version': '16.0.1.5.0',
     'summary': 'Episodes and Event-Management with Agenda Lines',
     'description': """Episodes and Event-Management on theaterpedia.org
 
@@ -15,6 +15,8 @@ Features:
 - Gate pattern for milestone tracking (pending → ready → sent)
 - Configurable milestone labels per company
 - Daily cron for milestone date checking
+- Schedule template system (Phase 5): event types define session patterns
+- Template generation with consecutive days algorithm (D8 pattern)
 """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',

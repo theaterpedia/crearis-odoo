@@ -61,6 +61,14 @@ class EventEvent(models.Model):
     """
     _inherit = 'event.event'
     
+    # F1 Dashboard requirement (from 2026-02-02 origin docs)
+    forced_controlling = fields.Boolean(
+        string="Force Controlling",
+        default=False,
+        help="Manually include this event in bi_weekly controlling dashboard, "
+             "regardless of milestone dates"
+    )
+    
     def _get_milestone_line(self, key='deadline'):
         """
         Return the milestone agenda.line for this event.

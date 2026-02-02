@@ -169,6 +169,10 @@ class AgendaLine(models.Model):
         ('deadline', 'Deadline'),
         ('completion', 'Completion'),
         ('cancellation', 'Cancellation Period'),  # Product-level: X days after first attendance
+        # Hot phase milestones (from 2026-02-02 origin docs):
+        ('info_mail', 'Info Mail'),        # 10-30 days before event
+        ('opening', 'Opening Reminder'),   # 1-3 days before event
+        ('wrap_up', 'Wrap-Up'),            # 1-7 days after event
     ], string='Milestone Key',
        help="Which of the milestone types this is")
     

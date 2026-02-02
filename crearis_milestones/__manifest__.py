@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis Milestones',
-    'version': '16.0.1.0.0',
+    'version': '16.0.1.1.0',
     'summary': 'Controlling Dashboard for Milestone Management',
     'description': """
 Enhanced milestone workflow for participant management.

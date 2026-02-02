@@ -29,6 +29,12 @@
                     <field name="template_config"/>
                     <field name="template_ext" widget="json"/>
                 </group>
+                <group string="Schedule Template" name="schedule_template"
+                       attrs="{'invisible': [('is_template_code', '=', False)]}">
+                    <field name="schedule_template_note" placeholder="e.g., FR-SA-SO Block + Online vor/nach"/>
+                    <field name="schedule_template" widget="json"/>
+                    <field name="milestone_days_before"/>
+                </group>
                 <group string="SharePoint Sync" name="sync_tracking" 
                        attrs="{'invisible': [('ms_synced', '=', False)]}">
                     <field name="ms_id" readonly="1"/>

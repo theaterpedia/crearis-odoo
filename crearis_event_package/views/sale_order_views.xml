@@ -95,6 +95,63 @@
         </field>
     </record>
 
+    <!-- Sale Order Line Form View (with milestones) -->
+    <record id="view_sale_order_line_form_package" model="ir.ui.view">
+        <field name="name">sale.order.line.form.package</field>
+        <field name="model">sale.order.line</field>
+        <field name="arch" type="xml">
+            <form string="Package Order Line">
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <group col="2">
+                        <group string="Product">
+                            <field name="product_id"/>
+                            <field name="product_uom_qty"/>
+                            <field name="price_unit"/>
+                            <field name="price_subtotal"/>
+                        </group>
+                        <group string="Cancellation Status" attrs="{'invisible': [('is_event_package', '=', False)]}">
+                            <field name="is_event_package" invisible="1"/>
+                            <field name="first_attendance_date" readonly="1"/>
+                            <field name="cancellation_deadline" readonly="1"/>
+                            <field name="cancellation_state" widget="badge"
+                                   decoration-info="cancellation_state == 'not_started'"
+                                   decoration-warning="cancellation_state == 'in_period'"
+                                   decoration-success="cancellation_state == 'passed'"/>
+                        </group>
+                    </group>
+                    <group col="2" attrs="{'invisible': [('is_event_package', '=', False)]}">
+                        <group string="Completion">
+                            <field name="is_completed"/>
+                            <field name="completion_date" readonly="1"/>
+                        </group>
+                        <group string="Milestones">
+                            <field name="activation_milestone_id" readonly="1"/>
+                            <field name="completion_milestone_id" readonly="1"/>
+                            <button name="action_create_consulting_meeting" type="object"
+                                    string="📅 Schedule Consulting" class="btn-secondary"
+                                    attrs="{'invisible': [('is_completed', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <notebook attrs="{'invisible': [('is_event_package', '=', False)]}">
+                        <page string="Event Selections">
+                            <field name="package_event_line_ids" nolabel="1">
+                                <tree decoration-success="state == 'attended'"
+                                      decoration-muted="state == 'cancelled'">
+                                    <field name="event_type_id"/>
+                                    <field name="event_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="first_attendance_date"/>
+                                    <field name="is_first_event"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <!-- Package Event Line Action -->
     <record id="action_package_event_lines" model="ir.actions.act_window">
         <field name="name">Package Event Selections</field>
@@ -110,4 +167,120 @@
             </p>
         </field>
     </record>
+
+    <!-- ========================================================== -->
+    <!-- C2: Cancellation Tracker - Sale Order Lines View           -->
+    <!-- Tracks: in_period packages needing reverification          -->
+    <!-- ========================================================== -->
+    
+    <!-- Sale Order Line Tree View for Cancellation Tracking -->
+    <record id="view_sale_order_line_cancellation_tree" model="ir.ui.view">
+        <field name="name">sale.order.line.cancellation.tree</field>
+        <field name="model">sale.order.line</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <tree string="Cancellation Tracker"
+                  decoration-warning="cancellation_state == 'in_period'"
+                  decoration-success="cancellation_state == 'passed'"
+                  decoration-muted="cancellation_state == 'not_started'">
+                <field name="order_id" string="Order"/>
+                <field name="order_partner_id" string="Customer"/>
+                <field name="product_id" string="Package"/>
+                <field name="first_attendance_date"/>
+                <field name="cancellation_deadline"/>
+                <field name="cancellation_state" widget="badge"
+                       decoration-info="cancellation_state == 'not_started'"
+                       decoration-warning="cancellation_state == 'in_period'"
+                       decoration-success="cancellation_state == 'passed'"/>
+                <field name="is_completed"/>
+                <field name="completion_date"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Search View for Cancellation Tracking -->
+    <record id="view_sale_order_line_cancellation_search" model="ir.ui.view">
+        <field name="name">sale.order.line.cancellation.search</field>
+        <field name="model">sale.order.line</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <search string="Search Package Lines">
+                <field name="order_id"/>
+                <field name="order_partner_id"/>
+                <field name="product_id"/>
+                
+                <!-- Cancellation State filters -->
+                <separator/>
+                <filter name="in_period" string="🕐 In Cancellation Period"
+                        domain="[('cancellation_state', '=', 'in_period')]"/>
+                <filter name="needs_reverification" string="⚠️ Needs Reverification"
+                        domain="[('cancellation_state', '=', 'in_period'), ('is_completed', '=', False)]"/>
+                <filter name="not_started" string="Not Started"
+                        domain="[('cancellation_state', '=', 'not_started')]"/>
+                <filter name="passed" string="✓ Period Passed"
+                        domain="[('cancellation_state', '=', 'passed')]"/>
+                
+                <!-- Completion filters -->
+                <separator/>
+                <filter name="completed" string="✓ Completed"
+                        domain="[('is_completed', '=', True)]"/>
+                <filter name="not_completed" string="Not Completed"
+                        domain="[('is_completed', '=', False)]"/>
+                
+                <!-- Date filters -->
+                <separator/>
+                <filter name="deadline_this_week" string="Deadline This Week"
+                        domain="[
+                            ('cancellation_deadline', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')),
+                            ('cancellation_deadline', '&lt;', (context_today() + datetime.timedelta(days=7-context_today().weekday())).strftime('%Y-%m-%d'))
+                        ]"/>
+                <filter name="deadline_next_30_days" string="Deadline Next 30 Days"
+                        domain="[
+                            ('cancellation_deadline', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                            ('cancellation_deadline', '&lt;', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+                        ]"/>
+                
+                <!-- Group By -->
+                <group expand="1" string="Group By">
+                    <filter name="group_by_state" string="Cancellation State"
+                            context="{'group_by': 'cancellation_state'}"/>
+                    <filter name="group_by_customer" string="Customer"
+                            context="{'group_by': 'order_partner_id'}"/>
+                    <filter name="group_by_product" string="Package"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter name="group_by_deadline_month" string="Deadline Month"
+                            context="{'group_by': 'cancellation_deadline:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Cancellation Tracker Action -->
+    <record id="action_cancellation_tracker" model="ir.actions.act_window">
+        <field name="name">Cancellation Tracker</field>
+        <field name="res_model">sale.order.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_sale_order_line_cancellation_tree"/>
+        <field name="search_view_id" ref="view_sale_order_line_cancellation_search"/>
+        <field name="domain">[('is_event_package', '=', True)]</field>
+        <field name="context">{
+            'search_default_in_period': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No packages in cancellation period
+            </p>
+            <p>
+                Packages enter the cancellation period after first attendance.
+                Track packages needing reverification before the deadline passes.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Menu under Controlling -->
+    <menuitem id="menu_cancellation_tracker"
+              name="Cancellation Tracker"
+              parent="crearis_milestones.menu_controlling_root"
+              action="action_cancellation_tracker"
+              sequence="30"/>
 </odoo>

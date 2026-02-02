@@ -91,6 +91,7 @@
 
     <!-- ========================================================== -->
     <!-- L17: Event Tree View with Schedule Summary Columns         -->
+    <!-- E2: Added current_milestone_key for milestone tracking     -->
     <!-- ========================================================== -->
     
     <record id="view_event_tree_schedule" model="ir.ui.view">
@@ -101,6 +102,11 @@
         <field name="arch" type="xml">
             <!-- Add schedule summary columns after date_end -->
             <xpath expr="//field[@name='date_end']" position="after">
+                <field name="current_milestone_key" widget="badge" string="Milestone"
+                       decoration-info="current_milestone_key == 'deadline'"
+                       decoration-warning="current_milestone_key == 'info_mail'"
+                       decoration-success="current_milestone_key == 'wrap_up'"
+                       optional="show"/>
                 <field name="has_online_sessions" widget="boolean_toggle" string="Online" optional="show"/>
                 <field name="session_count" string="Sessions" optional="hide"/>
                 <field name="total_hours" string="Hours" optional="hide"/>
@@ -121,10 +127,15 @@
             <!-- Add Venue grouping after Stage grouping -->
             <xpath expr="//filter[@name='stage_id']" position="after">
                 <filter string="Venue" name="group_venue" context="{'group_by': 'address_id'}"/>
+                <filter string="Milestone" name="group_milestone" context="{'group_by': 'current_milestone_key'}"/>
             </xpath>
-            <!-- Add online sessions filter -->
+            <!-- Add milestone phase filters -->
             <xpath expr="//filter[@name='filter_inactive']" position="before">
+                <separator/>
                 <filter string="Has Online Sessions" name="online_sessions" domain="[('has_online_sessions', '=', True)]"/>
+                <filter string="🔔 Info Mail Phase" name="milestone_info_mail" domain="[('current_milestone_key', '=', 'info_mail')]"/>
+                <filter string="📅 Event Phase (Wrap-Up)" name="milestone_wrap_up" domain="[('current_milestone_key', '=', 'wrap_up')]"/>
+                <filter string="⏰ Deadline Phase" name="milestone_deadline" domain="[('current_milestone_key', '=', 'deadline')]"/>
             </xpath>
         </field>
     </record>
@@ -174,12 +185,25 @@ SO 10:00-15:00"/>
                                     help="Parse the raw text into structured session data"/>
                         </group>
                         
-                        <!-- Right: Quick Stats -->
+                        <!-- Right: Quick Stats + Template Actions -->
                         <group string="Session Summary">
                             <field name="session_count" readonly="1"/>
                             <field name="total_hours" readonly="1"/>
                             <field name="online_hours" readonly="1" attrs="{'invisible': [('has_online_sessions', '=', False)]}"/>
                             <field name="venue_hours" readonly="1" attrs="{'invisible': [('has_online_sessions', '=', False)]}"/>
+                            <div class="mt-3">
+                                <button name="action_regenerate_from_template" 
+                                        type="object" 
+                                        string="↻ From Template" 
+                                        class="btn-secondary"
+                                        icon="fa-refresh"
+                                        title="Regenerate sessions from event type's schedule template"/>
+                                <button name="action_unlock_for_editing" 
+                                        type="object" 
+                                        string="🔓 Unlock" 
+                                        class="btn-link"
+                                        title="Unlock template-generated sessions for manual editing"/>
+                            </div>
                         </group>
                     </group>
                     

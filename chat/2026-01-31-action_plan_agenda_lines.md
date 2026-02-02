@@ -1,9 +1,9 @@
 # Action Plan: agenda.line Implementation
 
 **Date**: 2026-01-31  
-**Updated**: 2026-02-02 (afternoon)  
-**Status**: ✅ Phase 1 IMPLEMENTED, ✅ Phase 4A IMPLEMENTED, ✅ Phase 6A IMPLEMENTED  
-**Blocking**: ~~Domain codes task (Monday)~~ RESOLVED
+**Updated**: 2026-02-02 (evening)  
+**Status**: ✅ Phase 1, ✅ Phase 3, ✅ Phase 4A, ✅ Phase 6A IMPLEMENTED  
+**Blocking**: None
 
 ---
 
@@ -110,6 +110,7 @@ crearis_milestones/
 - [architecture_agenda_lines.md](../_meta/Whitepaper/architecture_agenda_lines.md) — Model, providers, views
 - [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md) — Full gate pattern
 - [architecture_agenda_lines_negative_spec.md](../_meta/Whitepaper/architecture_agenda_lines_negative_spec.md) — What is NOT in essentials
+- [architecture_event_package.md](../_meta/Whitepaper/architecture_event_package.md) — Package products, milestone flow (Phase 3)
 
 ### Phase Updates
 
@@ -445,31 +446,52 @@ This matrix shows how each decision point affects module implementation:
 
 ---
 
-### Phase 3: Product-Driven agenda.lines (Cancellation Period)
+### Phase 3: Product-Driven agenda.lines (Cancellation Period) ✅ IMPLEMENTED
 
 **Module**: `crearis_event_package`
+**Status**: ✅ All tasks implemented (2026-02-02 evening)
 **Rationale**: Extends `product.package.event.line` which already lives there
+
+**Architecture Reference**: [architecture_event_package.md](../_meta/Whitepaper/architecture_event_package.md)
+
+**Journey References** (cross-checked during implementation):
+- [journey_ida_basistag_to_module.md](../_meta/Whitepaper/journey_ida_basistag_to_module.md) — Cancellation period pattern
+- [journey_jolanda_full_grundlagenbildung.md](../_meta/Whitepaper/journey_jolanda_full_grundlagenbildung.md) — Activation + completion milestones
 
 **Terminology** (German → English):
 | German | English Field | Description |
 |--------|---------------|-------------|
 | Stornierungsfrist | `cancellation_period_days` | Days after first attendance (default: 10) |
-| Stornierungsfrist-Datum | `cancellation_deadline_date` | Computed deadline per sale |
-| Stornierungsfrist verstrichen | `is_cancellation_deadline_passed` | Boolean check |
+| Stornierungsfrist-Datum | `cancellation_deadline` | Computed deadline per sale |
+| Stornierungsfrist verstrichen | `cancellation_state` | Selection: not_started/in_period/passed |
 
 **Goal**: Extend `product.package.event.line` to create agenda.lines
 
-| # | Task | Module | Depends On | Estimate |
-|---|------|--------|------------|----------|
-| 3.1 | Add `agenda_line_id` M2O on `product.package.event.line` | crearis_event_package | Phase 2 | 0.5h |
-| 3.2 | Override `create()` to auto-create agenda.line | crearis_event_package | 3.1 | 2h |
-| 3.3 | Override `write()` to sync event_id changes | crearis_event_package | 3.2 | 1h |
-| 3.4 | Add `cancellation_period_days` on `product.template` | crearis_event_package | Phase 2 | 0.5h |
-| 3.5 | Add `cancellation_deadline_date` computed on `sale.order.line` | crearis_event_package | 3.4 | 1h |
-| 3.6 | Add `is_cancellation_deadline_passed` computed | crearis_event_package | 3.5 | 0.5h |
-| 3.7 | Create Cancellation Period milestone agenda.line on purchase | crearis_event_package | 3.2, 3.5 | 2h |
+| # | Task | Module | Depends On | Estimate | Status |
+|---|------|--------|------------|----------|--------|
+| 3.1 | Add `agenda_line_id` M2O on `product.package.event.line` | crearis_event_package | Phase 2 | 0.5h | ✅ Done |
+| 3.2 | Add `action_mark_attended()` to create milestone | crearis_event_package | 3.1 | 2h | ✅ Done |
+| 3.3 | Add `first_attendance_date`, `is_first_event` tracking | crearis_event_package | 3.2 | 1h | ✅ Done |
+| 3.4 | Add `cancellation_period_days` on `product.template` | crearis_event_package | Phase 2 | 0.5h | ✅ Done |
+| 3.5 | Add `cancellation_deadline` computed on `sale.order.line` | crearis_event_package | 3.4 | 1h | ✅ Done |
+| 3.6 | Add `cancellation_state` selection (not_started/in_period/passed) | crearis_event_package | 3.5 | 0.5h | ✅ Done |
+| 3.7 | Create Cancellation Period milestone agenda.line on first attendance | crearis_event_package | 3.2, 3.5 | 2h | ✅ Done |
 
-**Deliverable**: Module purchase creates agenda.lines with Cancellation Period tracking.
+**Additional Tasks** (discovered from Jolanda's journey):
+
+| # | Task | Module | Status |
+|---|------|--------|--------|
+| 3.8 | Add `activation_days_before` on `product.template` | crearis_event_package | ✅ Done |
+| 3.9 | Add `use_completion_milestone`, `completion_days_after` on `product.template` | crearis_event_package | ✅ Done |
+| 3.10 | Add `requires_consulting` on `product.template` | crearis_event_package | ✅ Done |
+| 3.11 | Add `activation_milestone_id`, `completion_milestone_id` on `sale.order.line` | crearis_event_package | ✅ Done |
+| 3.12 | Add `is_completed`, `completion_date` computed on `sale.order.line` | crearis_event_package | ✅ Done |
+| 3.13 | Implement `_create_activation_milestone()` | crearis_event_package | ✅ Done |
+| 3.14 | Implement `_create_completion_milestone()` | crearis_event_package | ✅ Done |
+| 3.15 | Add `action_create_consulting_meeting()` button | crearis_event_package | ✅ Done |
+| 3.16 | Add `partner_id`, `sale_order_line_id` on `agenda.line` (in crearis core) | crearis | ✅ Done |
+
+**Deliverable**: ✅ Module purchase creates agenda.lines with Cancellation/Activation/Completion milestones.
 
 ---
 
@@ -812,13 +834,13 @@ Phase 1 (Foundation)     ██████████████████�
     ↓
 Phase 2 (Providers)      ████████████████      ✅ DONE       [crearis]
     ↓
-Phase 3 (Product)        ████████████████      MUST HAVE     [crearis_event_package]
+Phase 3 (Product)        ████████████████      ✅ DONE       [crearis_event_package]
     ↓
 Phase 4 (Event)          ████████████████      ✅ DONE       [crearis + agenda_dasei]
     ↓
 Phase 4A (Milestones)    ████████████████      ✅ DONE       [crearis_milestones]
     ↓
-Phase 5 (Templates)      ████████████          SHOULD HAVE   [crearis + agenda_dasei]
+Phase 5 (Templates)      ████████████          🔜 NEXT       [crearis + agenda_dasei]
     ↓
 Phase 6 (CRM)            ████████████          SHOULD HAVE   [crearis_event_package + agenda_dasei]
     ↓
@@ -838,7 +860,7 @@ Phase 9 (Investigation)  ████                  COULD HAVE    [TBD]
 | Module | Phases | % of Work | Status |
 |--------|--------|-----------|--------|
 | **crearis** | 1, 2, 4 (base), 5 (engine), 7, 9 (placeholders) | ~45% | ✅ Core done |
-| **crearis_event_package** | 3, 6, 8 | ~20% | 🔜 Next |
+| **crearis_event_package** | 3, 6, 8 | ~20% | ✅ Phase 3 done |
 | **crearis_milestones** | 4A (templates + Check fields), 6A (blockers) | ~25% | ✅ Implemented |
 | **agenda_dasei** | 4 (defaults), 5 (templates), 6 (email) | ~10% | ✅ Defaults done |
 

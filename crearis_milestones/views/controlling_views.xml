@@ -162,5 +162,134 @@ if records:
               parent="menu_controlling_root"
               action="action_agenda_line_blocker"
               sequence="20"/>
+
+    <!-- ========================================================== -->
+    <!-- F1 Extended: 4-Section Controlling Dashboard               -->
+    <!-- Sections: Milestones | Info-Mail | Hot Phase | Wrap-Up     -->
+    <!-- ========================================================== -->
+    
+    <!-- Section 2: Info-Mail Phase -->
+    <record id="action_controlling_info_mail" model="ir.actions.act_window">
+        <field name="name">📧 Info-Mail Phase</field>
+        <field name="res_model">event.registration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_registration_controlling_tree"/>
+        <field name="search_view_id" ref="view_registration_controlling_search"/>
+        <field name="domain">[
+            ('state', '=', 'open'),
+            ('event_id.current_milestone_key', '=', 'info_mail')
+        ]</field>
+        <field name="context">{
+            'search_default_group_by_event': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No events in Info-Mail phase
+            </p>
+            <p>
+                Events enter Info-Mail phase 3 weeks before the event date.
+                Participants receive course materials and meeting links.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Section 3: Hot Phase (Event Running) -->
+    <record id="action_controlling_hot_phase" model="ir.actions.act_window">
+        <field name="name">🔥 Hot Phase</field>
+        <field name="res_model">event.registration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_registration_controlling_tree"/>
+        <field name="search_view_id" ref="view_registration_controlling_search"/>
+        <field name="domain">[
+            ('state', '=', 'open'),
+            ('event_id.stage_id.sequence', '=', 4096)
+        ]</field>
+        <field name="context">{
+            'search_default_group_by_event': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No events in Hot Phase
+            </p>
+            <p>
+                Events in Hot Phase are currently running.
+                Track attendance and session completion.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Section 4: Wrap-Up Phase -->
+    <record id="action_controlling_wrap_up" model="ir.actions.act_window">
+        <field name="name">📦 Wrap-Up Phase</field>
+        <field name="res_model">event.registration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_registration_controlling_tree"/>
+        <field name="search_view_id" ref="view_registration_controlling_search"/>
+        <field name="domain">[
+            ('state', '=', 'open'),
+            ('event_id.current_milestone_key', '=', 'wrap_up')
+        ]</field>
+        <field name="context">{
+            'search_default_group_by_event': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No events in Wrap-Up phase
+            </p>
+            <p>
+                Events enter Wrap-Up phase after all sessions complete.
+                Send certificates and collect feedback.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Forced Controlling (manual inclusion) -->
+    <record id="action_controlling_forced" model="ir.actions.act_window">
+        <field name="name">⚡ Forced Controlling</field>
+        <field name="res_model">event.registration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_registration_controlling_tree"/>
+        <field name="search_view_id" ref="view_registration_controlling_search"/>
+        <field name="domain">[
+            ('state', '=', 'open'),
+            ('event_id.forced_controlling', '=', True)
+        ]</field>
+        <field name="context">{
+            'search_default_group_by_event': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No events with forced controlling
+            </p>
+            <p>
+                Events can be manually flagged for controlling dashboard visibility.
+            </p>
+        </field>
+    </record>
+    
+    <!-- F1 Extended Menu Items -->
+    <menuitem id="menu_controlling_info_mail"
+              name="📧 Info-Mail"
+              parent="menu_controlling_root"
+              action="action_controlling_info_mail"
+              sequence="15"/>
+    
+    <menuitem id="menu_controlling_hot_phase"
+              name="🔥 Hot Phase"
+              parent="menu_controlling_root"
+              action="action_controlling_hot_phase"
+              sequence="16"/>
+    
+    <menuitem id="menu_controlling_wrap_up"
+              name="📦 Wrap-Up"
+              parent="menu_controlling_root"
+              action="action_controlling_wrap_up"
+              sequence="17"/>
+    
+    <menuitem id="menu_controlling_forced"
+              name="⚡ Forced"
+              parent="menu_controlling_root"
+              action="action_controlling_forced"
+              sequence="25"/>
     
 </odoo>
