@@ -47,6 +47,13 @@ class EventType(models.Model):
         default=0,
         help="Bitmask of configuration flags"
     )
+    
+    # Milestone configuration
+    milestone_days_before = fields.Integer(
+        string="Milestone Days Before",
+        default=60,
+        help="Default days before event start for deadline milestone (Meldefrist)"
+    )
 
     # Sync tracking
     ms_id = fields.Char(string="SharePoint ID", index=True)
@@ -118,10 +125,18 @@ class EventEvent(models.Model):
         help="SharePoint plan_raeume LookupId for location sync")
 
     # Session lines (flattened from schedule_data)
+    # Renamed: session_line_ids → agenda_line_ids (2026-02-02)
+    agenda_line_ids = fields.One2many(
+        'agenda.line', 'event_id',
+        string='Agenda Lines',
+        help='Agenda lines: sessions, milestones, and other schedule items'
+    )
+    
+    # Backward compatibility alias
     session_line_ids = fields.One2many(
-        'event.session.line', 'event_id',
-        string='Session Lines',
-        help='Flattened session records from schedule_data JSONB'
+        'agenda.line', 'event_id',
+        string='Session Lines (deprecated)',
+        help='DEPRECATED: Use agenda_line_ids instead'
     )
 
     domain_code = fields.Many2one('website', string='Domain', default=lambda self: self.env.company.domain_code, required=True, tracking=True)
@@ -184,6 +199,14 @@ class EventEvent(models.Model):
         for event in self:
             event.use_teasertext = event.domain_code.use_overline
     
+    @api.depends('domain_code', 'domain_code.use_milestones')
+    def _compute_use_milestones(self):
+        for event in self:
+            if event.domain_code and hasattr(event.domain_code, 'use_milestones'):
+                event.use_milestones = event.domain_code.use_milestones
+            else:
+                event.use_milestones = event.company_id.use_milestones if event.company_id else False
+    
     owner_company = fields.Integer('Owner (Company)', compute=_compute_owner_company)
     use_msteams = fields.Boolean('MS Teams', compute=_compute_use_msteams)
     use_jitsi = fields.Boolean('Jitsi Rooms', compute=_compute_use_jitsi)
@@ -192,6 +215,7 @@ class EventEvent(models.Model):
     use_products = fields.Boolean(compute=_compute_use_products)
     use_overline = fields.Boolean(compute=_compute_use_overline)
     use_teasertext = fields.Boolean(compute=_compute_use_teasertext)
+    use_milestones = fields.Boolean('Use Milestones', compute=_compute_use_milestones)
 
     # ----------------------------------
     # crearis-interface
@@ -332,21 +356,24 @@ class EventEvent(models.Model):
         return res
 
     # =========================
-    # Session Line Sync
+    # Agenda Line Sync (renamed from Session Line Sync)
     # =========================
     
-    def _sync_session_lines(self):
+    def _sync_agenda_lines(self):
         """
-        Sync session_line_ids from schedule_data.sessions[] JSONB.
+        Sync agenda_line_ids from schedule_data.sessions[] JSONB.
         
         Called after parsing schedule_raw → schedule_data.
-        Clears and recreates all session lines (no incremental update).
+        Clears and recreates session-type lines (no incremental update).
+        Preserves milestone and other non-session lines.
         """
-        SessionLine = self.env['event.session.line']
+        AgendaLine = self.env['agenda.line']
         
         for event in self:
-            # Clear existing lines
-            event.session_line_ids.unlink()
+            # Clear existing SESSION lines only (preserve milestones, etc.)
+            event.agenda_line_ids.filtered(
+                lambda l: l.type == 'session' and l.source == 'json'
+            ).unlink()
             
             # Get sessions from schedule_data
             sessions = (event.schedule_data or {}).get('sessions', [])
@@ -356,17 +383,20 @@ class EventEvent(models.Model):
             # Get default provider from company
             default_provider = event.company_id.online_provider or 'msteams'
             
-            # Create session lines
+            # Create agenda lines for sessions
             for idx, sess in enumerate(sessions):
                 vals = {
                     'event_id': event.id,
                     'sequence': idx * 10,
+                    'type': 'session',
+                    'source': 'json',
+                    'locked_edits': True,
                     'day': sess.get('day'),
                     'date': sess.get('date'),
                     'start': sess.get('start'),
                     'end': sess.get('end'),
                     'duration_h': sess.get('duration_h', 0),
-                    'type': sess.get('type', 'venue'),
+                    'mode': sess.get('type', 'venue'),  # Note: JSONB 'type' → model 'mode'
                     'location_hint': sess.get('location_hint'),
                     'room': sess.get('room'),
                     'notes': sess.get('notes'),
@@ -377,7 +407,12 @@ class EventEvent(models.Model):
                         default_provider if sess.get('type') == 'online' else False
                     ),
                 }
-                SessionLine.create(vals)
+                AgendaLine.create(vals)
+    
+    # Backward compatibility
+    def _sync_session_lines(self):
+        """DEPRECATED: Use _sync_agenda_lines instead."""
+        return self._sync_agenda_lines()
 
     # ----------------------------------
     # Kanban Actions

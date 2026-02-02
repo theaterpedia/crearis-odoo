@@ -14,7 +14,7 @@ from . import version
 from . import location
 from . import res_company
 from . import schedule_mixin  # Must be before event (provides event.schedule.mixin)
-from . import event_session_line  # Must be before event (provides event.session.line)
+from . import agenda_line  # Renamed from event_session_line (2026-02-02)
 from . import event
 from . import event_registration
 from . import config_template

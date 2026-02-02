@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 
+    German milestone label defaults for DASEi domain.
+    Sets company-level labels to German terminology.
+    
+    Note: This should be applied to DASEi companies via post_init_hook
+    or manually after module install.
+    -->
+    
+    <!-- Server action to set German milestone labels on companies -->
+    <record id="action_set_german_milestone_labels" model="ir.actions.server">
+        <field name="name">Set German Milestone Labels</field>
+        <field name="model_id" ref="base.model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">
+# Set German milestone labels for all DASEi companies
+for company in env['res.company'].search([]):
+    # Only update if labels are still English defaults or empty
+    if company.milestone_label_activation in ('Activation', '', False):
+        company.milestone_label_activation = 'Aktivierung'
+    if company.milestone_label_deadline in ('Deadline', '', False):
+        company.milestone_label_deadline = 'Meldefrist'
+    if company.milestone_label_completion in ('Completion', '', False):
+        company.milestone_label_completion = 'Abschluss'
+        </field>
+    </record>
+    
+    <!-- Enable milestones for DASEi websites -->
+    <record id="action_enable_milestones_dasei" model="ir.actions.server">
+        <field name="name">Enable Milestones for DASEi Websites</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="state">code</field>
+        <field name="code">
+# Enable use_milestones for all DASEi domain websites
+dasei_codes = ['dasei', 'dasei0', 'dasei1', 'dasei2', 'dasei3']
+for website in env['website'].search([('domain_code', 'in', dasei_codes)]):
+    if hasattr(website, 'use_milestones'):
+        website.use_milestones = True
+        </field>
+    </record>
+    
+    <!-- 
+    Default milestone_days_before values for event types.
+    Standard: 60 days before event start for Meldefrist (deadline milestone)
+    -->
+    
+    <!-- ir.default: Set default milestone_days_before for event.type -->
+    <record id="default_milestone_days_before" model="ir.default">
+        <field name="field_id" ref="crearis.field_event_type__milestone_days_before"/>
+        <field name="json_value">60</field>
+    </record>
+    
+</odoo>

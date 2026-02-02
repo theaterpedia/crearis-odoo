@@ -183,19 +183,20 @@ SO 10:00-15:00"/>
                         </group>
                     </group>
                     
-                    <!-- Session Lines Table (Eleanora wireframe: session-level rows) -->
-                    <field name="session_line_ids" 
+                    <!-- Agenda Lines Table (formerly session_line_ids) -->
+                    <field name="agenda_line_ids" 
                            nolabel="1"
                            attrs="{'invisible': [('session_count', '=', 0)]}">
-                        <tree editable="bottom" decoration-info="type == 'online'" create="false" delete="false">
+                        <tree editable="bottom" decoration-info="mode == 'online'" create="false" delete="false">
                             <field name="day" string="Day"/>
                             <field name="date"/>
                             <field name="start" string="Start"/>
                             <field name="end" string="End"/>
                             <field name="duration_h" string="Hours" sum="Total"/>
                             <field name="type"/>
+                            <field name="mode"/>
                             <field name="location_hint"/>
-                            <field name="conference_url" widget="url" attrs="{'invisible': [('type', '!=', 'online')]}"/>
+                            <field name="conference_url" widget="url" attrs="{'invisible': [('mode', '!=', 'online')]}"/>
                         </tree>
                     </field>
                     

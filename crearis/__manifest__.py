@@ -4,14 +4,17 @@
 
 {
     'name': 'Crearis',
-    'version': '16.0.1.2.0',
-    'summary': 'Episodes and Event-Management',
+    'version': '16.0.1.3.0',
+    'summary': 'Episodes and Event-Management with Agenda Lines',
     'description': """Episodes and Event-Management on theaterpedia.org
 
 Features:
-- Extended event.registration with SharePoint sync fields (ms_id, ms_version, ms_synced)
-- Extended registration states (new, demo, no_show, partial)
-- SharePoint-compatible sysreg bitmask values
+- Unified agenda.line model (renamed from event.session.line)
+- Five line types: session, meeting, milestone, info, action
+- Three providers: event, post, product
+- Gate pattern for milestone tracking (pending → ready → sent)
+- Configurable milestone labels per company
+- Daily cron for milestone date checking
 """,
     'category': 'Website/Crearis',
     'license': 'LGPL-3',
@@ -40,6 +43,7 @@ Features:
     ],
     'data': [
         'data/ir_config_parameter_data.xml',
+        'data/ir_cron_data.xml',
         'data/event_stage_data.xml',
         'data/event_type_data.xml',
         'security/theaterpedia_security.xml',
@@ -56,7 +60,7 @@ Features:
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
         'views/event_schedule_views.xml',
-        'views/event_session_line_views.xml',
+        'views/agenda_line_views.xml',
         'views/event_type_views.xml',
     ],
     'assets': {

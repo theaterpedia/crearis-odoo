@@ -1,8 +1,82 @@
 # Action Plan: agenda.line Implementation
 
 **Date**: 2026-01-31  
-**Status**: Planning  
-**Blocking**: Domain codes task (Monday)
+**Updated**: 2026-02-02  
+**Status**: ✅ Phase 1 IMPLEMENTED  
+**Blocking**: ~~Domain codes task (Monday)~~ RESOLVED
+
+---
+
+## ⚡ February 2 Implementation Summary
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `crearis/models/agenda_line.py` | NEW — Renamed from event_session_line.py, added all new fields |
+| `crearis/models/event.py` | Updated O2M, added use_milestones, _sync_agenda_lines |
+| `crearis/models/website.py` | Added use_milestones field |
+| `crearis/models/res_company.py` | Added use_milestones + milestone_label_* fields |
+| `crearis/models/schedule_mixin.py` | Updated to call _sync_agenda_lines |
+| `crearis/views/agenda_line_views.xml` | NEW — Renamed, added gate_state columns |
+| `crearis/views/event_schedule_views.xml` | Updated to use agenda_line_ids |
+| `crearis/data/ir_cron_data.xml` | NEW — Daily milestone check cron |
+| `crearis/security/ir.model.access.csv` | Updated model references |
+| `crearis/migrations/16.0.1.3.0/pre-migrate.py` | NEW — Table rename migration |
+| `crearis/__manifest__.py` | Version bump to 16.0.1.3.0 |
+| `agenda_dasei/data/milestone_defaults.xml` | NEW — German labels and defaults |
+| `agenda_dasei/__manifest__.py` | Added milestone_defaults.xml |
+
+### Files Removed
+
+| File | Reason |
+|------|--------|
+| `crearis/models/event_session_line.py` | Replaced by agenda_line.py |
+| `crearis/views/event_session_line_views.xml` | Replaced by agenda_line_views.xml |
+
+---
+
+## ⚡ February 2 Updates
+
+### Terminology Changes
+
+| Old (Jan 31) | New (Feb 2) | Reason |
+|--------------|-------------|--------|
+| `meldefrist_days_before` | `milestone_days_before` | Generic, not German-specific |
+| `use_meldefrist` | `use_milestones` | Broader concept |
+
+### New Decisions
+
+| Decision | Choice | Notes |
+|----------|--------|-------|
+| **Gate Pattern** | All 3 stage transitions are GATED | Not automatic |
+| **gate_state field** | `pending` → `ready` → `sent` / `issue` | On milestone lines only |
+| **Trigger mechanism** | Daily cron | Checks milestone dates |
+| **use_milestones location** | Website (domain_code) + Company fallback | Existing pattern |
+| **Company labels** | `milestone_label_activation/deadline/completion` | Configurable per company |
+| **English defaults** | "Activation", "Deadline", "Completion" | German in agenda_dasei |
+
+### Three Milestone Types
+
+| Key | Default Label | Stage Transition |
+|-----|---------------|------------------|
+| `activation` | "Activation" | draft → confirmed |
+| `deadline` | "Deadline" | confirmed → released |
+| `completion` | "Completion" | released → completed |
+
+### Master Documents Created
+
+- [architecture_agenda_lines.md](../_meta/Whitepaper/architecture_agenda_lines.md) — Model, providers, views
+- [architecture_milestones_and_actions.md](../_meta/Whitepaper/architecture_milestones_and_actions.md) — Full gate pattern
+- [architecture_agenda_lines_negative_spec.md](../_meta/Whitepaper/architecture_agenda_lines_negative_spec.md) — What is NOT in essentials
+
+### Phase Updates
+
+| Phase | Update |
+|-------|--------|
+| Phase 1 | Add `gate_state` field (milestone lines only) |
+| Phase 4 | Rename `meldefrist_*` → `milestone_*`, add cron |
+| Phase 7 | Views use company labels |
 
 ---
 

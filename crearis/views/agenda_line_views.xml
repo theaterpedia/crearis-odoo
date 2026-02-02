@@ -1,0 +1,387 @@
+<?xml version="1.0"?>
+<!--  Copyright 2026 Theaterpedia E.V. / crearis.io -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<odoo>
+
+    <!-- ========================================================== -->
+    <!-- Agenda Line Views                                           -->
+    <!-- Renamed from event.session.line (2026-02-02)               -->
+    <!-- ========================================================== -->
+
+    <!-- Tree view: All agenda lines -->
+    <record id="view_agenda_line_tree" model="ir.ui.view">
+        <field name="name">agenda.line.tree</field>
+        <field name="model">agenda.line</field>
+        <field name="arch" type="xml">
+            <tree string="Agenda Lines" 
+                  decoration-info="mode == 'online'" 
+                  decoration-muted="mode == 'individual'"
+                  decoration-warning="type == 'milestone' and gate_state == 'ready'"
+                  decoration-success="type == 'milestone' and gate_state == 'sent'"
+                  decoration-danger="type == 'milestone' and gate_state == 'issue'"
+                  default_order="date, start">
+                <field name="date"/>
+                <field name="day" optional="hide"/>
+                <field name="start"/>
+                <field name="end"/>
+                <field name="duration_h" sum="Total Hours" optional="show"/>
+                <field name="type" widget="badge"/>
+                <field name="mode" widget="badge" 
+                       decoration-info="mode == 'online'"
+                       decoration-success="mode == 'venue'"
+                       decoration-warning="mode == 'individual'"
+                       optional="show"/>
+                <field name="event_name"/>
+                <field name="address_id" string="Venue" optional="show"/>
+                <field name="location_hint" optional="hide"/>
+                <field name="gate_state" widget="badge" 
+                       decoration-info="gate_state == 'pending'"
+                       decoration-warning="gate_state == 'ready'"
+                       decoration-success="gate_state == 'sent'"
+                       decoration-danger="gate_state == 'issue'"
+                       attrs="{'invisible': [('type', '!=', 'milestone')]}"
+                       optional="show"/>
+                <field name="conference_url" widget="url" string="Conference" optional="hide"/>
+                <field name="teaching_units" string="UE" sum="Total UE" optional="hide"/>
+                <field name="event_type_id" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form view: Agenda line details -->
+    <record id="view_agenda_line_form" model="ir.ui.view">
+        <field name="name">agenda.line.form</field>
+        <field name="model">agenda.line</field>
+        <field name="arch" type="xml">
+            <form string="Agenda Line">
+                <header>
+                    <field name="gate_state" widget="statusbar" 
+                           statusbar_visible="pending,ready,sent"
+                           attrs="{'invisible': [('type', '!=', 'milestone')]}"/>
+                    <button name="action_confirm_and_send" 
+                            type="object" 
+                            string="Confirm &amp; Send" 
+                            class="btn-primary"
+                            attrs="{'invisible': ['|', ('type', '!=', 'milestone'), ('gate_state', '!=', 'ready')]}"/>
+                    <button name="action_flag_issue" 
+                            type="object" 
+                            string="Flag Issue" 
+                            class="btn-warning"
+                            attrs="{'invisible': ['|', ('type', '!=', 'milestone'), ('gate_state', '!=', 'ready')]}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group col="2">
+                        <group string="Classification">
+                            <field name="type"/>
+                            <field name="mode" attrs="{'invisible': [('type', 'in', ['milestone', 'info', 'action'])]}"/>
+                            <field name="source" readonly="1"/>
+                            <field name="locked_edits" readonly="1"/>
+                        </group>
+                        <group string="Provider">
+                            <field name="provider_type" readonly="1"/>
+                            <field name="event_id"/>
+                            <field name="post_id" attrs="{'invisible': [('provider_type', '!=', 'post')]}"/>
+                            <field name="product_id" attrs="{'invisible': [('provider_type', '!=', 'product')]}"/>
+                        </group>
+                    </group>
+                    <group col="2">
+                        <group string="Schedule">
+                            <field name="date"/>
+                            <field name="day"/>
+                            <field name="start"/>
+                            <field name="end"/>
+                            <field name="duration_h"/>
+                            <field name="teaching_units"/>
+                        </group>
+                        <group string="Location">
+                            <field name="location_hint"/>
+                            <field name="room"/>
+                            <field name="address_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group col="2" attrs="{'invisible': [('type', '!=', 'milestone')]}">
+                        <group string="Milestone">
+                            <field name="milestone_key"/>
+                            <field name="milestone_days_before"/>
+                            <field name="milestone_template_id"/>
+                        </group>
+                    </group>
+                    <group col="2" attrs="{'invisible': [('mode', '!=', 'online')]}">
+                        <group string="Conference">
+                            <field name="conference_provider"/>
+                            <field name="conference_url" widget="url"/>
+                            <field name="conference_id"/>
+                            <button name="action_open_conference" 
+                                    type="object" 
+                                    string="Join Meeting" 
+                                    class="btn-primary"
+                                    icon="fa-video-camera"
+                                    attrs="{'invisible': [('conference_url', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <group string="Notes" attrs="{'invisible': [('notes', '=', False)]}">
+                        <field name="notes" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view with filters -->
+    <record id="view_agenda_line_search" model="ir.ui.view">
+        <field name="name">agenda.line.search</field>
+        <field name="model">agenda.line</field>
+        <field name="arch" type="xml">
+            <search string="Search Agenda Lines">
+                <field name="event_name"/>
+                <field name="event_id"/>
+                <field name="date"/>
+                <field name="address_id"/>
+                <field name="location_hint"/>
+                <separator/>
+                
+                <!-- Line Type filters -->
+                <filter name="sessions" string="Sessions" 
+                        domain="[('type', '=', 'session')]"
+                        icon="fa-calendar"/>
+                <filter name="milestones" string="Milestones" 
+                        domain="[('type', '=', 'milestone')]"
+                        icon="fa-flag"/>
+                <filter name="info" string="Info" 
+                        domain="[('type', '=', 'info')]"/>
+                <filter name="actions" string="Actions" 
+                        domain="[('type', '=', 'action')]"/>
+                <separator/>
+                
+                <!-- Mode filters (for sessions) -->
+                <filter name="online" string="Online" 
+                        domain="[('mode', '=', 'online')]"
+                        icon="fa-video-camera"/>
+                <filter name="venue" string="Venue" 
+                        domain="[('mode', '=', 'venue')]"
+                        icon="fa-building"/>
+                <filter name="individual" string="Individual" 
+                        domain="[('mode', '=', 'individual')]"/>
+                <separator/>
+                
+                <!-- Gate State filters (for milestones) -->
+                <filter name="pending" string="Pending" 
+                        domain="[('gate_state', '=', 'pending')]"/>
+                <filter name="ready" string="Ready for Action" 
+                        domain="[('gate_state', '=', 'ready')]"
+                        icon="fa-exclamation-circle"/>
+                <filter name="sent" string="Sent" 
+                        domain="[('gate_state', '=', 'sent')]"/>
+                <filter name="issue" string="Has Issue" 
+                        domain="[('gate_state', '=', 'issue')]"
+                        icon="fa-warning"/>
+                <separator/>
+                
+                <!-- Date filters -->
+                <filter name="today" string="Today" 
+                        domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="this_week" string="This Week" 
+                        domain="[
+                            ('date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')),
+                            ('date', '&lt;', (context_today() + datetime.timedelta(days=7-context_today().weekday())).strftime('%Y-%m-%d'))
+                        ]"/>
+                <filter name="next_30_days" string="Next 30 Days" 
+                        domain="[
+                            ('date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                            ('date', '&lt;', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+                        ]"/>
+                <filter name="next_90_days" string="Next 90 Days" 
+                        domain="[
+                            ('date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                            ('date', '&lt;', (context_today() + datetime.timedelta(days=90)).strftime('%Y-%m-%d'))
+                        ]"/>
+                <separator/>
+                
+                <!-- Conference status -->
+                <filter name="has_conference" string="Has Conference Link" 
+                        domain="[('conference_url', '!=', False)]"/>
+                <filter name="no_conference" string="No Conference Link" 
+                        domain="[('conference_url', '=', False), ('mode', '=', 'online')]"/>
+                <separator/>
+                
+                <!-- Group By -->
+                <group expand="1" string="Group By">
+                    <filter name="group_date" string="Date" 
+                            context="{'group_by': 'date'}"/>
+                    <filter name="group_week" string="Week" 
+                            context="{'group_by': 'date:week'}"/>
+                    <filter name="group_month" string="Month" 
+                            context="{'group_by': 'date:month'}"/>
+                    <separator/>
+                    <filter name="group_type" string="Type" 
+                            context="{'group_by': 'type'}"/>
+                    <filter name="group_mode" string="Mode" 
+                            context="{'group_by': 'mode'}"/>
+                    <filter name="group_gate_state" string="Gate State" 
+                            context="{'group_by': 'gate_state'}"/>
+                    <separator/>
+                    <filter name="group_event" string="Event" 
+                            context="{'group_by': 'event_id'}"/>
+                    <filter name="group_venue" string="Venue" 
+                            context="{'group_by': 'address_id'}"/>
+                    <filter name="group_event_type" string="Event Type" 
+                            context="{'group_by': 'event_type_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Calendar view for agenda planning -->
+    <record id="view_agenda_line_calendar" model="ir.ui.view">
+        <field name="name">agenda.line.calendar</field>
+        <field name="model">agenda.line</field>
+        <field name="arch" type="xml">
+            <calendar string="Agenda Calendar" 
+                      date_start="date" 
+                      color="type"
+                      quick_add="False"
+                      event_open_popup="True">
+                <field name="event_name"/>
+                <field name="start"/>
+                <field name="end"/>
+                <field name="type"/>
+                <field name="mode"/>
+                <field name="location_hint"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ========================================================== -->
+    <!-- Actions                                                     -->
+    <!-- ========================================================== -->
+
+    <!-- Action: Online Sessions (Eleanora's primary view) -->
+    <record id="action_online_sessions" model="ir.actions.act_window">
+        <field name="name">Online Sessions</field>
+        <field name="res_model">agenda.line</field>
+        <field name="view_mode">tree,calendar,form</field>
+        <field name="domain">[('type', '=', 'session'), ('mode', '=', 'online')]</field>
+        <field name="context">{
+            'search_default_next_30_days': 1,
+        }</field>
+        <field name="search_view_id" ref="view_agenda_line_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No online sessions found!
+            </p>
+            <p>
+                Online sessions are parsed from event schedule text containing 
+                <code>_online_</code> markers.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action: All Sessions -->
+    <record id="action_all_sessions" model="ir.actions.act_window">
+        <field name="name">All Sessions</field>
+        <field name="res_model">agenda.line</field>
+        <field name="view_mode">tree,calendar,form</field>
+        <field name="domain">[('type', '=', 'session')]</field>
+        <field name="context">{
+            'search_default_next_30_days': 1,
+        }</field>
+        <field name="search_view_id" ref="view_agenda_line_search"/>
+    </record>
+
+    <!-- Action: Sessions by Venue -->
+    <record id="action_sessions_by_venue" model="ir.actions.act_window">
+        <field name="name">Sessions by Venue</field>
+        <field name="res_model">agenda.line</field>
+        <field name="view_mode">tree,calendar,form</field>
+        <field name="domain">[('type', '=', 'session'), ('mode', '=', 'venue')]</field>
+        <field name="context">{
+            'search_default_next_90_days': 1,
+            'search_default_group_venue': 1,
+        }</field>
+        <field name="search_view_id" ref="view_agenda_line_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No venue sessions found!
+            </p>
+            <p>
+                Group by venue to see booking overview for location partners.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action: Milestones (Ready for Action) -->
+    <record id="action_milestones_ready" model="ir.actions.act_window">
+        <field name="name">Milestones: Ready</field>
+        <field name="res_model">agenda.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('type', '=', 'milestone'), ('gate_state', '=', 'ready')]</field>
+        <field name="context">{}</field>
+        <field name="search_view_id" ref="view_agenda_line_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No milestones ready for action!
+            </p>
+            <p>
+                Milestones become ready when their trigger date is reached.
+                Confirm and send to advance the event stage.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action: All Milestones -->
+    <record id="action_all_milestones" model="ir.actions.act_window">
+        <field name="name">All Milestones</field>
+        <field name="res_model">agenda.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('type', '=', 'milestone')]</field>
+        <field name="context">{}</field>
+        <field name="search_view_id" ref="view_agenda_line_search"/>
+    </record>
+
+    <!-- ========================================================== -->
+    <!-- Menus                                                       -->
+    <!-- ========================================================== -->
+
+    <!-- Menu: Events → Schedule submenu (renamed from Sessions) -->
+    <menuitem id="menu_event_schedule_root"
+              name="Schedule"
+              parent="event.event_main_menu"
+              sequence="15"/>
+    
+    <menuitem id="menu_online_sessions"
+              name="Online Sessions"
+              parent="menu_event_schedule_root"
+              action="action_online_sessions"
+              sequence="10"/>
+    
+    <menuitem id="menu_sessions_by_venue"
+              name="By Venue"
+              parent="menu_event_schedule_root"
+              action="action_sessions_by_venue"
+              sequence="20"/>
+    
+    <menuitem id="menu_all_sessions"
+              name="All Sessions"
+              parent="menu_event_schedule_root"
+              action="action_all_sessions"
+              sequence="30"/>
+    
+    <menuitem id="menu_milestones_ready"
+              name="Milestones: Ready"
+              parent="menu_event_schedule_root"
+              action="action_milestones_ready"
+              sequence="40"/>
+    
+    <menuitem id="menu_all_milestones"
+              name="All Milestones"
+              parent="menu_event_schedule_root"
+              action="action_all_milestones"
+              sequence="50"/>
+
+</odoo>

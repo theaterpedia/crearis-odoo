@@ -21,6 +21,32 @@ class Company(models.Model):
     use_products = fields.Boolean('Use Products', readonly=False, default=False)
     use_overline = fields.Boolean('Use Overline', readonly=False, default=False)
     use_teasertext = fields.Boolean('Use Teasertext', readonly=False, default=False)
+    use_milestones = fields.Boolean(
+        'Use Milestones',
+        readonly=False,
+        default=False,
+        help="Enable milestone workflow (gate pattern) for events"
+    )
+    
+    # =========================
+    # MILESTONE LABELS
+    # =========================
+    
+    milestone_label_activation = fields.Char(
+        'Activation Label',
+        default='Activation',
+        help="Label for the activation milestone (draft → confirmed)"
+    )
+    milestone_label_deadline = fields.Char(
+        'Deadline Label',
+        default='Deadline',
+        help="Label for the registration deadline milestone (confirmed → released)"
+    )
+    milestone_label_completion = fields.Char(
+        'Completion Label',
+        default='Completion',
+        help="Label for the completion milestone (released → completed)"
+    )
 
     # =========================
     # SCHEDULE CONFIGURATION

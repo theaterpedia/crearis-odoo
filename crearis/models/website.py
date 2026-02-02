@@ -21,6 +21,10 @@ class Website(models.Model):
     # Note: use_event_packages is defined in crearis_event_package module
     use_overline = fields.Boolean('Use Overline')
     use_teasertext = fields.Boolean('Use Teasertext')
+    use_milestones = fields.Boolean(
+        'Use Milestones',
+        help="Enable milestone workflow (gate pattern) for events in this domain"
+    )
 
     def _compute_use_products(self):
         """

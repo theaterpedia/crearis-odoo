@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cron: Check milestone dates daily -->
+    <record id="ir_cron_check_milestone_dates" model="ir.cron">
+        <field name="name">Agenda: Check Milestone Dates</field>
+        <field name="model_id" ref="model_agenda_line"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_check_milestone_dates()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+        <field name="doall">False</field>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 06:00:00')"/>
+    </record>
+</odoo>

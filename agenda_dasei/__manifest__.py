@@ -39,6 +39,7 @@ Features:
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',  # D6: Cron jobs for course and registration sync
         'data/website_data.xml',  # DASEi website check/create server actions
+        'data/milestone_defaults.xml',  # German milestone labels and defaults
         'data/product_template_data.xml',  # Grundkurs module products (A, B, C, D)
         'data/event_tag_data.xml',  # Location type tags (online, on_request_*, tbd)
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
