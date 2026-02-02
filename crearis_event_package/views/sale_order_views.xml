@@ -25,15 +25,22 @@
         <field name="name">product.package.event.line.tree</field>
         <field name="model">product.package.event.line</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree decoration-success="state == 'attended'"
+                  decoration-muted="state == 'cancelled'">
                 <field name="sequence" widget="handle"/>
                 <field name="sale_order_id"/>
                 <field name="partner_id"/>
                 <field name="product_id"/>
                 <field name="event_type_id"/>
                 <field name="event_id"/>
-                <field name="state"/>
-                <field name="registration_id"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'pending'"
+                       decoration-warning="state == 'selected'"
+                       decoration-success="state in ('registered', 'attended')"
+                       decoration-danger="state == 'cancelled'"/>
+                <field name="first_attendance_date" optional="show"/>
+                <field name="is_first_event" optional="hide"/>
+                <field name="registration_id" optional="show"/>
             </tree>
         </field>
     </record>
@@ -48,26 +55,40 @@
                     <button name="action_create_registration" type="object"
                             string="Create Registration" class="btn-primary"
                             attrs="{'invisible': [('state', '!=', 'selected')]}"/>
+                    <button name="action_mark_attended" type="object"
+                            string="✓ Mark Attended" class="btn-success"
+                            attrs="{'invisible': ['|', ('state', '!=', 'registered'), ('first_attendance_date', '!=', False)]}"
+                            help="Mark first attendance - triggers cancellation period"/>
                     <button name="action_cancel" type="object"
                             string="Cancel" class="btn-danger"
                             attrs="{'invisible': [('state', 'in', ['cancelled'])]}"/>
-                    <field name="state" widget="statusbar"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,selected,registered,attended"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" text="First Event" bg_color="bg-info"
+                            attrs="{'invisible': [('is_first_event', '=', False)]}"/>
                     <group>
-                        <group>
+                        <group string="Order">
                             <field name="sale_order_id"/>
                             <field name="sale_order_line_id"/>
                             <field name="partner_id"/>
                         </group>
-                        <group>
+                        <group string="Event">
                             <field name="product_id"/>
                             <field name="event_type_id"/>
                             <field name="event_id"/>
                         </group>
                     </group>
                     <group>
-                        <field name="registration_id"/>
+                        <group string="Registration">
+                            <field name="registration_id"/>
+                            <field name="is_first_event"/>
+                        </group>
+                        <group string="Attendance">
+                            <field name="first_attendance_date"/>
+                            <field name="agenda_line_id"/>
+                        </group>
                     </group>
                 </sheet>
             </form>

@@ -4,8 +4,8 @@
 
 {
     'name': 'Crearis Event Package',
-    'version': '16.0.1.0.0',
-    'summary': 'Event Package Products for Crearis',
+    'version': '16.0.1.1.0',
+    'summary': 'Event Package Products with Cancellation Period',
     'description': """
 Crearis Event Package - Sell bundled events as products.
 
@@ -15,6 +15,13 @@ Features:
 - Event selection wizard during purchase
 - Package-only events (not sold individually)
 - Complete traceability of package event selections
+- **NEW**: Cancellation period tracking (Stornierungsfrist)
+- **NEW**: First attendance milestone triggers deadline
+
+From Ida's journey (journey_ida_basistag_to_module.md):
+- Customer buys Module A "Einstiege ins Theaterspiel"
+- After first attendance (A0 Basistag), 10-day cancellation period starts
+- System creates milestone agenda.line for tracking
 
 This module provides the general packaging functionality and does NOT depend on
 SharePoint sync modules (crearis_agenda, agenda_dasei).

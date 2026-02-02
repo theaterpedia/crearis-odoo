@@ -52,6 +52,22 @@ class AgendaLine(models.Model):
         index=True
     )
     
+    # Customer-specific fields (for product milestones like cancellation period)
+    partner_id = fields.Many2one(
+        'res.partner',
+        string='Partner',
+        ondelete='cascade',
+        index=True,
+        help="Customer for product-level milestones (e.g., cancellation period)"
+    )
+    sale_order_line_id = fields.Many2one(
+        'sale.order.line',
+        string='Sale Order Line',
+        ondelete='cascade',
+        index=True,
+        help="Originating purchase for product milestones"
+    )
+    
     @api.depends('event_id', 'post_id', 'product_id')
     def _compute_provider_type(self):
         for rec in self:
@@ -152,8 +168,9 @@ class AgendaLine(models.Model):
         ('activation', 'Activation'),
         ('deadline', 'Deadline'),
         ('completion', 'Completion'),
+        ('cancellation', 'Cancellation Period'),  # Product-level: X days after first attendance
     ], string='Milestone Key',
-       help="Which of the three milestone types this is")
+       help="Which of the milestone types this is")
     
     milestone_days_before = fields.Integer(
         'Days Before Event',
@@ -288,7 +305,7 @@ class AgendaLine(models.Model):
         string='Description'
     )
     
-    @api.depends('event_id.name', 'date', 'start', 'type', 'mode')
+    @api.depends('event_id.name', 'product_id.name', 'partner_id.name', 'date', 'start', 'type', 'mode', 'milestone_key')
     def _compute_display_name(self):
         for rec in self:
             if rec.type == 'milestone':
@@ -303,7 +320,17 @@ class AgendaLine(models.Model):
                 icon = '📍'
             
             date_str = rec.date.strftime('%Y-%m-%d') if rec.date else ''
-            rec.display_name = f"{icon} {date_str} {rec.start or ''} - {rec.event_id.name or ''}"
+            
+            # Product milestone (e.g., Ida's cancellation period)
+            if rec.provider_type == 'product' and rec.product_id:
+                name = rec.product_id.name or ''
+                if rec.milestone_key == 'cancellation':
+                    name = f"Stornierungsfrist - {name}"
+                elif rec.milestone_key:
+                    name = f"{rec.milestone_key.title()} - {name}"
+                rec.display_name = f"{icon} {date_str} {name}"
+            else:
+                rec.display_name = f"{icon} {date_str} {rec.start or ''} - {rec.event_id.name or ''}"
     
     # =========================
     # Actions

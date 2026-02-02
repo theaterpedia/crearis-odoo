@@ -15,6 +15,21 @@
                             <field name="package_date_start"/>
                             <field name="package_date_end"/>
                         </group>
+                        <group string="Cancellation Policy">
+                            <field name="cancellation_period_days"/>
+                            <field name="cancellation_fee"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Milestones">
+                            <field name="activation_days_before"/>
+                            <field name="use_completion_milestone"/>
+                            <field name="completion_days_after" 
+                                   attrs="{'invisible': [('use_completion_milestone', '=', False)]}"/>
+                        </group>
+                        <group string="Requirements">
+                            <field name="requires_consulting"/>
+                        </group>
                     </group>
                     <separator string="Included Event Types"/>
                     <field name="package_event_type_ids" nolabel="1" mode="tree">

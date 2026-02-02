@@ -32,6 +32,46 @@ class ProductTemplate(models.Model):
         string="Edition Code",
         help="Edition identifier for this package (e.g., M18, M19)"
     )
+    
+    # Cancellation period (Stornierungsfrist) - from Ida's journey
+    cancellation_period_days = fields.Integer(
+        string="Cancellation Period (Days)",
+        default=10,
+        help="Days after first attendance during which customer can cancel. "
+             "For DASEi Module A: 10 days after Basistag (A0)."
+    )
+    cancellation_fee = fields.Float(
+        string="Cancellation Fee",
+        digits='Product Price',
+        help="Fee charged if customer cancels within the cancellation period"
+    )
+    
+    # Activation milestone (from Jolanda's journey: Module B starts with activation)
+    activation_days_before = fields.Integer(
+        string="Activation Days Before",
+        default=0,
+        help="Days before first event to trigger activation milestone. "
+             "0 = no activation milestone. E.g., 14 = notify 2 weeks before module starts."
+    )
+    
+    # Completion milestone (from Jolanda's journey: each module ends with completion)
+    use_completion_milestone = fields.Boolean(
+        string="Completion Milestone",
+        default=True,
+        help="Create completion milestone when all events are attended"
+    )
+    completion_days_after = fields.Integer(
+        string="Completion Days After",
+        default=7,
+        help="Days after last event to trigger completion milestone"
+    )
+    
+    # Consulting/meeting requirement (from Ida/Jolanda: Beratungsgespräch)
+    requires_consulting = fields.Boolean(
+        string="Requires Consulting",
+        default=False,
+        help="Customer must complete a consulting meeting during this module"
+    )
 
     @api.onchange('detailed_type')
     def _onchange_type_event_package(self):
