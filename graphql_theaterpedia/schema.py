@@ -25,6 +25,7 @@ from odoo.addons.graphql_theaterpedia.schemas import (
     payment,
     mailing_list,
     website,
+    checkout,
 )
 
 
@@ -67,6 +68,7 @@ class Mutation(
     payment.AdyenPaymentMutation,
     mailing_list.NewsletterSubscribeMutation,
     order.OrderMutation,
+    checkout.CheckoutMutation,
 ):
     pass
 
