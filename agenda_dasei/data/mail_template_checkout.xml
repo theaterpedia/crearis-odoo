@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    Checkout Confirmation Email Template (T2)
+    Triggered by: CheckoutMutation after order creation
+    See: _meta/Whitepaper/workflow_email_templates.md
+-->
+<odoo>
+    <data noupdate="1">
+        
+        <record id="mail_template_checkout_confirmation" model="mail.template">
+            <field name="name">DASEi: Checkout Confirmation (T2)</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="email_from">service@dasei.eu</field>
+            <field name="email_to">{{ object.partner_id.email }}</field>
+            <field name="subject">Deine Anmeldung: Einstiege ins Theaterspiel — {{ object.order_line[0].product_id.product_tmpl_id.package_edition_code or object.name }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+    
+    <p>Liebe/r <t t-out="object.partner_id.name or 'Teilnehmer/in'"/>,</p>
+    
+    <p>vielen Dank für deine Anmeldung zu "Einstiege ins Theaterspiel"!</p>
+    
+    <!-- BOOKING SUMMARY -->
+    <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid #8B4513;">
+        <h3 style="margin-top: 0; color: #8B4513;">DEINE BUCHUNG</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 5px 0;"><strong>Bestellnummer:</strong></td>
+                <td><t t-out="object.name"/></td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0;"><strong>Kurs:</strong></td>
+                <td><t t-out="object.order_line[0].product_id.name if object.order_line else 'Module A'"/></td>
+            </tr>
+            <t t-if="object.order_line and object.order_line[0].product_id.product_tmpl_id.package_date_start">
+            <tr>
+                <td style="padding: 5px 0;"><strong>Zeitraum:</strong></td>
+                <td>
+                    <t t-out="object.order_line[0].product_id.product_tmpl_id.package_date_start"/> – 
+                    <t t-out="object.order_line[0].product_id.product_tmpl_id.package_date_end"/>
+                </td>
+            </tr>
+            </t>
+        </table>
+    </div>
+    
+    <!-- NEXT STEPS -->
+    <div style="background: #fff; padding: 15px; margin: 20px 0; border: 1px solid #ddd;">
+        <h3 style="margin-top: 0; color: #8B4513;">WIE GEHT ES WEITER?</h3>
+        
+        <p><strong>1. VERTRAG PRÜFEN</strong><br/>
+        Im Anhang findest du deinen Teilnahmevertrag. Bitte prüfe die Angaben auf Richtigkeit.</p>
+        
+        <p><strong>2. ZAHLUNG</strong><br/>
+        Die Rechnung erhältst du in Kürze separat. Ratenzahlung ist möglich — sprich uns an.</p>
+        
+        <p><strong>3. VOR DEM BASISTAG</strong><br/>
+        Ca. 7 Tage vor deinem ersten Termin (Basistag A0) erhältst du eine Erinnerung mit allen Details.</p>
+        
+        <p><strong>4. RÜCKTRITTSRECHT</strong><br/>
+        Innerhalb von 14 Tagen nach dieser E-Mail kannst du ohne Angabe von Gründen zurücktreten.</p>
+    </div>
+    
+    <!-- PORTAL LINK -->
+    <div style="background: #8B4513; color: white; padding: 15px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0 0 10px 0;"><strong>DEIN KUNDEN-PORTAL</strong></p>
+        <p style="margin: 0;">Nach dem Basistag kannst du dich einloggen und deine Termine einsehen:</p>
+        <p style="margin: 10px 0 0 0;">
+            <a href="https://einstiege.dasei.eu/my/agenda" 
+               style="color: white; text-decoration: underline;">
+                → einstiege.dasei.eu/my/agenda
+            </a>
+        </p>
+    </div>
+    
+    <!-- CONTACT -->
+    <div style="margin: 20px 0; padding: 15px; border-top: 1px solid #ddd;">
+        <p><strong>FRAGEN?</strong></p>
+        <p>
+            📧 <a href="mailto:service@dasei.eu">service@dasei.eu</a><br/>
+            📞 089 / 123 456 78 (Mo–Fr 10–16 Uhr)
+        </p>
+    </div>
+    
+    <p>Wir freuen uns auf dich!</p>
+    
+    <p>Herzliche Grüße,<br/>
+    Das Team von DAS Ei</p>
+    
+    <!-- FOOTER -->
+    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+        <p>
+            DAS Ei — theaterpädagogisches Institut Bayern e.V.<br/>
+            <a href="https://dasei.eu" style="color: #8B4513;">dasei.eu</a> | 
+            <a href="https://dasei.eu/impressum" style="color: #8B4513;">Impressum</a> | 
+            <a href="https://dasei.eu/datenschutz" style="color: #8B4513;">Datenschutz</a>
+        </p>
+    </div>
+    
+</div>
+]]></field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <!-- Attachments will be added programmatically or via report_template -->
+        </record>
+        
+    </data>
+</odoo>

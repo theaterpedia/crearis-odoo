@@ -232,6 +232,18 @@ class Checkout(graphene.Mutation):
                 package_line_ids.append(package_line.id)
                 sequence += 10
         
+        # Send checkout confirmation email (T2)
+        # Template: agenda_dasei.mail_template_checkout_confirmation
+        try:
+            mail_template = env.ref('agenda_dasei.mail_template_checkout_confirmation', raise_if_not_found=False)
+            if mail_template:
+                mail_template.send_mail(order.id, force_send=False)  # Queue, don't block
+        except Exception as e:
+            # Log but don't fail checkout if email fails
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.warning("Checkout email send failed for order %s: %s", order.name, str(e))
+        
         return CheckoutResult(
             success=True,
             order=order,

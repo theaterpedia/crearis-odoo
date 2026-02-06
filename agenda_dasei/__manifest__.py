@@ -44,6 +44,7 @@ Features:
         'data/milestone_defaults.xml',  # German milestone labels and defaults
         'data/product_template_data.xml',  # Grundkurs module products (A, B, C, D)
         'data/event_tag_data.xml',  # Location type tags (online, on_request_*, tbd)
+        'data/mail_template_checkout.xml',  # T2: Checkout confirmation email template
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
         'views/res_partner_views.xml',
         'views/course_views.xml',  # D3: Course model views
