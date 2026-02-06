@@ -32,6 +32,7 @@ Features:
         'crearis_agenda',
         'crearis_event_package',  # For event package products
         'crearis_milestones',     # For milestone labels and Controlling UI
+        'portal',                 # For customer portal
         'product',
         'event',
         'website_event',  # For website event templates
@@ -46,6 +47,7 @@ Features:
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
         'views/res_partner_views.xml',
         'views/course_views.xml',  # D3: Course model views
+        'views/portal_templates.xml',  # SDC: Customer portal (Agenda/Service/Curriculum tabs)
         # TODO: Refactor to crearis_event_package module
         # 'views/product_template_views.xml',
         'views/course_participation_views.xml',

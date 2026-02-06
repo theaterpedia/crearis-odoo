@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===============================================================
+         DASEi Customer Portal Templates
+         
+         3-Tab Sidebar: Agenda | Curriculum | Service
+         Progressive disclosure based on registration state
+         =============================================================== -->
+
+    <!-- ===============================================================
+         Agenda Tab - Timeline of sessions
+         =============================================================== -->
+
+    <template id="portal_my_agenda" name="My Agenda">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Meine Agenda</t>
+            </t>
+            
+            <!-- Tab Navigation -->
+            <div class="dasei-tabs-sidebar d-flex flex-wrap gap-2 mb-4">
+                <t t-foreach="tabs" t-as="tab">
+                    <a t-attf-href="#{tab['url']}" 
+                       t-attf-class="btn #{'btn-primary' if active_tab == tab['id'] else 'btn-outline-secondary'}">
+                        <i t-attf-class="fa #{tab['icon']} me-1"/>
+                        <t t-esc="tab['name']"/>
+                    </a>
+                </t>
+            </div>
+
+            <t t-if="not grouped_lines">
+                <div class="alert alert-info">
+                    <i class="fa fa-info-circle me-2"/>
+                    Noch keine Termine in deiner Agenda. 
+                    Nach der Anmeldung zu einem Kurs erscheinen hier deine Sessions.
+                </div>
+            </t>
+            
+            <t t-if="grouped_lines">
+                <t t-foreach="grouped_lines" t-as="group">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fa fa-calendar me-2"/>
+                                <t t-esc="group['event'].name"/>
+                            </h5>
+                            <small>
+                                <t t-esc="group['event'].event_type_id.name"/>
+                            </small>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Zeit</th>
+                                        <th>Modus</th>
+                                        <th>Ort</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="group['lines']" t-as="line">
+                                        <tr t-attf-class="#{'table-info' if line.mode == 'online' else ''}">
+                                            <td>
+                                                <strong t-esc="line.day"/>
+                                                <span t-field="line.date" t-options='{"format": "dd.MM.yyyy"}'/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="line.start"/> - <t t-esc="line.end"/>
+                                            </td>
+                                            <td>
+                                                <span t-if="line.mode == 'online'" class="badge bg-info">
+                                                    <i class="fa fa-video me-1"/>Online
+                                                </span>
+                                                <span t-elif="line.mode == 'venue'" class="badge bg-secondary">
+                                                    <i class="fa fa-building me-1"/>Vor Ort
+                                                </span>
+                                                <span t-elif="line.mode == 'individual'" class="badge bg-light text-dark">
+                                                    <i class="fa fa-user me-1"/>Selbststudium
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <t t-esc="line.location_hint or '-'"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- ===============================================================
+         Service Tab - Contract info, Q&A
+         =============================================================== -->
+
+    <template id="portal_my_service" name="My Service">
+        <t t-call="portal.portal_layout">
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Service</t>
+            </t>
+            
+            <!-- Tab Navigation -->
+            <div class="dasei-tabs-sidebar d-flex flex-wrap gap-2 mb-4">
+                <t t-foreach="tabs" t-as="tab">
+                    <a t-attf-href="#{tab['url']}" 
+                       t-attf-class="btn #{'btn-primary' if active_tab == tab['id'] else 'btn-outline-secondary'}">
+                        <i t-attf-class="fa #{tab['icon']} me-1"/>
+                        <t t-esc="tab['name']"/>
+                    </a>
+                </t>
+            </div>
+
+            <!-- Contract Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-file-contract me-2"/>
+                        Meine Buchungen
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <t t-if="not orders">
+                        <p class="text-muted">Keine Buchungen vorhanden.</p>
+                    </t>
+                    <t t-if="orders">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Bestellung</th>
+                                    <th>Datum</th>
+                                    <th>Status</th>
+                                    <th>Betrag</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="orders" t-as="order">
+                                    <tr>
+                                        <td>
+                                            <a t-attf-href="/my/orders/#{order.id}">
+                                                <t t-esc="order.name"/>
+                                            </a>
+                                        </td>
+                                        <td t-field="order.date_order" t-options='{"format": "dd.MM.yyyy"}'/>
+                                        <td>
+                                            <span t-attf-class="badge #{order.state == 'sale' and 'bg-success' or 'bg-secondary'}">
+                                                <t t-esc="order.state"/>
+                                            </span>
+                                        </td>
+                                        <td t-field="order.amount_total" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+            </div>
+
+            <!-- Q&A Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-question-circle me-2"/>
+                        Fragen &amp; Antworten
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#faq1">
+                                    Wie kann ich meine Buchung stornieren?
+                                </button>
+                            </h2>
+                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Bitte kontaktiere uns unter <a href="mailto:service@dasei.eu">service@dasei.eu</a>.
+                                    Beachte unsere Stornobedingungen in den AGB.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#faq2">
+                                    Wie erhalte ich Zugang zu Online-Sessions?
+                                </button>
+                            </h2>
+                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Die Zugangsdaten werden dir per E-Mail zugesendet, 
+                                    in der Regel 1-2 Tage vor der Session.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-envelope me-2"/>
+                        Kontakt
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>DAS Ei - theaterpädagogisches Institut Bayern e.V.</strong><br/>
+                        E-Mail: <a href="mailto:service@dasei.eu">service@dasei.eu</a><br/>
+                        Telefon: +49 (0) 89 123 456 789
+                    </p>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ===============================================================
+         Curriculum Tab - A-B-C-D Progress (dasei2 only)
+         =============================================================== -->
+
+    <template id="portal_my_curriculum" name="My Curriculum">
+        <t t-call="portal.portal_layout">
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Curriculum</t>
+            </t>
+            
+            <!-- Tab Navigation -->
+            <div class="dasei-tabs-sidebar d-flex flex-wrap gap-2 mb-4">
+                <t t-foreach="tabs" t-as="tab">
+                    <a t-attf-href="#{tab['url']}" 
+                       t-attf-class="btn #{'btn-primary' if active_tab == tab['id'] else 'btn-outline-secondary'}">
+                        <i t-attf-class="fa #{tab['icon']} me-1"/>
+                        <t t-esc="tab['name']"/>
+                    </a>
+                </t>
+            </div>
+
+            <div class="row">
+                <!-- Module A -->
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div t-attf-class="card h-100 #{'border-success' if modules['A'] else 'border-secondary'}">
+                        <div t-attf-class="card-header #{'bg-success text-white' if modules['A'] else 'bg-light'}">
+                            <h5 class="mb-0">Modul A</h5>
+                            <small>Einstiege ins Theaterspiel</small>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="modules['A']">
+                                <ul class="list-unstyled">
+                                    <t t-foreach="modules['A']" t-as="reg">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check-circle text-success me-1"/>
+                                            <t t-esc="reg.event_id.event_type_id.name"/>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </t>
+                            <t t-if="not modules['A']">
+                                <p class="text-muted mb-0">
+                                    <i class="fa fa-clock me-1"/>
+                                    Noch nicht gestartet
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module B -->
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div t-attf-class="card h-100 #{'border-success' if modules['B'] else 'border-secondary'}">
+                        <div t-attf-class="card-header #{'bg-success text-white' if modules['B'] else 'bg-light'}">
+                            <h5 class="mb-0">Modul B</h5>
+                            <small>Grundlagen I</small>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="modules['B']">
+                                <ul class="list-unstyled">
+                                    <t t-foreach="modules['B']" t-as="reg">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check-circle text-success me-1"/>
+                                            <t t-esc="reg.event_id.event_type_id.name"/>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </t>
+                            <t t-if="not modules['B']">
+                                <p class="text-muted mb-0">
+                                    <i class="fa fa-lock me-1"/>
+                                    Verfügbar nach Modul A
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module C -->
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div t-attf-class="card h-100 #{'border-success' if modules['C'] else 'border-secondary'}">
+                        <div t-attf-class="card-header #{'bg-success text-white' if modules['C'] else 'bg-light'}">
+                            <h5 class="mb-0">Modul C</h5>
+                            <small>Grundlagen II</small>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="modules['C']">
+                                <ul class="list-unstyled">
+                                    <t t-foreach="modules['C']" t-as="reg">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check-circle text-success me-1"/>
+                                            <t t-esc="reg.event_id.event_type_id.name"/>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </t>
+                            <t t-if="not modules['C']">
+                                <p class="text-muted mb-0">
+                                    <i class="fa fa-lock me-1"/>
+                                    Verfügbar nach Modul B
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module D -->
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div t-attf-class="card h-100 #{'border-success' if modules['D'] else 'border-secondary'}">
+                        <div t-attf-class="card-header #{'bg-success text-white' if modules['D'] else 'bg-light'}">
+                            <h5 class="mb-0">Modul D</h5>
+                            <small>Abschluss &amp; Zertifizierung</small>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="modules['D']">
+                                <ul class="list-unstyled">
+                                    <t t-foreach="modules['D']" t-as="reg">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check-circle text-success me-1"/>
+                                            <t t-esc="reg.event_id.event_type_id.name"/>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </t>
+                            <t t-if="not modules['D']">
+                                <p class="text-muted mb-0">
+                                    <i class="fa fa-lock me-1"/>
+                                    Verfügbar nach Modul C
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>
