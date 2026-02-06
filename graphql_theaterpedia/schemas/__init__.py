@@ -23,3 +23,4 @@ from . import wishlist
 from . import mailing_list
 from . import website
 from . import checkout
+from . import package

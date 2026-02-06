@@ -840,7 +840,27 @@ class EventType(OdooObjectType):
     note = graphene.String()
     use_sessions = graphene.Boolean()
     seats_max = graphene.Int()
-    seats_max = graphene.Int()
+    # DASEi template fields
+    is_template_code = graphene.Boolean(description="True if this is a template code (A1, A2, etc.)")
+    template_parent_id = graphene.Int(description="Parent event type ID for template hierarchy")
+    template_heading = graphene.String(description="Template heading for display")
+    template_teasertext = graphene.String(description="Template teaser text")
+    template_cimg = graphene.String(description="Template cover image URL")
+
+    def resolve_is_template_code(self, info):
+        return self.is_template_code if hasattr(self, 'is_template_code') else False
+
+    def resolve_template_parent_id(self, info):
+        return self.template_parent_id.id if self.template_parent_id else None
+
+    def resolve_template_heading(self, info):
+        return self.template_heading or None
+
+    def resolve_template_teasertext(self, info):
+        return self.template_teasertext or None
+
+    def resolve_template_cimg(self, info):
+        return self.template_cimg or None
 
 
 class EventStage(OdooObjectType):
@@ -850,6 +870,72 @@ class EventStage(OdooObjectType):
     legend_blocked = graphene.String()
     legend_done = graphene.String()
     legend_normal = graphene.String()
+
+
+class AgendaLine(OdooObjectType):
+    """
+    Unified agenda line for events, posts, products.
+    Source: agenda.line model (crearis module)
+    """
+    id = graphene.Int(required=True)
+    sequence = graphene.Int()
+    type = graphene.String(description="session, meeting, milestone, info, action")
+    provider_type = graphene.String(description="event, post, product")
+    
+    # Date/time fields
+    date = graphene.String(description="Date (YYYY-MM-DD)")
+    day = graphene.String(description="Weekday name")
+    start = graphene.String(description="Start time (HH:MM)")
+    end = graphene.String(description="End time (HH:MM)")
+    duration_h = graphene.Float(description="Duration in hours")
+    teaching_units = graphene.Float(description="Teaching units")
+    
+    # Location
+    mode = graphene.String(description="online, venue, individual")
+    location_hint = graphene.String()
+    room = graphene.String()
+    
+    # Conference
+    conference_provider = graphene.String()
+    conference_url = graphene.String()
+    
+    # State
+    gate_state = graphene.String(description="pending, ready, sent, issue")
+    
+    # Relations (IDs for now, can resolve later)
+    event_id = graphene.Int()
+    event_type_id = graphene.Int()
+    
+    # Display
+    display_name = graphene.String()
+    notes = graphene.String()
+
+    def resolve_date(self, info):
+        return str(self.date) if self.date else None
+
+    def resolve_day(self, info):
+        return self.day or None
+
+    def resolve_start(self, info):
+        return self.start or None
+
+    def resolve_end(self, info):
+        return self.end or None
+
+    def resolve_mode(self, info):
+        return self.mode or None
+
+    def resolve_location_hint(self, info):
+        return self.location_hint or None
+
+    def resolve_gate_state(self, info):
+        return self.gate_state or 'pending'
+
+    def resolve_event_id(self, info):
+        return self.event_id.id if self.event_id else None
+
+    def resolve_event_type_id(self, info):
+        return self.event_type_id.id if self.event_type_id else None
 
 
 class Event(OdooObjectType):
@@ -905,6 +991,19 @@ class Event(OdooObjectType):
     date_end = graphene.String()
     event_mail_template_id = graphene.String()
     slug = graphene.String()
+    
+    # DASEi: Agenda lines for this event
+    agenda_lines = graphene.List(lambda: AgendaLine, description="Agenda lines (sessions) for this event")
+
+    def resolve_agenda_lines(self, info):
+        """Resolve agenda lines from event's agenda_line_ids relation"""
+        env = info.context['env']
+        AgendaLineModel = env['agenda.line'].sudo()
+        lines = AgendaLineModel.search([
+            ('event_id', '=', self.id),
+            ('type', '=', 'session'),
+        ], order='date asc, sequence asc')
+        return lines
 
     def resolve_cid(self, info):
         return self.cid or None
@@ -1099,6 +1198,34 @@ class Product(OdooObjectType):
         (lambda: Product), description="Specific to use in Product Template"
     )
     json_ld = generic.GenericScalar()
+    
+    # DASEi Event Package fields
+    is_event_package = graphene.Boolean(description="True if detailed_type is 'event_package'")
+    package_edition_code = graphene.String(description="Edition code, e.g. 'M18E'")
+    package_date_start = graphene.String(description="Package start date (YYYY-MM-DD)")
+    package_date_end = graphene.String(description="Package end date (YYYY-MM-DD)")
+    package_event_types = graphene.List(lambda: EventType, description="Event types included in package")
+
+    def resolve_is_event_package(self, info):
+        return self.detailed_type == 'event_package' if hasattr(self, 'detailed_type') else False
+
+    def resolve_package_edition_code(self, info):
+        return self.package_edition_code if hasattr(self, 'package_edition_code') else None
+
+    def resolve_package_date_start(self, info):
+        if hasattr(self, 'package_date_start') and self.package_date_start:
+            return str(self.package_date_start)
+        return None
+
+    def resolve_package_date_end(self, info):
+        if hasattr(self, 'package_date_end') and self.package_date_end:
+            return str(self.package_date_end)
+        return None
+
+    def resolve_package_event_types(self, info):
+        if hasattr(self, 'package_event_type_ids') and self.package_event_type_ids:
+            return self.package_event_type_ids
+        return []
 
     def resolve_type_id(self, info):
         if self.detailed_type == "product":
