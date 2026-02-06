@@ -4,13 +4,14 @@
 """
 CheckoutMutation for DASEi checkout flow.
 
-Creates partner, sale.order, and event.registration(s) from NUXT checkout form.
-Replaces old PowerAutomate/SharePoint integration.
+Creates partner, sale.order, product.package.event.line(s), and event.registration(s) 
+from NUXT checkout form. Replaces old PowerAutomate/SharePoint integration.
 
 Usage:
     mutation {
         checkout(checkout: {
             product_ref: "M18E",
+            path: "muenchen_block",
             contact: { email: "...", vorname: "...", nachname: "..." },
             accept_terms: true,
             accept_privacy: true,
@@ -21,8 +22,15 @@ Usage:
             order { id name }
             partner { id email }
             registrations
+            packageLines
         }
     }
+
+Path options:
+- muenchen_block: München events, Blockseminar schedule
+- muenchen_day: München events, Tageskurs schedule
+- nuernberg_block: Nürnberg events, Blockseminar schedule
+- nuernberg_day: Nürnberg events, Tageskurs schedule
 """
 
 import graphene
@@ -51,6 +59,9 @@ class CheckoutInput(graphene.InputObjectType):
         description="Product default_code, e.g. 'M18E'"
     )
     contact = graphene.Field(CheckoutContactInput, required=True)
+    path = graphene.String(
+        description="Path choice for event prefilling: muenchen_block, muenchen_day, nuernberg_block, nuernberg_day"
+    )
     notes = graphene.String(description="Optional booking notes")
     accept_terms = graphene.Boolean(required=True)
     accept_privacy = graphene.Boolean(required=True)
@@ -63,6 +74,7 @@ class CheckoutResult(graphene.ObjectType):
     order = graphene.Field(Order)
     partner = graphene.Field(Partner)
     registrations = graphene.List(graphene.Int, description="Created event.registration IDs")
+    package_lines = graphene.List(graphene.Int, description="Created product.package.event.line IDs")
     error = graphene.String()
 
 
@@ -150,15 +162,28 @@ class Checkout(graphene.Mutation):
         # Confirm order (draft → sent)
         order.action_quotation_sent()
         
-        # Create event registrations if product is event_package with linked event_types
+        # Create product.package.event.line records if product is event_package
         registration_ids = []
+        package_line_ids = []
+        
         if product.detailed_type == 'event_package' and product.package_event_type_ids:
-            EventRegistration = env['event.registration'].sudo()
+            PackageEventLine = env['product.package.event.line'].sudo()
             EventEvent = env['event.event'].sudo()
+            EventRegistration = env['event.registration'].sudo()
             
-            # For each event type in package, find available events and create registration
+            # Parse path for city filter
+            path = checkout.path or ''
+            city_filter = None
+            if 'muenchen' in path.lower():
+                city_filter = 'München'
+            elif 'nuernberg' in path.lower():
+                city_filter = 'Nürnberg'
+            
+            sale_order_line = order.order_line[0] if order.order_line else False
+            sequence = 10
+            
             for event_type in product.package_event_type_ids:
-                # Find next available event of this type
+                # Build domain for finding events
                 domain = [
                     ('event_type_id', '=', event_type.id),
                     ('stage_id.pipe_end', '=', False),  # Not cancelled/done
@@ -168,29 +193,51 @@ class Checkout(graphene.Mutation):
                 if product.package_date_end:
                     domain.append(('date_end', '<=', product.package_date_end))
                 
-                events = EventEvent.search(domain, order='date_begin asc', limit=1)
+                # Apply city filter from path
+                if city_filter:
+                    domain.append(('address_id.city', 'ilike', city_filter))
                 
-                for event in events:
-                    # Check if registration already exists
-                    existing = EventRegistration.search([
+                # Find next available event
+                event = EventEvent.search(domain, order='date_begin asc', limit=1)
+                
+                # Create package event line
+                package_line_vals = {
+                    'sale_order_line_id': sale_order_line.id if sale_order_line else False,
+                    'event_type_id': event_type.id,
+                    'sequence': sequence,
+                    'state': 'selected' if event else 'pending',
+                }
+                
+                if event:
+                    package_line_vals['event_id'] = event.id
+                    
+                    # Create registration for selected event
+                    existing_reg = EventRegistration.search([
                         ('partner_id', '=', partner.id),
                         ('event_id', '=', event.id),
                     ], limit=1)
                     
-                    if not existing:
+                    if not existing_reg:
                         registration = EventRegistration.create({
                             'partner_id': partner.id,
                             'event_id': event.id,
                             'sale_order_id': order.id,
-                            'sale_order_line_id': order.order_line[0].id if order.order_line else False,
+                            'sale_order_line_id': sale_order_line.id if sale_order_line else False,
                         })
                         registration_ids.append(registration.id)
+                        package_line_vals['registration_id'] = registration.id
+                        package_line_vals['state'] = 'registered'
+                
+                package_line = PackageEventLine.create(package_line_vals)
+                package_line_ids.append(package_line.id)
+                sequence += 10
         
         return CheckoutResult(
             success=True,
             order=order,
             partner=partner,
             registrations=registration_ids,
+            package_lines=package_line_ids,
         )
 
 
