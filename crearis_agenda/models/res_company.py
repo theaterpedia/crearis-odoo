@@ -31,6 +31,22 @@ class ResCompany(models.Model):
     ms_agenda_sync_enabled = fields.Boolean(string="Auto-Sync Enabled", default=False)
     ms_agenda_sync_running = fields.Boolean(string="Sync Running", default=False, help="Lock flag to prevent concurrent sync")
 
+    # Whitelist push mode - for controlled monthly sync sessions
+    ms_agenda_whitelist_push = fields.Boolean(
+        string="Whitelist Push Mode",
+        default=False,
+        help="When enabled, only whitelisted events are pushed to SharePoint"
+    )
+    ms_agenda_push_whitelist = fields.Json(
+        string="Push Whitelist",
+        default=list,
+        help="""JSON array of events to push. Format:
+        - Integer: Event ID (syncs event + all registrations)
+        - Object: {"id": event_id, "reg_ids": [reg_id, ...]} (syncs event + specific registrations)
+        Example: [1234, {"id": 1235, "reg_ids": [100, 101]}, {"id": 1236}]
+        """
+    )
+
     # Computed accessors for JSONB fields
     ms_list_veranstaltungen = fields.Char(
         compute='_compute_ms_agenda_fields',

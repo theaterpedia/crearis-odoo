@@ -40,6 +40,26 @@
                         </group>
                     </group>
 
+                    <group string="Whitelist Push Mode" attrs="{'invisible': [('ms_agenda_configured', '=', False)]}">
+                        <group>
+                            <field name="ms_agenda_whitelist_push"/>
+                        </group>
+                        <group>
+                            <field name="ms_agenda_push_whitelist" 
+                                   widget="ace" 
+                                   options="{'mode': 'json'}"
+                                   attrs="{'invisible': [('ms_agenda_whitelist_push', '=', False)]}"/>
+                        </group>
+                        <div colspan="2" attrs="{'invisible': [('ms_agenda_whitelist_push', '=', False)]}">
+                            <p class="text-muted">
+                                <b>Format:</b> JSON array of event IDs to push.<br/>
+                                <code>[1234, {"id": 1235, "reg_ids": [100, 101]}, {"id": 1236}]</code><br/>
+                                - Integer: Push event + all registrations<br/>
+                                - Object with reg_ids: Push event + only specified registrations
+                            </p>
+                        </div>
+                    </group>
+
                     <group string="SharePoint List GUIDs" attrs="{'invisible': [('ms_agenda_configured', '=', False)]}">
                         <group>
                             <field name="ms_list_veranstaltungen"/>

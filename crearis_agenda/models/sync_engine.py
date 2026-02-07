@@ -36,6 +36,18 @@ STATUS_TO_STAGE_SYSREG = {
     33: 4096,  # AKTUELL #USER#
 }
 
+# S7.2 Reverse: stage sysreg → StatusLookupId (for push to SP)
+# Maps Odoo stage sequences to primary SharePoint plan_planungsstatus IDs
+STAGE_SYSREG_TO_STATUS = {
+    1: 4,       # new → ID 4
+    8: 9,       # planned → ID 9
+    64: 13,     # booked → ID 13
+    512: 14,    # announced → ID 14 [angekündigt]
+    4096: 19,   # current → ID 19 AKTUELL
+    8192: 30,   # completed → ID 30
+    12288: 7,   # cancelled → ID 7
+}
+
 # L4: Location sync constants
 # Physical venues → sync to res.partner with address data
 VENUE_IDS = {1, 3, 4, 6, 7, 8, 13, 16, 17, 18, 19, 20}
@@ -119,6 +131,51 @@ class AgendaSyncEngine(models.AbstractModel):
             return None
         # Remove timezone suffix and replace T with space
         return sp_datetime.replace('T', ' ').replace('Z', '')
+
+    def _get_whitelist_entry(self, company, event_id):
+        """Check if event is in push whitelist and return its entry.
+        
+        Returns:
+            - None if whitelist mode disabled or event not in whitelist
+            - dict with {'id': event_id, 'reg_ids': [...] or None} if whitelisted
+        
+        Whitelist format examples:
+            [1234, {"id": 1235, "reg_ids": [100, 101]}, {"id": 1236}]
+            
+        - Integer: Event ID (syncs event + all registrations)
+        - Object with id only: Same as integer
+        - Object with reg_ids: Syncs event + only specified registration IDs
+        """
+        if not company.ms_agenda_whitelist_push:
+            return None
+        
+        whitelist = company.ms_agenda_push_whitelist or []
+        
+        for entry in whitelist:
+            if isinstance(entry, int):
+                if entry == event_id:
+                    return {'id': event_id, 'reg_ids': None}
+            elif isinstance(entry, dict):
+                entry_id = entry.get('id')
+                if entry_id == event_id:
+                    return {
+                        'id': event_id,
+                        'reg_ids': entry.get('reg_ids')  # None means all regs
+                    }
+        
+        return None
+
+    def _is_push_allowed(self, company, event_id):
+        """Check if push is allowed for this event.
+        
+        - If whitelist mode is OFF: push always allowed (normal master mode behavior)
+        - If whitelist mode is ON: push only if event is in whitelist
+        """
+        if not company.ms_agenda_whitelist_push:
+            return True  # Normal mode - no restriction
+        
+        entry = self._get_whitelist_entry(company, event_id)
+        return entry is not None
 
     def _graph_request(self, company, method, endpoint, json_data=None):
         """Make a request to Microsoft Graph API"""
@@ -749,11 +806,21 @@ class AgendaSyncEngine(models.AbstractModel):
         if not sp_changed and not odoo_changed:
             return 'skipped'
 
+        # === WHITELIST PUSH MODE ===
+        # When enabled, whitelisted events can be pushed even in slave mode
+        whitelist_allows_push = (
+            company.ms_agenda_whitelist_push and 
+            self._is_push_allowed(company, odoo_record.id)
+        )
+
         # === CONFLICT RESOLUTION ===
         if sp_changed and odoo_changed:
-            if sync_level == 'master':
+            if sync_level == 'master' or whitelist_allows_push:
                 # Odoo wins - push our changes
-                return self._push_event_to_sp(company, odoo_record)
+                if self._is_push_allowed(company, odoo_record.id):
+                    return self._push_event_to_sp(company, odoo_record)
+                else:
+                    return 'skipped'  # Whitelist mode but not in whitelist
             else:
                 # Slave/init mode - SP wins
                 return self._import_event_from_sp(company, sp_item, odoo_record)
@@ -761,8 +828,12 @@ class AgendaSyncEngine(models.AbstractModel):
         if sp_changed:
             return self._import_event_from_sp(company, sp_item, odoo_record)
 
-        if odoo_changed and sync_level == 'master':
-            return self._push_event_to_sp(company, odoo_record)
+        if odoo_changed:
+            # Push if master mode OR whitelist allows
+            if sync_level == 'master' or whitelist_allows_push:
+                if self._is_push_allowed(company, odoo_record.id):
+                    return self._push_event_to_sp(company, odoo_record)
+            # Odoo changed but can't push - skip (will be overwritten on next SP change)
 
         return 'skipped'
 
@@ -853,6 +924,13 @@ class AgendaSyncEngine(models.AbstractModel):
 
     def _push_event_to_sp(self, company, odoo_record):
         """Push Odoo event changes to SharePoint"""
+        # Log whitelist push mode
+        if company.ms_agenda_whitelist_push:
+            entry = self._get_whitelist_entry(company, odoo_record.id)
+            _logger.info("Whitelist push: event %s (ms_id=%s), reg_ids=%s", 
+                        odoo_record.id, odoo_record.ms_id, 
+                        entry.get('reg_ids') if entry else 'N/A')
+        
         sp_data = self._map_event_to_sp(odoo_record)
         sp_data['oversion'] = odoo_record.version
 
@@ -1206,7 +1284,13 @@ class AgendaSyncEngine(models.AbstractModel):
         else:
             oschedule = odoo_record.schedule or ''
         
-        return {
+        # Map stage to StatusLookupId for push
+        status_lookup_id = None
+        if odoo_record.stage_id:
+            stage_sysreg = odoo_record.stage_id.sequence
+            status_lookup_id = STAGE_SYSREG_TO_STATUS.get(stage_sysreg)
+        
+        result = {
             'oheading': odoo_record.name or '',  # name is in "overline **headline**" format
             'otesasertext': odoo_record.teasertext or '',  # SP field has typo
             'omd': odoo_record.md or '',
@@ -1215,6 +1299,12 @@ class AgendaSyncEngine(models.AbstractModel):
             'domain_code': odoo_record.domain_code.domain_code if odoo_record.domain_code else '',
             'oevent_id': odoo_record.id,
         }
+        
+        # Only include StatusLookupId if we have a valid mapping
+        if status_lookup_id:
+            result['StatusLookupId'] = status_lookup_id
+        
+        return result
 
     def _apply_event_template(self, event):
         """Apply template defaults from event type (one-time on create)
