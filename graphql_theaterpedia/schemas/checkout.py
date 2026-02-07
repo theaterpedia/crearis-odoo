@@ -162,11 +162,13 @@ class Checkout(graphene.Mutation):
         # Confirm order (draft → sent)
         order.action_quotation_sent()
         
-        # Create product.package.event.line records if product is event_package
+        # Update product.package.event.line records if product is event_package
+        # NOTE: SaleOrderLine.create() already creates pending package lines via
+        # _create_package_event_lines() - we UPDATE those, not create new ones
         registration_ids = []
         package_line_ids = []
         
-        if product.detailed_type == 'event_package' and product.package_event_type_ids:
+        if product.detailed_type == 'event_package':
             PackageEventLine = env['product.package.event.line'].sudo()
             EventEvent = env['event.event'].sudo()
             EventRegistration = env['event.registration'].sudo()
@@ -180,9 +182,16 @@ class Checkout(graphene.Mutation):
                 city_filter = 'Nürnberg'
             
             sale_order_line = order.order_line[0] if order.order_line else False
-            sequence = 10
             
-            for event_type in product.package_event_type_ids:
+            # Get existing package lines (created by SaleOrderLine.create)
+            existing_lines = PackageEventLine.search([
+                ('sale_order_line_id', '=', sale_order_line.id if sale_order_line else False),
+                ('state', '=', 'pending'),
+            ])
+            
+            for package_line in existing_lines:
+                event_type = package_line.event_type_id
+                
                 # Build domain for finding events
                 domain = [
                     ('event_type_id', '=', event_type.id),
@@ -200,16 +209,12 @@ class Checkout(graphene.Mutation):
                 # Find next available event
                 event = EventEvent.search(domain, order='date_begin asc', limit=1)
                 
-                # Create package event line
-                package_line_vals = {
-                    'sale_order_line_id': sale_order_line.id if sale_order_line else False,
-                    'event_type_id': event_type.id,
-                    'sequence': sequence,
-                    'state': 'selected' if event else 'pending',
-                }
-                
                 if event:
-                    package_line_vals['event_id'] = event.id
+                    # Update package line with selected event
+                    update_vals = {
+                        'event_id': event.id,
+                        'state': 'selected',
+                    }
                     
                     # Create registration for selected event
                     existing_reg = EventRegistration.search([
@@ -218,19 +223,27 @@ class Checkout(graphene.Mutation):
                     ], limit=1)
                     
                     if not existing_reg:
+                        # NOTE: Don't pass sale_order_line_id here!
+                        # event_sale's EventRegistration.create() would overwrite our event_id
+                        # with so_line.event_id (which is False for event_package products).
+                        # We link via package_line.registration_id instead.
                         registration = EventRegistration.create({
                             'partner_id': partner.id,
                             'event_id': event.id,
                             'sale_order_id': order.id,
-                            'sale_order_line_id': sale_order_line.id if sale_order_line else False,
                         })
                         registration_ids.append(registration.id)
-                        package_line_vals['registration_id'] = registration.id
-                        package_line_vals['state'] = 'registered'
+                        update_vals['registration_id'] = registration.id
+                        update_vals['state'] = 'registered'
+                    else:
+                        # Link existing registration
+                        registration_ids.append(existing_reg.id)
+                        update_vals['registration_id'] = existing_reg.id
+                        update_vals['state'] = 'registered'
+                    
+                    package_line.write(update_vals)
                 
-                package_line = PackageEventLine.create(package_line_vals)
                 package_line_ids.append(package_line.id)
-                sequence += 10
         
         # Send checkout confirmation email (T2)
         # Template: agenda_dasei.mail_template_checkout_confirmation
