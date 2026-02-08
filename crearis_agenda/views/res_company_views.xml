@@ -44,11 +44,9 @@
                         <group>
                             <field name="ms_agenda_whitelist_push"/>
                         </group>
-                        <group>
-                            <field name="ms_agenda_push_whitelist" 
-                                   widget="ace" 
-                                   options="{'mode': 'json'}"
-                                   attrs="{'invisible': [('ms_agenda_whitelist_push', '=', False)]}"/>
+                        <group attrs="{'invisible': [('ms_agenda_whitelist_push', '=', False)]}">
+                            <field name="ms_agenda_push_whitelist_text" 
+                                   widget="text"/>
                         </group>
                         <div colspan="2" attrs="{'invisible': [('ms_agenda_whitelist_push', '=', False)]}">
                             <p class="text-muted">

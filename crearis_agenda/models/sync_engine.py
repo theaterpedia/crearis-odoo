@@ -785,15 +785,14 @@ class AgendaSyncEngine(models.AbstractModel):
             return 'created'
 
         # === ECHO DETECTION ===
+        # oversion matching our record version indicates our previous push
+        # BUT: if etag changed, SP was edited AFTER our push → not an echo
         if sp_oversion and sp_oversion == odoo_record.version:
-            # This is our own push echoed back - just update etag
-            if odoo_record.ms_version != sp_etag:
-                odoo_record.with_context(skip_version_increment=True).write({
-                    'ms_version': sp_etag
-                })
-            # In dev mode, still force update for testing
-            if not company.ms_dev_mode:
+            if odoo_record.ms_version == sp_etag:
+                # etag unchanged - this is truly our echo, skip
                 return 'skipped'
+            # etag changed - SP was edited after our push, continue to change detection
+            _logger.info(f"Event {odoo_record.id} (ms_id={sp_id}): oversion matches but etag changed, processing SP edit")
 
         # === CHANGE DETECTION ===
         sp_changed = (odoo_record.ms_version != sp_etag)

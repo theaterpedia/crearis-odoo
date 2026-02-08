@@ -2,6 +2,8 @@
 # Copyright 2024 theaterpedia.org
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
+import json
+
 from odoo import models, fields, api
 
 
@@ -45,6 +47,13 @@ class ResCompany(models.Model):
         - Object: {"id": event_id, "reg_ids": [reg_id, ...]} (syncs event + specific registrations)
         Example: [1234, {"id": 1235, "reg_ids": [100, 101]}, {"id": 1236}]
         """
+    )
+    # Computed accessor for whitelist (JSON text for ace widget)
+    ms_agenda_push_whitelist_text = fields.Text(
+        compute='_compute_ms_agenda_push_whitelist_text',
+        inverse='_inverse_ms_agenda_push_whitelist_text',
+        string="Push Whitelist (JSON)",
+        help="JSON array of event IDs or objects with reg_ids"
     )
 
     # Computed accessors for JSONB fields
@@ -208,6 +217,29 @@ class ResCompany(models.Model):
             api = dict(rec.ms_agenda_api or {})
             api['list_raeume'] = rec.ms_list_raeume
             rec.ms_agenda_api = api
+
+    @api.depends('ms_agenda_push_whitelist')
+    def _compute_ms_agenda_push_whitelist_text(self):
+        for rec in self:
+            whitelist = rec.ms_agenda_push_whitelist or []
+            rec.ms_agenda_push_whitelist_text = json.dumps(whitelist, indent=2) if whitelist else '[]'
+
+    def _inverse_ms_agenda_push_whitelist_text(self):
+        for rec in self:
+            text = (rec.ms_agenda_push_whitelist_text or '').strip()
+            if not text:
+                rec.ms_agenda_push_whitelist = []
+            else:
+                try:
+                    rec.ms_agenda_push_whitelist = json.loads(text)
+                except json.JSONDecodeError:
+                    # Fallback: try parsing as comma-separated IDs
+                    ids = []
+                    for part in text.split(','):
+                        part = part.strip()
+                        if part and part.isdigit():
+                            ids.append(int(part))
+                    rec.ms_agenda_push_whitelist = ids
 
     @api.depends('ms_agenda_tenant_id', 'ms_agenda_client_id', 'ms_agenda_site_id')
     def _compute_ms_agenda_configured(self):
