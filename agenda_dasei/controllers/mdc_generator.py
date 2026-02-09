@@ -14,9 +14,11 @@ from odoo.http import request
 try:
     import yaml
     from yaml import SafeDumper
+    YAML_AVAILABLE = True
 except ImportError:
     yaml = None
-    SafeDumper = None
+    SafeDumper = object  # Placeholder base class
+    YAML_AVAILABLE = False
 
 # Offenes Programm SharePoint contact ID
 OFFENES_PROGRAMM_ID = '474'
