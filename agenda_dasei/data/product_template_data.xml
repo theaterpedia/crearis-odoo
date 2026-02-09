@@ -3,17 +3,14 @@
     <!-- 
         DASEi Grundkurs Product Templates (Event Packages)
         
-        IMPORTANT: This file has noupdate="0" because it depends on XMLIds 
-        created dynamically by ensure_event_type_xmlids() which should be 
-        called BEFORE updating the module.
-        
         These are the 4 module products for the Grundkurs program:
         - Modul A (dasei1): Entry-level, A0-A5 event types
         - Modul B (dasei2): Szenische Themenarbeit, B1-B8 event types
         - Modul C (dasei2): Pädagogische Regie, C0-C8 event types
         - Modul D (dasei2): Kolloquium & Projekt, D0-D4 event types
         
-        Note: Event type XMLIds are created dynamically by ensure_event_type_xmlids()
+        Note: website_id and package_event_type_ids are set by post_init_hook
+        after websites and event types are created/synced.
     -->
 
     <!-- ═══════════════════════════════════════════════════════════════════════
@@ -25,16 +22,8 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1100.00</field>
         <field name="description_sale">Modul A umfasst 6 Sessions (A0-A5) und bildet den Einstieg in die Theaterpädagogik-Ausbildung.</field>
-        <!-- website_id: Set via UI to dasei1 after install -->
         <field name="package_edition_code">M18E</field>
-        <field name="package_event_type_ids" eval="[(6, 0, [
-            ref('agenda_dasei.event_type_a0'),
-            ref('agenda_dasei.event_type_a1'),
-            ref('agenda_dasei.event_type_a2'),
-            ref('agenda_dasei.event_type_a3'),
-            ref('agenda_dasei.event_type_a4'),
-            ref('agenda_dasei.event_type_a5'),
-        ])]"/>
+        <!-- website_id: dasei1, package_event_type_ids: A0-A5 (set by hook) -->
     </record>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
@@ -46,17 +35,8 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1320.00</field>
         <field name="description_sale">Modul B (JAN-MAI 2027) - Szenische Themenarbeit mit 6-8 Sessions.</field>
-        <!-- website_id: Set via UI to dasei2 after install -->
         <field name="package_edition_code">M18B</field>
-        <field name="package_event_type_ids" eval="[(6, 0, [
-            ref('agenda_dasei.event_type_b1'),
-            ref('agenda_dasei.event_type_b2'),
-            ref('agenda_dasei.event_type_b3'),
-            ref('agenda_dasei.event_type_b4'),
-            ref('agenda_dasei.event_type_b5'),
-            ref('agenda_dasei.event_type_b7'),
-            ref('agenda_dasei.event_type_b8'),
-        ])]"/>
+        <!-- website_id: dasei2, package_event_type_ids: B1-B8 (set by hook) -->
     </record>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
@@ -68,19 +48,8 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1320.00</field>
         <field name="description_sale">Modul C (JUN-DEZ 2027) - Pädagogische Regie mit 6-8 Sessions.</field>
-        <!-- website_id: Set via UI to dasei2 after install -->
         <field name="package_edition_code">M18C</field>
-        <field name="package_event_type_ids" eval="[(6, 0, [
-            ref('agenda_dasei.event_type_c0'),
-            ref('agenda_dasei.event_type_c1'),
-            ref('agenda_dasei.event_type_c2'),
-            ref('agenda_dasei.event_type_c3'),
-            ref('agenda_dasei.event_type_c4'),
-            ref('agenda_dasei.event_type_c5'),
-            ref('agenda_dasei.event_type_c6'),
-            ref('agenda_dasei.event_type_c7'),
-            ref('agenda_dasei.event_type_c8'),
-        ])]"/>
+        <!-- website_id: dasei2, package_event_type_ids: C0-C8 (set by hook) -->
     </record>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
@@ -92,15 +61,8 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1100.00</field>
         <field name="description_sale">Modul D (JAN-JUL 2028) - Abschlussmodul mit Kolloquium und Projektarbeit.</field>
-        <!-- website_id: Set via UI to dasei2 after install -->
         <field name="package_edition_code">M18D</field>
-        <field name="package_event_type_ids" eval="[(6, 0, [
-            ref('agenda_dasei.event_type_d0'),
-            ref('agenda_dasei.event_type_d1'),
-            ref('agenda_dasei.event_type_d2'),
-            ref('agenda_dasei.event_type_d3'),
-            ref('agenda_dasei.event_type_d4'),
-        ])]"/>
+        <!-- website_id: dasei2, package_event_type_ids: D0-D4 (set by hook) -->
     </record>
 
 </odoo>
