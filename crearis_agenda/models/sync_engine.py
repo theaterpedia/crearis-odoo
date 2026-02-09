@@ -232,6 +232,116 @@ class AgendaSyncEngine(models.AbstractModel):
         return self._graph_request(company, 'PATCH', endpoint, fields_data)
 
     # =========================================================================
+    # RESET WRITEBACK FIELDS
+    # =========================================================================
+
+    def reset_writeback_fields(self, company, dry_run=True):
+        """Clear writeback fields in SharePoint to allow fresh sync from new Odoo database.
+        
+        This clears:
+        - plan_veranstaltungscodes: oevent_type_id, oversion
+        - plan_veranstaltungen: oevent_id, oversion  
+        - plan_raeume: opartner_id
+        
+        Usage from shell:
+            company = env['res.company'].browse(2)  # DASEi company ID
+            # Dry run first (shows what would be cleared):
+            env['crearis.agenda.sync'].reset_writeback_fields(company, dry_run=True)
+            # Actually clear:
+            env['crearis.agenda.sync'].reset_writeback_fields(company, dry_run=False)
+        
+        Args:
+            company: res.company record with MS Graph config
+            dry_run: If True, only count items without clearing (default: True)
+        
+        Returns:
+            dict with counts per list
+        """
+        results = {}
+        
+        # 1. plan_veranstaltungscodes (event.type)
+        if company.ms_list_veranstaltungscodes:
+            count = self._reset_list_writeback(
+                company, 
+                company.ms_list_veranstaltungscodes,
+                ['oevent_type_id', 'oversion'],
+                'plan_veranstaltungscodes',
+                dry_run
+            )
+            results['event_types'] = count
+        
+        # 2. plan_veranstaltungen (event.event)
+        if company.ms_list_veranstaltungen:
+            count = self._reset_list_writeback(
+                company,
+                company.ms_list_veranstaltungen,
+                ['oevent_id', 'oversion'],
+                'plan_veranstaltungen',
+                dry_run
+            )
+            results['events'] = count
+        
+        # 3. plan_raeume (res.partner locations)
+        if company.ms_list_raeume:
+            count = self._reset_list_writeback(
+                company,
+                company.ms_list_raeume,
+                ['opartner_id'],
+                'plan_raeume',
+                dry_run
+            )
+            results['locations'] = count
+        
+        action = "Would clear" if dry_run else "Cleared"
+        _logger.info(
+            "%s writeback fields: %d event types, %d events, %d locations",
+            action,
+            results.get('event_types', 0),
+            results.get('events', 0),
+            results.get('locations', 0)
+        )
+        
+        return results
+
+    def _reset_list_writeback(self, company, list_guid, fields, list_name, dry_run):
+        """Clear writeback fields for all items in a SharePoint list.
+        
+        Args:
+            fields: List of field names to set to null
+            dry_run: If True, only count without patching
+        
+        Returns:
+            Number of items processed
+        """
+        # Get all items with any of the writeback fields set
+        filter_parts = [f"{f} ne null" for f in fields]
+        filter_query = " or ".join(filter_parts)
+        
+        sp_items = self._get_list_items(company, list_guid, filter=filter_query)
+        
+        if dry_run:
+            _logger.info(
+                "[DRY RUN] %s: %d items have writeback fields (%s)",
+                list_name, len(sp_items), ', '.join(fields)
+            )
+            return len(sp_items)
+        
+        # Clear the fields
+        clear_data = {f: None for f in fields}
+        cleared = 0
+        
+        for sp_item in sp_items:
+            sp_id = sp_item['id']
+            try:
+                self._patch_list_item(company, list_guid, sp_id, clear_data)
+                cleared += 1
+            except Exception as e:
+                _logger.warning("Failed to clear item %s in %s: %s", sp_id, list_name, e)
+        
+        _logger.info("%s: Cleared %d/%d items", list_name, cleared, len(sp_items))
+        return cleared
+
+    # =========================================================================
     # DIAGNOSTIC TOOLS
     # =========================================================================
 
