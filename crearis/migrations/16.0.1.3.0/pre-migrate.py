@@ -22,7 +22,38 @@ def migrate(cr, version):
     
     _logger.info("Starting migration: event.session.line → agenda.line")
     
-    # Step 1: Rename the table
+    # Step 0: Check if this is a fresh install (no event_session_line table)
+    cr.execute("""
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = 'event_session_line'
+        )
+    """)
+    old_table_exists = cr.fetchone()[0]
+    
+    cr.execute("""
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = 'agenda_line'
+        )
+    """)
+    new_table_exists = cr.fetchone()[0]
+    
+    if not old_table_exists and not new_table_exists:
+        # Fresh install - create empty table, ORM will add columns
+        _logger.info("Fresh install detected - creating empty agenda_line table")
+        cr.execute("""
+            CREATE TABLE agenda_line (
+                id SERIAL PRIMARY KEY
+            )
+        """)
+        return  # Skip rest of migration, ORM handles fresh install
+    
+    if new_table_exists and not old_table_exists:
+        _logger.info("agenda_line already exists, skipping rename")
+        return  # Already migrated or fresh install completed
+    
+    # Step 1: Rename the table (only if old table exists)
     cr.execute("""
         ALTER TABLE IF EXISTS event_session_line 
         RENAME TO agenda_line
