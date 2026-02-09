@@ -51,19 +51,20 @@
                 </button>                
             </xpath>                  
 
-            <!--  Tracks - war: 548 -->
-            <xpath expr="//button[@name='330']" position="attributes">
+            <!--  Tracks stat button - make invisible when not using tracks -->
+            <xpath expr="//button[@name='%(website_event_track.action_event_track_from_event)d']" position="attributes">
                 <attribute name="attrs">
                     {'invisible': [('use_tracks', '=', False)]}
                 </attribute>
             </xpath>
 
-            <!--  Rooms - war: 555-->
-            <xpath expr="//button[@name='330']" position="attributes">
+            <!-- TODO: Rooms/Jitsi button - needs proper XML ID reference
+            <xpath expr="//button[ROOMS_BUTTON_XMLID]" position="attributes">
                 <attribute name="attrs">
                     {'invisible': [('use_jitsi', '=', False)]}
                 </attribute>
-            </xpath>        
+            </xpath>
+            -->        
 
             <!--  Website-Button -->
             <xpath expr="//field[@widget='website_redirect_button']" position="attributes">
