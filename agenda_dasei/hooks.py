@@ -35,10 +35,11 @@ DASEI_DOMAIN_CODES = {
 def post_init_hook(cr, registry):
     """
     After module installation, check for required DASEi websites.
-    Creates them if they don't exist.
+    Creates them if they don't exist, then links products to websites.
     """
     env = api.Environment(cr, SUPERUSER_ID, {})
     _check_and_create_dasei_websites(env)
+    _link_products_to_websites(env)
 
 
 def _check_and_create_dasei_websites(env):
@@ -113,6 +114,61 @@ def _ensure_xmlid(env, model, res_id, xmlid_name):
             'res_id': res_id,
             'noupdate': True,
         })
+
+
+# Product to website mapping (XMLId suffix → domain_code)
+PRODUCT_WEBSITE_MAP = {
+    'product_modul_a': 'dasei1',  # Modul A sold on Einstiege
+    'product_modul_b': 'dasei2',  # Modul B sold on Grundstufe
+    'product_modul_c': 'dasei2',  # Modul C sold on Grundstufe
+    'product_modul_d': 'dasei2',  # Modul D sold on Grundstufe
+}
+
+
+def _link_products_to_websites(env):
+    """
+    Link module products to their respective DASEi websites.
+    Called after websites are created to set the website_id field.
+    """
+    Website = env['website']
+    Product = env['product.template']
+    
+    # Build domain_code → website mapping
+    websites = Website.search([('domain_code', 'in', ['dasei1', 'dasei2'])])
+    website_by_code = {w.domain_code: w for w in websites}
+    
+    if not website_by_code:
+        _logger.warning("agenda_dasei: No DASEi websites found, skipping product linking")
+        return
+    
+    linked_count = 0
+    for product_xmlid, domain_code in PRODUCT_WEBSITE_MAP.items():
+        website = website_by_code.get(domain_code)
+        if not website:
+            _logger.warning(
+                "agenda_dasei: Website %s not found, skipping product %s",
+                domain_code, product_xmlid
+            )
+            continue
+        
+        # Try to find the product by XMLId
+        try:
+            product = env.ref(f'agenda_dasei.{product_xmlid}', raise_if_not_found=False)
+            if product and not product.website_id:
+                product.website_id = website.id
+                linked_count += 1
+                _logger.debug(
+                    "agenda_dasei: Linked %s to website %s",
+                    product.name, domain_code
+                )
+        except Exception as e:
+            _logger.warning(
+                "agenda_dasei: Could not link %s to website: %s",
+                product_xmlid, str(e)
+            )
+    
+    if linked_count:
+        _logger.info("agenda_dasei: Linked %d products to DASEi websites", linked_count)
 
 
 def check_dasei_websites(env, raise_error=False):

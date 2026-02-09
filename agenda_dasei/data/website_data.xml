@@ -5,42 +5,7 @@
 -->
 <odoo>
     <!-- DASEi Website Data: dasei0, dasei1, dasei2, dasei3 -->
-    <!-- Website records with XML IDs for reference in product_template_data.xml -->
-    
-    <data noupdate="1">
-        <!-- DASEi Website Records -->
-        <record id="website_dasei0" model="website">
-            <field name="name">DASEi Quick Entry</field>
-            <field name="domain_code">dasei0</field>
-            <field name="sequence">100</field>
-            <field name="use_template_codes" eval="True"/>
-            <field name="use_milestones" eval="True"/>
-        </record>
-        
-        <record id="website_dasei1" model="website">
-            <field name="name">DASEi Einstiege</field>
-            <field name="domain_code">dasei1</field>
-            <field name="sequence">101</field>
-            <field name="use_template_codes" eval="True"/>
-            <field name="use_milestones" eval="True"/>
-        </record>
-        
-        <record id="website_dasei2" model="website">
-            <field name="name">DASEi Grundstufe</field>
-            <field name="domain_code">dasei2</field>
-            <field name="sequence">102</field>
-            <field name="use_template_codes" eval="True"/>
-            <field name="use_milestones" eval="True"/>
-        </record>
-        
-        <record id="website_dasei3" model="website">
-            <field name="name">DASEi Aufbaustufe</field>
-            <field name="domain_code">dasei3</field>
-            <field name="sequence">103</field>
-            <field name="use_template_codes" eval="True"/>
-            <field name="use_milestones" eval="True"/>
-        </record>
-    </data>
+    <!-- Websites are created by post_init_hook in hooks.py -->
     
     <!-- Server Action: Check DASEi Websites -->
     <record id="action_check_dasei_websites" model="ir.actions.server">

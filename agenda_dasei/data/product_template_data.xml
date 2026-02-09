@@ -25,7 +25,7 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1100.00</field>
         <field name="description_sale">Modul A umfasst 6 Sessions (A0-A5) und bildet den Einstieg in die Theaterpädagogik-Ausbildung.</field>
-        <field name="website_id" ref="agenda_dasei.website_dasei1"/>
+        <!-- website_id: Set via UI to dasei1 after install -->
         <field name="package_edition_code">M18E</field>
         <field name="package_event_type_ids" eval="[(6, 0, [
             ref('agenda_dasei.event_type_a0'),
@@ -46,7 +46,7 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1320.00</field>
         <field name="description_sale">Modul B (JAN-MAI 2027) - Szenische Themenarbeit mit 6-8 Sessions.</field>
-        <field name="website_id" ref="agenda_dasei.website_dasei2"/>
+        <!-- website_id: Set via UI to dasei2 after install -->
         <field name="package_edition_code">M18B</field>
         <field name="package_event_type_ids" eval="[(6, 0, [
             ref('agenda_dasei.event_type_b1'),
@@ -68,7 +68,7 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1320.00</field>
         <field name="description_sale">Modul C (JUN-DEZ 2027) - Pädagogische Regie mit 6-8 Sessions.</field>
-        <field name="website_id" ref="agenda_dasei.website_dasei2"/>
+        <!-- website_id: Set via UI to dasei2 after install -->
         <field name="package_edition_code">M18C</field>
         <field name="package_event_type_ids" eval="[(6, 0, [
             ref('agenda_dasei.event_type_c0'),
@@ -92,7 +92,7 @@
         <field name="detailed_type">event_package</field>
         <field name="list_price">1100.00</field>
         <field name="description_sale">Modul D (JAN-JUL 2028) - Abschlussmodul mit Kolloquium und Projektarbeit.</field>
-        <field name="website_id" ref="agenda_dasei.website_dasei2"/>
+        <!-- website_id: Set via UI to dasei2 after install -->
         <field name="package_edition_code">M18D</field>
         <field name="package_event_type_ids" eval="[(6, 0, [
             ref('agenda_dasei.event_type_d0'),
