@@ -588,7 +588,7 @@ class AgendaSyncEngine(models.AbstractModel):
 
     def _sync_event_type(self, company, sp_item):
         """Sync a single event type with version control"""
-        EventType = self.env['event.type']
+        EventType = self.env['event.type'].sudo()
         
         sp_id = sp_item['id']
         sp_etag = sp_item.get('@odata.etag', '')
@@ -654,7 +654,7 @@ class AgendaSyncEngine(models.AbstractModel):
         template_parent = None
         sequence = sp_fields.get('Sequence', 0) or 0
         if sequence:
-            template_parent = self.env['event.type'].search([
+            template_parent = self.env['event.type'].sudo().search([
                 ('is_template_code', '=', False),
                 ('sequence', '=', sequence),
                 ('company_id', '=', False),
@@ -722,8 +722,8 @@ class AgendaSyncEngine(models.AbstractModel):
 
     def _sync_event(self, company, sp_item):
         """Sync a single event with version control"""
-        Event = self.env['event.event']
-        EventType = self.env['event.type']
+        Event = self.env['event.event'].sudo()
+        EventType = self.env['event.type'].sudo()
 
         sp_id = sp_item['id']
         sp_etag = sp_item.get('@odata.etag', '')
@@ -967,7 +967,7 @@ class AgendaSyncEngine(models.AbstractModel):
         event_type = None
         type_code = sp_fields.get('VeranstaltungsCodeLookupId')
         if type_code:
-            event_type = self.env['event.type'].search([
+            event_type = self.env['event.type'].sudo().search([
                 ('ms_id', '=', str(type_code)),
                 ('company_id', '=', company.id),
             ], limit=1)
