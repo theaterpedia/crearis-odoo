@@ -33,6 +33,7 @@ SharePoint sync modules (crearis_agenda, agenda_dasei).
     'website': 'https://theaterpedia.org/',
     'depends': [
         'crearis',
+        'crearis_milestones',
         'event_sale',
         'sale',
     ],
