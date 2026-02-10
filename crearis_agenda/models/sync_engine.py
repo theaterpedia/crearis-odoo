@@ -342,6 +342,90 @@ class AgendaSyncEngine(models.AbstractModel):
         _logger.info("%s: Cleared %d/%d items", list_name, cleared, len(sp_items))
         return cleared
 
+    def cleanup_duplicate_locations(self, company, dry_run=True):
+        """Remove duplicate location partners created by sync bug.
+        
+        For each sp_raum_id with multiple partners, keeps the oldest (lowest ID)
+        and deletes/archives the rest. Updates event.event.address_id references.
+        
+        Usage:
+            company = env['res.company'].browse(11)
+            engine = env['crearis.agenda.sync']
+            engine.cleanup_duplicate_locations(company, dry_run=True)  # Preview
+            engine.cleanup_duplicate_locations(company, dry_run=False)  # Execute
+        """
+        Partner = self.env['res.partner'].sudo()
+        Event = self.env['event.event'].sudo()
+        
+        # Find all location partners with sp_raum_id
+        locations = Partner.search([
+            ('is_event_location', '=', True),
+            ('sp_raum_id', '!=', False),
+            ('company_id', '=', company.id),
+        ])
+        
+        # Group by sp_raum_id
+        from collections import defaultdict
+        by_raum = defaultdict(list)
+        for loc in locations:
+            by_raum[loc.sp_raum_id].append(loc)
+        
+        # Find duplicates
+        stats = {'duplicated_raums': 0, 'to_delete': 0, 'events_updated': 0}
+        to_delete = Partner.browse()
+        event_remap = {}
+        
+        for raum_id, partners in by_raum.items():
+            if len(partners) <= 1:
+                continue
+            
+            stats['duplicated_raums'] += 1
+            
+            # Sort by ID (oldest first) - keep the first one
+            partners.sort(key=lambda p: p.id)
+            keep = partners[0]
+            duplicates = partners[1:]
+            
+            _logger.info(
+                "raum_id=%s: Keep %s (id=%d), delete %d duplicates",
+                raum_id, keep.name, keep.id, len(duplicates)
+            )
+            
+            for dup in duplicates:
+                stats['to_delete'] += 1
+                to_delete |= dup
+                event_remap[dup.id] = keep.id
+        
+        # Find events referencing duplicates
+        if event_remap:
+            events_to_fix = Event.search([
+                ('address_id', 'in', list(event_remap.keys())),
+            ])
+            stats['events_updated'] = len(events_to_fix)
+        
+        _logger.info(
+            "Cleanup summary: %d raum_ids have duplicates, %d partners to delete, %d events to update",
+            stats['duplicated_raums'], stats['to_delete'], stats['events_updated']
+        )
+        
+        if dry_run:
+            _logger.info("[DRY RUN] Would delete: %s", to_delete.mapped('name'))
+            return stats
+        
+        # Update events first
+        for old_id, new_id in event_remap.items():
+            Event.search([('address_id', '=', old_id)]).write({'address_id': new_id})
+        
+        # Delete duplicates (or archive if delete fails)
+        for partner in to_delete:
+            try:
+                partner.unlink()
+            except Exception as e:
+                _logger.warning("Cannot delete %s, archiving: %s", partner.name, e)
+                partner.active = False
+        
+        return stats
+
     # =========================================================================
     # DIAGNOSTIC TOOLS
     # =========================================================================
@@ -1285,6 +1369,8 @@ class AgendaSyncEngine(models.AbstractModel):
             }
             
             partner = self.env['res.partner'].create(partner_vals)
+            # Flush immediately so partner is visible if multiple events reference same location
+            self.env['res.partner'].flush_model()
             _logger.info("Created location partner: %s (sp_raum_id=%s)", partner.name, raum_id)
             
             # L9: Write-back oaddress_id to SharePoint
@@ -1464,6 +1550,7 @@ class AgendaSyncEngine(models.AbstractModel):
 
         results = {
             'event_types': 0,
+            'locations': 0,
             'events': 0,
         }
 
@@ -1472,6 +1559,11 @@ class AgendaSyncEngine(models.AbstractModel):
             type_stats = self.sync_event_types(company)
             results['event_types'] = type_stats.get('synced', 0)
             _logger.info(f"Event types: {type_stats}")
+
+            # Pre-sync locations to avoid duplicates during event sync
+            loc_stats = self.sync_locations(company)
+            results['locations'] = loc_stats.get('created', 0) + loc_stats.get('skipped', 0)
+            _logger.info(f"Locations: {loc_stats}")
 
             # Then sync events
             event_stats = self.sync_events(company)
