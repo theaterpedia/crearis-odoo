@@ -286,7 +286,7 @@ class AgendaSyncEngine(models.AbstractModel):
             count = self._reset_list_writeback(
                 company,
                 company.ms_list_raeume,
-                ['opartner_id'],
+                ['oaddress_id'],
                 'plan_raeume',
                 dry_run
             )
@@ -314,10 +314,11 @@ class AgendaSyncEngine(models.AbstractModel):
             Number of items processed
         """
         # Get all items with any of the writeback fields set
-        filter_parts = [f"{f} ne null" for f in fields]
+        # For SharePoint list items, filter uses fields/fieldName syntax
+        filter_parts = [f"fields/{f} ne null" for f in fields]
         filter_query = " or ".join(filter_parts)
         
-        sp_items = self._get_list_items(company, list_guid, filter=filter_query)
+        sp_items = self._get_list_items(company, list_guid, filter_query=filter_query)
         
         if dry_run:
             _logger.info(
