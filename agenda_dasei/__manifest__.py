@@ -4,7 +4,7 @@
 
 {
     'name': 'Agenda DASEi',
-    'version': '16.0.1.2.0',
+    'version': '16.0.1.3.0',
     'summary': 'DASEi-specific partner status, course products, and MDC generation',
     'description': """
 DASEi-specific extensions for Crearis Agenda sync.
