@@ -153,7 +153,23 @@ class EventEvent(models.Model):
         help='DEPRECATED: Use agenda_line_ids instead'
     )
 
-    domain_code = fields.Many2one('website', string='Domain', default=lambda self: self.env.company.domain_code, required=True, tracking=True)
+    domain_code = fields.Many2one(
+        'website',
+        string='Homedomain',
+        help="Owner-domain for this event. Determines feature flags and data prefixes. "
+             "Defaults to the company's default website. "
+             "When template codes are active, initially set by event type on creation.",
+        default=lambda self: self.env.company.domain_code,
+        required=True,
+        tracking=True,
+    )
+
+    website_id = fields.Many2one(
+        string='Restrict to Website',
+        help="Publishing scope: leave empty to show on ALL websites (typical). "
+             "Set a value to restrict this event to one website only. "
+             "This is NOT the owner-domain — see 'Homedomain' for that.",
+    )
 
     space_id = fields.Many2one(
         'event.track.location', string='Home-Space', 
@@ -424,9 +440,9 @@ class EventEvent(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        # Fire template-code hook when event_type changes
-        if vals.get('event_type_id'):
-            self._resolve_domain_code_for_template(vals['event_type_id'], vals)
+        # Note: template-code hook intentionally fires on create() only.
+        # domain_code is NOT auto-changed when event_type changes on existing records.
+        # Users can set domain_code manually if needed.
 
         # Skip version increment when sync is updating metadata only
         if not self.env.context.get('skip_version_increment'):

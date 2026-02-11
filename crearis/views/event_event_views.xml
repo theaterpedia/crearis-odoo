@@ -71,6 +71,19 @@
                 <attribute name="invisible">True</attribute>
             </xpath>
 
+            <!-- Homedomain: add to right column before website_id -->
+            <xpath expr="//group[@name='right_event_details']/field[@name='website_id']" position="before">
+                <field name="domain_code" string="Homedomain"
+                       options="{'no_create': True, 'no_open': True}"
+                       title="Owner-domain: determines feature flags. Defaults to company website."/>
+            </xpath>
+
+            <!-- website_id: relabel to clarify publishing scope -->
+            <xpath expr="//group[@name='right_event_details']/field[@name='website_id']" position="attributes">
+                <attribute name="string">Restrict to Website</attribute>
+                <attribute name="title">Leave empty = visible on ALL websites (typical). Set to restrict to one.</attribute>
+            </xpath>
+
         <!--  Menu-Configuration -->
             <!--  OBS: the same anchor is used for Teaser!! -->
             <xpath expr="//div[@class='oe_title']" position="before">
@@ -393,6 +406,18 @@
             <!-- WISHLIST: Template code badge in bottom-left - xpath not working reliably, deferred -->
             <!-- See triage doc: chat/2026-01-28-triage_unresolved_items.md → Wishlist #1 -->
             
+        </field>
+    </record>
+
+    <!-- Tree/List View: add Homedomain column -->
+    <record id="view_event_tree_crearis" model="ir.ui.view">
+        <field name="name">event.event.tree.crearis</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="domain_code" string="Homedomain" optional="show"/>
+            </xpath>
         </field>
     </record>
 

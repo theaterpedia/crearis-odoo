@@ -68,12 +68,3 @@ class EventEvent(models.Model):
                     old, website.id, website.domain_code, event_type_id
                 )
         return super()._resolve_domain_code_for_template(event_type_id, vals)
-
-    @api.onchange('event_type_id')
-    def _onchange_event_type_set_website(self):
-        """Auto-map event to website when event_type changes in UI."""
-        if not self.event_type_id:
-            return
-        website = self._resolve_website_from_template_code(self.event_type_id.id)
-        if website:
-            self.domain_code = website
