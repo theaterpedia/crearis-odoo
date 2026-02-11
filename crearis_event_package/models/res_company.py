@@ -35,4 +35,3 @@ class Website(models.Model):
         """Auto-enable template codes when event packages are enabled."""
         if self.use_event_packages and not self.use_template_codes:
             self.use_template_codes = True
-                )
