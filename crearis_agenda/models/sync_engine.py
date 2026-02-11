@@ -1263,6 +1263,7 @@ class AgendaSyncEngine(models.AbstractModel):
             'event_type_id': event_type.id if event_type else False,
             'stage_id': stage_id,
             'user_id': user_id,
+            'organizer_id': company.partner_id.id,  # Set organizer to company partner
             'date_begin': date_begin,
             'date_end': date_end,
             'teasertext': teasertext,
@@ -1297,6 +1298,7 @@ class AgendaSyncEngine(models.AbstractModel):
             partner = self.env['res.partner'].search([
                 ('sp_raum_id', '=', raum_id),
                 ('is_event_location', '=', True),
+                ('company_id', '=', company.id),
             ], limit=1)
             
             if not partner:
