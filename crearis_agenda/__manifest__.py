@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis Agenda',
-    'version': '16.0.1.3.0',
+    'version': '16.0.1.3.1',
     'summary': 'SharePoint Agenda Sync for Crearis Events',
     'description': """
 Synchronize events and event types between Odoo and Microsoft SharePoint.

@@ -112,7 +112,21 @@ class ScheduleParser:
         # Track current context (set by section headers)
         current_context = None
         
-        lines = text.strip().split('\n')
+        # Split by newlines, then expand comma-separated entries
+        raw_lines = text.strip().split('\n')
+        lines = []
+        for raw_line in raw_lines:
+            stripped = raw_line.strip()
+            if not stripped:
+                continue
+            # Keep section headers intact (e.g., "online:", "München:")
+            if self.header_pattern.match(stripped):
+                lines.append(stripped)
+            elif ',' in stripped:
+                # Split comma-separated entries (e.g., "DO 19:00-21:00, FR 09:00-18:00")
+                lines.extend(part.strip() for part in stripped.split(',') if part.strip())
+            else:
+                lines.append(stripped)
         
         for line in lines:
             line = line.strip()

@@ -1094,8 +1094,8 @@ class AgendaSyncEngine(models.AbstractModel):
             
             # Get company shortcodes config
             shortcodes = company.schedule_shortcodes or {'_online_': {'type': 'online', 'name': 'Online'}}
-            # Handle both 'de' and 'de_DE' formats
-            locale = 'de' if company.schedule_locale and company.schedule_locale.startswith('de') else 'en'
+            # Handle both 'de' and 'de_DE' formats; default to 'de' if unset
+            locale = company.schedule_locale or 'de'
             
             parser = ScheduleParser(locale=locale, shortcodes=shortcodes)
             
@@ -1113,6 +1113,9 @@ class AgendaSyncEngine(models.AbstractModel):
                 })
                 _logger.debug("Parsed schedule for event %s: %d sessions", 
                              event.id, schedule_data.get('summary', {}).get('session_count', 0))
+                # Sync agenda_line_ids from schedule_data sessions
+                if hasattr(event, '_sync_agenda_lines'):
+                    event._sync_agenda_lines()
         except Exception as e:
             _logger.warning("Failed to parse schedule for event %s: %s", event.id, e)
 

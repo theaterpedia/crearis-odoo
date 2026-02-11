@@ -1,4 +1,7 @@
+import logging
 from odoo import models, fields, api # type: ignore
+
+_logger = logging.getLogger(__name__)
 
 
 class EventType(models.Model):
@@ -394,7 +397,37 @@ class EventEvent(models.Model):
     ms_pushed_version = fields.Integer(string="Pushed Version", help="Odoo version at last push to SP")
     ms_synced = fields.Boolean(string="Synced from SharePoint", default=False)
 
+    # =========================
+    # Template Code Hook
+    # =========================
+
+    def _resolve_domain_code_for_template(self, event_type_id, vals):
+        """Hook: resolve domain_code from event_type template code.
+
+        Called when event_type_id is set during create() or write().
+        Override in extending modules to map template codes to websites.
+
+        Implementing modules should set vals['domain_code'] directly.
+        The base implementation is a no-op.
+
+        Args:
+            event_type_id: int - event.type record ID being set
+            vals: dict - mutable create/write vals
+        """
+        pass
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('event_type_id'):
+                self._resolve_domain_code_for_template(vals['event_type_id'], vals)
+        return super().create(vals_list)
+
     def write(self, vals):
+        # Fire template-code hook when event_type changes
+        if vals.get('event_type_id'):
+            self._resolve_domain_code_for_template(vals['event_type_id'], vals)
+
         # Skip version increment when sync is updating metadata only
         if not self.env.context.get('skip_version_increment'):
             for rec in self:
