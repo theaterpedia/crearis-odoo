@@ -3,7 +3,6 @@
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
 
 
 class Company(models.Model):
@@ -12,23 +11,14 @@ class Company(models.Model):
     use_event_packages = fields.Boolean(
         string='Event Packages',
         default=False,
-        help="Enable event package products. Requires Template Codes to be active."
+        help="Enable event package products. Works best with Template Codes enabled."
     )
 
-    @api.onchange('use_template_codes')
-    def _onchange_use_template_codes_packages(self):
-        """Disable event packages if template codes are disabled."""
-        if not self.use_template_codes:
-            self.use_event_packages = False
-
-    @api.constrains('use_event_packages', 'use_template_codes')
-    def _check_event_packages_requires_template_codes(self):
-        """Ensure event packages can only be enabled if template codes are active."""
-        for company in self:
-            if company.use_event_packages and not company.use_template_codes:
-                raise ValidationError(
-                    "Event Packages require Template Codes to be enabled first."
-                )
+    @api.onchange('use_event_packages')
+    def _onchange_use_event_packages(self):
+        """Auto-enable template codes when event packages are enabled."""
+        if self.use_event_packages and not self.use_template_codes:
+            self.use_template_codes = True
 
 
 class Website(models.Model):
@@ -37,20 +27,12 @@ class Website(models.Model):
     use_event_packages = fields.Boolean(
         string='Event Packages',
         default=False,
-        help="Enable event package products. Requires Template Codes to be active."
+        help="Enable event package products. Works best with Template Codes enabled."
     )
 
-    @api.onchange('use_template_codes')
-    def _onchange_use_template_codes_packages(self):
-        """Disable event packages if template codes are disabled."""
-        if not self.use_template_codes:
-            self.use_event_packages = False
-
-    @api.constrains('use_event_packages', 'use_template_codes')
-    def _check_event_packages_requires_template_codes(self):
-        """Ensure event packages can only be enabled if template codes are active."""
-        for website in self:
-            if website.use_event_packages and not website.use_template_codes:
-                raise ValidationError(
-                    "Event Packages require Template Codes to be enabled first."
+    @api.onchange('use_event_packages')
+    def _onchange_use_event_packages(self):
+        """Auto-enable template codes when event packages are enabled."""
+        if self.use_event_packages and not self.use_template_codes:
+            self.use_template_codes = True
                 )

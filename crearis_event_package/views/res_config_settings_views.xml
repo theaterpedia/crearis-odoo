@@ -10,7 +10,7 @@
             <xpath expr="//field[@name='crearis_use_template_codes']/.." position="after">
                 <div class="o_setting_left_pane mt8">
                     <field name="crearis_use_event_packages" 
-                           attrs="{'readonly': ['|', ('is_company_domain', '=', False), ('crearis_use_template_codes', '=', False)]}"/>
+                           attrs="{'readonly': [('is_company_domain', '=', False)]}"/>
                 </div>
                 <div class="o_setting_right_pane">
                     <div class="content-group">
@@ -19,7 +19,7 @@
                             <div class="text-muted">
                                 Event Packages allow selling bundles of events as a single product.
                                 Customers select specific events from a pool defined by event types.
-                                Requires Template Codes to be enabled.
+                                Enabling this will also activate Template Codes.
                             </div>
                         </div>
                     </div>
