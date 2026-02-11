@@ -1534,19 +1534,37 @@ class AgendaSyncEngine(models.AbstractModel):
     # MAIN SYNC ENTRY POINT
     # =========================================================================
 
-    def sync_all(self, company):
-        """Run full sync for a company"""
-        # Check if sync is already running
-        if company.ms_agenda_sync_running:
-            _logger.warning(f"Sync already running for {company.name}, skipping")
-            return {'skipped': True, 'reason': 'already_running'}
+    SYNC_LOCK_TIMEOUT = 1800  # 30 minutes
 
-        # Set running flag (use SQL to avoid transaction issues)
-        self.env.cr.execute(
-            "UPDATE res_company SET ms_agenda_sync_running = TRUE WHERE id = %s",
-            [company.id]
-        )
-        self.env.cr.commit()
+    def sync_all(self, company):
+        """Run full sync for a company.
+        
+        Uses timestamp-based lock with auto-expiry to prevent:
+        - Concurrent sync runs
+        - Stuck locks from crashed transactions
+        - Endless lock-renewal without actual sync work
+        """
+        # Check timestamp-based lock
+        if company.ms_agenda_sync_started:
+            elapsed = (fields.Datetime.now() - company.ms_agenda_sync_started).total_seconds()
+            if elapsed < self.SYNC_LOCK_TIMEOUT:
+                _logger.warning(
+                    "Sync locked for %s (started %ds ago, expires in %ds)",
+                    company.name, int(elapsed), int(self.SYNC_LOCK_TIMEOUT - elapsed)
+                )
+                return {
+                    'skipped': True,
+                    'reason': 'already_running',
+                    'locked_since': str(company.ms_agenda_sync_started),
+                }
+            else:
+                _logger.warning(
+                    "Clearing stale sync lock for %s (started %ds ago, timeout=%ds)",
+                    company.name, int(elapsed), self.SYNC_LOCK_TIMEOUT
+                )
+
+        # Set lock timestamp via ORM (no manual commit — Odoo manages transaction)
+        company.sudo().write({'ms_agenda_sync_started': fields.Datetime.now()})
 
         _logger.info(f"Starting agenda sync for company {company.name}")
 
@@ -1577,15 +1595,19 @@ class AgendaSyncEngine(models.AbstractModel):
 
         except Exception as e:
             _logger.exception(f"Sync failed for company {company.name}")
+            # Clear lock before raising — use SQL as fallback since ORM may fail
+            try:
+                self.env.cr.execute(
+                    "UPDATE res_company SET ms_agenda_sync_started = NULL WHERE id = %s",
+                    [company.id]
+                )
+            except Exception:
+                _logger.warning("Could not clear sync lock for %s — will auto-expire after %ds",
+                                company.name, self.SYNC_LOCK_TIMEOUT)
             raise UserError(f"Sync failed: {str(e)}")
 
-        finally:
-            # Always clear running flag
-            self.env.cr.execute(
-                "UPDATE res_company SET ms_agenda_sync_running = FALSE WHERE id = %s",
-                [company.id]
-            )
-            self.env.cr.commit()
+        # Success path: clear lock via ORM
+        company.sudo().write({'ms_agenda_sync_started': False})
 
         return results
 
@@ -1602,8 +1624,8 @@ class AgendaSyncEngine(models.AbstractModel):
 
         for company in companies:
             # Skip if sync is already running (check lock)
-            if company.ms_agenda_sync_running:
-                _logger.info(f"Skipping {company.name} - sync already in progress")
+            if company.ms_agenda_sync_started:
+                _logger.info(f"Skipping {company.name} - sync in progress or locked")
                 continue
             try:
                 self.sync_all(company)

@@ -31,7 +31,10 @@ class ResCompany(models.Model):
 
     ms_agenda_last_sync = fields.Datetime(string="Last Sync")
     ms_agenda_sync_enabled = fields.Boolean(string="Auto-Sync Enabled", default=False)
-    ms_agenda_sync_running = fields.Boolean(string="Sync Running", default=False, help="Lock flag to prevent concurrent sync")
+    ms_agenda_sync_started = fields.Datetime(
+        string="Sync Started At",
+        help="Timestamp when sync started. Used as lock with auto-expiry. NULL = not running."
+    )
 
     # Whitelist push mode - for controlled monthly sync sessions
     ms_agenda_whitelist_push = fields.Boolean(
@@ -280,17 +283,38 @@ class ResCompany(models.Model):
             }
 
     def action_sync_now(self):
-        """Trigger manual sync"""
+        """Trigger manual sync with honest status reporting"""
         self.ensure_one()
         sync_engine = self.env['crearis.agenda.sync']
         result = sync_engine.sync_all(self)
+
+        if result.get('skipped'):
+            reason = result.get('reason', 'unknown')
+            locked_since = result.get('locked_since', '')
+            msg = f"Reason: {reason}."
+            if locked_since:
+                msg += f" Lock started: {locked_since}."
+            msg += " Lock auto-expires after 30 min."
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': '⚠️ Sync Skipped',
+                    'message': msg,
+                    'type': 'warning',
+                    'sticky': True,
+                }
+            }
+
+        total = result.get('event_types', 0) + result.get('events', 0)
+        ntype = 'success' if total > 0 else 'warning'
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': 'Sync Complete',
+                'title': 'Sync Complete' if total > 0 else 'Sync: Nothing Changed',
                 'message': f"Synced: {result.get('event_types', 0)} types, {result.get('events', 0)} events",
-                'type': 'success',
-                'sticky': False,
+                'type': ntype,
+                'sticky': total == 0,
             }
         }
