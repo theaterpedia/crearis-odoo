@@ -168,15 +168,10 @@ class InstallmentWizard(models.TransientModel):
     @staticmethod
     def _line_label(order, index, total):
         """Build invoice line description, e.g. 'Kursrate - Modul A 3/5'."""
-        # Use first order line's product name as module label
+        # Use first order line's product name as label
         product_name = ''
         if order and order.order_line:
-            for line in order.order_line:
-                if line.product_id and line.product_id.detailed_type == 'event_package':
-                    product_name = line.product_id.name or ''
-                    break
-            if not product_name:
-                product_name = order.order_line[0].product_id.name or ''
+            product_name = order.order_line[0].product_id.name or ''
         # Shorten "Modul A: Einstiege in's Theaterspiel" → "Modul A"
         short = product_name.split(':')[0].strip() if ':' in product_name else product_name
         return f"Kursrate - {short} {index}/{total}"

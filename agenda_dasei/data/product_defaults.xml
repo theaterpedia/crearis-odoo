@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!--
+            Assign Bildungsleistungen category to DASEi course products.
+            This sets the income account (4110/8110) and enables fiscal
+            position matching for §4 Nr. 21 UStG tax exemption.
+
+            Category defined in crearis_accounting.
+        -->
+
+        <record id="product_modul_a" model="product.template">
+            <field name="categ_id" ref="crearis_accounting.product_category_bildungsleistung"/>
+        </record>
+
+        <record id="product_modul_b" model="product.template">
+            <field name="categ_id" ref="crearis_accounting.product_category_bildungsleistung"/>
+        </record>
+
+        <record id="product_modul_c" model="product.template">
+            <field name="categ_id" ref="crearis_accounting.product_category_bildungsleistung"/>
+        </record>
+
+        <record id="product_modul_d" model="product.template">
+            <field name="categ_id" ref="crearis_accounting.product_category_bildungsleistung"/>
+        </record>
+
+    </data>
+</odoo>

@@ -30,6 +30,7 @@ Features:
     'website': 'https://theaterpedia.org/',
     'depends': [
         'crearis_agenda',
+        'crearis_accounting',     # Fiscal position, Bildungsleistungen category
         'crearis_event_package',  # For event package products
         'crearis_milestones',     # For milestone labels and Controlling UI
         'portal',                 # For customer portal
@@ -43,6 +44,7 @@ Features:
         'data/website_data.xml',  # DASEi website check/create server actions
         'data/milestone_defaults.xml',  # German milestone labels and defaults
         'data/product_template_data.xml',  # Grundkurs module products (A, B, C, D)
+        'data/product_defaults.xml',  # Assign Bildungsleistungen category to course products
         'data/event_tag_data.xml',  # Location type tags (online, on_request_*, tbd)
         'data/mail_template_checkout.xml',  # T2: Checkout confirmation email template
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure

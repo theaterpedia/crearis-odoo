@@ -1,30 +1,27 @@
 {
-    'name': 'Agenda DASEi Accounting',
-    'version': '16.0.0.1.0',
-    'summary': 'Invoicing defaults and installment wizard for DASEi event courses',
+    'name': 'Crearis Accounting',
+    'version': '16.0.0.2.0',
+    'summary': 'Chart-agnostic accounting: fiscal positions, installment wizard, simple invoicing',
     'description': """
-Temporary module providing:
-- Fiscal position "Bildungsleistung §4 Nr. 21 UStG" (19% → 0%)
-- Product category with income account 4110 (steuerfreie Umsätze)
+Generic accounting configuration module providing:
+- Fiscal position "Bildungsleistung §4 Nr. 21 UStG" (19%/7% → 0%)
+- Product category "Bildungsleistungen" with chart-agnostic income account
 - Installment wizard on sale.order for splitting into monthly invoices
+- Simple invoicing toggle for companies without chart of accounts
 - Default installment rate per company (res.company field)
 
-Designed for 6-12 week trial, then classify into:
-- crearis_accounting (generic: wizard, fiscal position pattern)
-- agenda_dasei (DASEi-specific: rate defaults, account mapping)
+Works with SKR03, SKR04, SKR42, or no chart at all.
     """,
     'category': 'Accounting',
     'license': 'LGPL-3',
     'author': 'crearis oHG',
     'depends': [
-        'agenda_dasei',          # DASEi products, courses, registrations
         'account',               # Core accounting
         'sale',                  # sale.order for wizard trigger
     ],
     'data': [
         'security/ir.model.access.csv',
         'data/product_category_data.xml',
-        'data/product_defaults.xml',
         'wizard/installment_wizard_views.xml',
         'views/sale_order_views.xml',
         'views/res_config_settings_views.xml',

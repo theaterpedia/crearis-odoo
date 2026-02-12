@@ -29,14 +29,14 @@ def _post_init_hook(cr, registry):
     )
 
     categ = env.ref(
-        'agenda_dasei_accounting.product_category_bildungsleistung',
+        'crearis_accounting.product_category_bildungsleistung',
         raise_if_not_found=False,
     )
 
     for company in companies:
         _setup_company(env, company, categ)
 
-    _logger.info("agenda_dasei_accounting post_init_hook completed.")
+    _logger.info("crearis_accounting post_init_hook completed.")
 
 
 def _setup_company(env, company, categ):
