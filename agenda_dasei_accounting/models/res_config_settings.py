@@ -10,3 +10,9 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
         string='Default Installment Rate',
     )
+
+    simple_invoicing = fields.Boolean(
+        related='company_id.simple_invoicing',
+        readonly=False,
+        string='Simple Invoicing',
+    )
