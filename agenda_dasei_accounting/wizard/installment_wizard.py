@@ -201,7 +201,7 @@ class InstallmentWizard(models.TransientModel):
             raise UserError(_("No installments to create. Check amount and rate."))
 
         order = self.sale_order_id
-        move_obj = self.env['account.move']
+        move_obj = self.env['account.move'].with_company(order.company_id)
         created_moves = self.env['account.move']
 
         total = self.full_amount
@@ -221,8 +221,14 @@ class InstallmentWizard(models.TransientModel):
             # Determine fiscal position & tax
             fiscal_pos = order.fiscal_position_id
             product = order.order_line[0].product_id if order.order_line else False
-            account = product.categ_id.property_account_income_categ_id if product else False
-            taxes = product.taxes_id if product else self.env['account.tax']
+            account = (
+                product.with_company(order.company_id)
+                .categ_id.property_account_income_categ_id
+                if product else False
+            )
+            taxes = product.taxes_id.filtered(
+                lambda t: t.company_id == order.company_id
+            ) if product else self.env['account.tax']
             if fiscal_pos and taxes:
                 taxes = fiscal_pos.map_tax(taxes)
             if fiscal_pos and account:
@@ -230,6 +236,7 @@ class InstallmentWizard(models.TransientModel):
 
             invoice_vals = {
                 'move_type': 'out_invoice',
+                'company_id': order.company_id.id,
                 'partner_id': order.partner_id.id,
                 'invoice_date': due,
                 'invoice_date_due': due,
