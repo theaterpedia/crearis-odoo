@@ -82,7 +82,7 @@ class InstallmentWizard(models.TransientModel):
             order = self.env['sale.order'].browse(active_id)
             res['sale_order_id'] = order.id
             res['full_amount'] = order.amount_untaxed
-            res['rate_amount'] = order.company_id.default_installment_rate or 220.0
+            res['rate_amount'] = order.company_id.installment_rate or 220.0
             # Default first_month: first day of next month
             today = fields.Date.context_today(self)
             if today.month == 12:

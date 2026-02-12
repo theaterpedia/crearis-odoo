@@ -11,13 +11,13 @@
                     <div class="col-12 col-lg-6 o_setting_box">
                         <div class="o_setting_left_pane"/>
                         <div class="o_setting_right_pane">
-                            <label for="default_installment_rate"/>
+                            <label for="installment_rate"/>
                             <div class="text-muted">
                                 Default monthly rate pre-filled in the installment wizard (EUR)
                             </div>
                             <div class="content-group">
                                 <div class="mt16">
-                                    <field name="default_installment_rate"/>
+                                    <field name="installment_rate"/>
                                 </div>
                             </div>
                         </div>
