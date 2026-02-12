@@ -231,6 +231,21 @@ class AgendaSyncEngine(models.AbstractModel):
         endpoint = f"/lists/{list_guid}/items/{item_id}/fields"
         return self._graph_request(company, 'PATCH', endpoint, fields_data)
 
+    def _get_item_etag(self, company, list_guid, item_id):
+        """Fetch the current @odata.etag for a single list item.
+
+        Used after a PATCH write-back to capture the new etag so the next
+        sync cycle won't see a false-positive 'sp_changed'.  Returns None
+        on any error (caller should handle gracefully).
+        """
+        try:
+            endpoint = f"/lists/{list_guid}/items/{item_id}?$select=id"
+            result = self._graph_request(company, 'GET', endpoint)
+            return result.get('@odata.etag')
+        except Exception:
+            _logger.debug("Could not fetch etag for item %s", item_id, exc_info=True)
+            return None
+
     # =========================================================================
     # RESET WRITEBACK FIELDS
     # =========================================================================
@@ -952,12 +967,19 @@ class AgendaSyncEngine(models.AbstractModel):
 
         if not odoo_record:
             # New record - create in Odoo with de_DE language context
+            # Suppress mail.thread tracking — sync imports must never generate
+            # user-facing notifications ("Sie wurden … zugewiesen").
             vals = self._map_event_from_sp(company, sp_fields)
             vals['ms_id'] = sp_id
             vals['ms_version'] = sp_etag
             vals['ms_synced'] = True
             vals['ms_pushed_version'] = 0
-            odoo_record = Event.with_context(lang='de_DE').create(vals)
+            odoo_record = Event.with_context(
+                lang='de_DE',
+                mail_notrack=True,
+                tracking_disable=True,
+                mail_create_nolog=True,
+            ).create(vals)
 
             # Apply template defaults if event type has template parent
             self._apply_event_template(odoo_record)
@@ -1048,36 +1070,87 @@ class AgendaSyncEngine(models.AbstractModel):
             self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], writeback_data)
 
     def _import_event_from_sp(self, company, sp_item, odoo_record):
-        """Import SharePoint changes to Odoo event"""
+        """Import SharePoint changes to Odoo event.
+
+        Three defences against the notification-flood loop:
+        1. Diff-based write — only write fields whose values actually changed,
+           so mail.thread tracking never fires for unchanged Many2one fields.
+        2. mail_notrack / tracking_disable context — belt-and-suspenders
+           suppression of all tracking notifications during sync.
+        3. skip_version_increment — incoming sync must not bump the Odoo
+           version counter (that's reserved for user edits / Odoo→SP push).
+        4. oversion write-back only when content actually changed, and
+           ms_version updated to the post-writeback etag to break the
+           etag → false-positive loop.
+        """
         sp_fields = sp_item.get('fields', {})
         sp_etag = sp_item.get('@odata.etag', '')
 
         vals = self._map_event_from_sp(company, sp_fields)
-        vals['ms_version'] = sp_etag
 
-        # Write with de_DE language context for translated fields
-        odoo_record.with_context(lang='de_DE').write(vals)
-        
+        # --- Fix 1: diff-based write — filter out unchanged values ----------
+        filtered_vals = {}
+        for key, new_val in vals.items():
+            old_val = odoo_record[key]
+            # Many2one → compare IDs
+            if hasattr(old_val, 'id'):
+                old_cmp = old_val.id or False
+            # x2many (tag_ids) → keep as-is (command tuples can't be diffed)
+            elif hasattr(old_val, 'ids'):
+                filtered_vals[key] = new_val
+                continue
+            else:
+                old_cmp = old_val
+            if old_cmp != new_val:
+                filtered_vals[key] = new_val
+
+        # Always update the etag bookmark
+        filtered_vals['ms_version'] = sp_etag
+
+        has_real_changes = any(k != 'ms_version' for k in filtered_vals)
+
+        if has_real_changes:
+            _logger.info(
+                "Importing SP changes for event %s (ms_id=%s): %s",
+                odoo_record.id, sp_item['id'],
+                [k for k in filtered_vals if k != 'ms_version'],
+            )
+
+        # --- Fix 2 + Fix 4: suppress tracking, don't bump version ----------
+        odoo_record.with_context(
+            lang='de_DE',
+            skip_version_increment=True,
+            mail_notrack=True,
+            tracking_disable=True,
+            mail_create_nolog=True,
+        ).write(filtered_vals)
+
         # Parse schedule into schedule_data if we have schedule text
         self._parse_event_schedule(company, odoo_record)
 
-        # Init mode: write back empty o* fields on SP
-        sync_level = company.ms_agenda_sync_level or 'init'
-        writeback_data = {
-            'oversion': odoo_record.version,
-        }
-        # DISABLED: SP fields broken - waiting for MS Support
-        # if sync_level == 'init':
-        #     # Add content fields only if SP field is empty
-        #     if not sp_fields.get('oheading'):
-        #         writeback_data['oheading'] = odoo_record.name or ''
-        
-        self._patch_list_item(company, company.ms_list_veranstaltungen, sp_item['id'], writeback_data)
-
-        # Update pushed version
-        odoo_record.with_context(skip_version_increment=True).write({
-            'ms_pushed_version': odoo_record.version,
-        })
+        # --- Fix 3: only write back oversion when content changed ----------
+        if has_real_changes:
+            writeback_data = {
+                'oversion': odoo_record.version,
+            }
+            self._patch_list_item(
+                company, company.ms_list_veranstaltungen,
+                sp_item['id'], writeback_data,
+            )
+            # The PATCH changes SP's etag.  Re-fetch it so the next sync
+            # cycle won't see a false-positive "sp_changed".
+            new_etag = self._get_item_etag(
+                company, company.ms_list_veranstaltungen, sp_item['id'],
+            )
+            update_vals = {'ms_pushed_version': odoo_record.version}
+            if new_etag:
+                update_vals['ms_version'] = new_etag
+            odoo_record.with_context(skip_version_increment=True).write(update_vals)
+        else:
+            # No real changes — just update etag bookmark, no SP write-back
+            odoo_record.with_context(skip_version_increment=True).write({
+                'ms_pushed_version': odoo_record.version,
+            })
 
         return 'updated'
     
