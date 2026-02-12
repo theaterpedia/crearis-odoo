@@ -19,18 +19,17 @@ Designed for 6-12 week trial, then classify into:
     'depends': [
         'agenda_dasei',          # DASEi products, courses, registrations
         'account',               # Core accounting
-        'l10n_de_skr04',         # German chart of accounts (SKR04)
         'sale',                  # sale.order for wizard trigger
     ],
     'data': [
         'security/ir.model.access.csv',
         'data/product_category_data.xml',
-        'data/account_fiscal_position.xml',
         'data/product_defaults.xml',
         'wizard/installment_wizard_views.xml',
         'views/sale_order_views.xml',
         'views/res_config_settings_views.xml',
     ],
+    'post_init_hook': '_post_init_hook',
     'installable': True,
     'auto_install': False,
 }
