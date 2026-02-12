@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_installment_wizard,sale.installment.wizard,model_sale_installment_wizard,account.group_account_invoice,1,1,1,1

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Add "Ratenzahlung" button to confirmed sale orders -->
+    <record id="view_order_form_inherit_installment" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.installment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_cancel']" position="before">
+                <button name="action_open_installment_wizard"
+                        string="Ratenzahlung"
+                        type="object"
+                        class="btn-secondary"
+                        attrs="{'invisible': [('state', 'not in', ['sale', 'done'])]}"
+                        groups="account.group_account_invoice"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

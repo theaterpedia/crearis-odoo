@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sale_installment_wizard_form" model="ir.ui.view">
+        <field name="name">sale.installment.wizard.form</field>
+        <field name="model">sale.installment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Ratenzahlung erstellen">
+                <group>
+                    <group string="Auftrag">
+                        <field name="sale_order_id"/>
+                        <field name="partner_id"/>
+                        <field name="full_amount"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                    <group string="Raten-Parameter">
+                        <field name="rate_amount"/>
+                        <field name="first_month" widget="date"/>
+                        <field name="num_installments" readonly="1"/>
+                        <field name="last_rate_amount" readonly="1"/>
+                    </group>
+                </group>
+
+                <div attrs="{'invisible': [('crosses_year_boundary', '=', False)]}">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>Jahresgrenze!</strong>
+                        Der Ratenplan überschreitet eine Jahresgrenze.
+                        Bitte Rate oder Startmonat anpassen, damit alle Raten
+                        im selben Kalenderjahr liegen.
+                    </div>
+                </div>
+                <field name="crosses_year_boundary" invisible="1"/>
+
+                <separator string="Vorschau"/>
+                <field name="preview_html" readonly="1" nolabel="1"/>
+
+                <footer>
+                    <button name="action_create_installments"
+                            string="Rechnungen erstellen"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('crosses_year_boundary', '=', True)]}"/>
+                    <button string="Abbrechen" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sale_installment_wizard" model="ir.actions.act_window">
+        <field name="name">Ratenzahlung</field>
+        <field name="res_model">sale.installment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_sale_installment_wizard_form"/>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="context">{'default_sale_order_id': active_id}</field>
+    </record>
+
+</odoo>

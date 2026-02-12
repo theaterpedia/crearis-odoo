@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!--
+            Fiscal Position: Bildungsleistung §4 Nr. 21 UStG
+            
+            Applies to DASEi courses (private Bildungseinrichtung with
+            Landesbehörde certification). Maps standard 19% USt to
+            tax-exempt without input tax deduction.
+            
+            §4 Nr. 21 UStG: "die unmittelbar dem Schul- und Bildungszweck
+            dienenden Leistungen privater Schulen und anderer allgemeinbildender
+            oder berufsbildender Einrichtungen"
+        -->
+        <record id="fiscal_position_bildungsleistung" model="account.fiscal.position">
+            <field name="name">Bildungsleistung §4 Nr. 21 UStG</field>
+            <field name="auto_apply" eval="False"/>
+            <field name="note">Steuerbefreiung gem. §4 Nr. 21 UStG für Leistungen privater Bildungseinrichtungen mit Bescheinigung der zuständigen Landesbehörde.</field>
+            <field name="sequence">100</field>
+        </record>
+
+        <!-- Tax mapping: 19% USt → Steuerfreier Umsatz ohne Vorsteuerabzug -->
+        <record id="fiscal_position_bildungsleistung_tax_19" model="account.fiscal.position.tax">
+            <field name="position_id" ref="fiscal_position_bildungsleistung"/>
+            <field name="tax_src_id" ref="l10n_de_skr04.tax_ust_19_skr04"/>
+            <field name="tax_dest_id" ref="l10n_de_skr04.tax_free_skr04_ohne_vst"/>
+        </record>
+
+        <!-- Tax mapping: 7% USt → Steuerfreier Umsatz ohne Vorsteuerabzug -->
+        <record id="fiscal_position_bildungsleistung_tax_7" model="account.fiscal.position.tax">
+            <field name="position_id" ref="fiscal_position_bildungsleistung"/>
+            <field name="tax_src_id" ref="l10n_de_skr04.tax_ust_7_skr04"/>
+            <field name="tax_dest_id" ref="l10n_de_skr04.tax_free_skr04_ohne_vst"/>
+        </record>
+
+        <!-- Account mapping: 4400 (Erlöse 19%) → 4110 (Sonstige steuerfreie Umsätze) -->
+        <record id="fiscal_position_bildungsleistung_account" model="account.fiscal.position.account">
+            <field name="position_id" ref="fiscal_position_bildungsleistung"/>
+            <field name="account_src_id" ref="l10n_de_skr04.chart_skr04_4400"/>
+            <field name="account_dest_id" ref="l10n_de_skr04.chart_skr04_4110"/>
+        </record>
+
+        <!-- Account mapping: 4300 (Erlöse 7%) → 4110 (Sonstige steuerfreie Umsätze) -->
+        <record id="fiscal_position_bildungsleistung_account_7" model="account.fiscal.position.account">
+            <field name="position_id" ref="fiscal_position_bildungsleistung"/>
+            <field name="account_src_id" ref="l10n_de_skr04.chart_skr04_4300"/>
+            <field name="account_dest_id" ref="l10n_de_skr04.chart_skr04_4110"/>
+        </record>
+
+    </data>
+</odoo>
