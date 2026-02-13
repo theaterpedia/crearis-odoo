@@ -33,12 +33,27 @@ Path options:
 - nuernberg_day: Nürnberg events, Tageskurs schedule
 """
 
+import logging
+
 import graphene
 from graphql import GraphQLError
 from odoo.http import request
 from odoo import _
 
 from odoo.addons.graphql_theaterpedia.schemas.objects import Order, Partner
+
+_logger = logging.getLogger(__name__)
+
+
+def _get_client_ip():
+    """Get the real client IP, considering reverse-proxy headers."""
+    forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    real_ip = request.httprequest.headers.get('X-Real-IP')
+    if real_ip:
+        return real_ip.strip()
+    return request.httprequest.remote_addr
 
 
 class CheckoutContactInput(graphene.InputObjectType):
@@ -94,7 +109,25 @@ class Checkout(graphene.Mutation):
         env = info.context['env']
         website = env['website'].get_current_website()
         request.website = website
-        
+
+        # --- IP lock check ---
+        # When vsf_checkout_lock_ip is set (production), only requests from
+        # that IP or loopback are allowed.  Empty value = no restriction (dev).
+        ICP = env['ir.config_parameter'].sudo()
+        lock_ip = (ICP.get_param('vsf_checkout_lock_ip', '') or '').strip()
+        if lock_ip:
+            client_ip = _get_client_ip()
+            allowed = {lock_ip, '127.0.0.1', '::1'}
+            if client_ip not in allowed:
+                _logger.warning(
+                    "Checkout blocked: client_ip=%s not in allowed %s",
+                    client_ip, allowed,
+                )
+                return CheckoutResult(
+                    success=False,
+                    error=_('Checkout not available from this origin'),
+                )
+
         # Validate terms acceptance
         if not all([
             checkout.accept_terms,
@@ -253,8 +286,6 @@ class Checkout(graphene.Mutation):
                 mail_template.send_mail(order.id, force_send=False)  # Queue, don't block
         except Exception as e:
             # Log but don't fail checkout if email fails
-            import logging
-            _logger = logging.getLogger(__name__)
             _logger.warning("Checkout email send failed for order %s: %s", order.name, str(e))
         
         return CheckoutResult(

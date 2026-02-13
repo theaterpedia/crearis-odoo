@@ -27,4 +27,13 @@
         <field name="value">1920</field>
     </record>
 
+    <!-- Lock checkout mutation to requests originating from this IP.
+         Empty = no restriction (dev mode). Set to server IP in production
+         so only Nuxt (same machine) can call checkout. Loopback (127.0.0.1/::1)
+         is always allowed when a lock IP is configured. -->
+    <record id="vsf_checkout_lock_ip" model="ir.config_parameter">
+        <field name="key">vsf_checkout_lock_ip</field>
+        <field name="value"></field>
+    </record>
+
 </odoo>
