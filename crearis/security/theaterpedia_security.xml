@@ -25,15 +25,6 @@
              eval="[(4, ref('crearis_sync_domain'))]"/>
     </record>
 
-    <!-- Checkout Manager: receives manual-review checkout notifications -->
-    <record id="group_checkout_manager" model="res.groups">
-      <field name="name">Checkout Manager</field>
-      <field name="category_id"
-             ref="base.module_category_website_crearis"/>
-      <field name="implied_ids"
-             eval="[(4, ref('base.group_user'))]"/>
-    </record>
-
     <!-- Event Type Company Rule: Only show event types for current company or global (no company) -->
     <record id="event_type_company_rule" model="ir.rule">
       <field name="name">Event Type: Company Filter</field>

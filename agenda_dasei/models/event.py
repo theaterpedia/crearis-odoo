@@ -16,6 +16,70 @@ TEMPLATE_WEBSITE_MAP = {
     'D': 'dasei2',
 }
 
+# Checkout shortcode → domain_code routing for exec notifications
+# Used by CheckoutMutation to find the right domainuser execs.
+#
+# Rules (from product owner):
+#   - m18w, m18x, n18w, n18x → dasei1 (Einstiege, Module A format variants)
+#   - m17c, n17c             → dasei2 (Grundstufe, Module C)
+#   - z*                     → dasei3 (Aufbaustufe)
+#   - single events starting with 'a' (aa_, a0_, etc.) → dasei1
+#   - all other single events → dasei1  (fallback, simplest exec path)
+#   - MOD-A, MOD-B           → dasei1
+#   - MOD-C, MOD-D           → dasei2
+CHECKOUT_DOMAIN_MAP_FLAG = {
+    'w': 'dasei1',  # Tageskurs → Einstiege
+    'x': 'dasei1',  # Block → Einstiege
+    'a': 'dasei1',  # Module A
+    'b': 'dasei2',  # Module B → Grundstufe
+    'c': 'dasei2',  # Module C → Grundstufe
+    'd': 'dasei2',  # Module D → Grundstufe
+    'e': 'dasei3',  # Module E → Aufbaustufe
+    'f': 'dasei3',  # Module F → Aufbaustufe
+    'g': 'dasei3',  # Module G → Aufbaustufe
+}
+
+CHECKOUT_DOMAIN_MAP_PRODUCT = {
+    'MOD-A': 'dasei1',
+    'MOD-B': 'dasei1',
+    'MOD-C': 'dasei2',
+    'MOD-D': 'dasei2',
+}
+
+# Default domain for unresolved shortcodes
+CHECKOUT_DOMAIN_DEFAULT = 'dasei1'
+
+
+def resolve_checkout_domain_code(parsed_ref):
+    """Resolve domain_code for checkout notification routing.
+
+    Args:
+        parsed_ref: dict from _parse_product_ref() with keys:
+            location, flag, default_code, is_single_event, original_ref
+
+    Returns:
+        str: domain_code (e.g. 'dasei1', 'dasei2', 'dasei3')
+    """
+    # z-locations always go to dasei3 (Aufbaustufe)
+    if parsed_ref.get('location') == 'z':
+        return 'dasei3'
+
+    # Single events → dasei1 (all of them, including 'a*' prefix)
+    if parsed_ref.get('is_single_event'):
+        return 'dasei1'
+
+    # Course shortcodes: route by flag
+    flag = parsed_ref.get('flag')
+    if flag and flag in CHECKOUT_DOMAIN_MAP_FLAG:
+        return CHECKOUT_DOMAIN_MAP_FLAG[flag]
+
+    # Direct default_code (MOD-A etc.)
+    default_code = parsed_ref.get('default_code')
+    if default_code and default_code in CHECKOUT_DOMAIN_MAP_PRODUCT:
+        return CHECKOUT_DOMAIN_MAP_PRODUCT[default_code]
+
+    return CHECKOUT_DOMAIN_DEFAULT
+
 
 class EventEvent(models.Model):
     _inherit = 'event.event'

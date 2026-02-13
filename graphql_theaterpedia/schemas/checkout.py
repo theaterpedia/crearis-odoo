@@ -391,20 +391,36 @@ def _checkout_manual_review(env, checkout, parsed, partner):
 
 
 def _send_manager_notification(env, partner, parsed, contact, notes, full_course):
-    """Send checkout notification email to crearis.group_checkout_manager members."""
-    try:
-        group = env.ref('crearis.group_checkout_manager', raise_if_not_found=False)
-    except Exception:
-        group = None
+    """Send checkout notification to exec domainusers for the resolved domain.
 
-    if not group:
-        _logger.warning("group_checkout_manager not found — skipping manager notification")
+    Uses agenda_dasei.resolve_checkout_domain_code() to find the target
+    domain_code, then queries crearis.domainuser for exec-role users.
+    """
+    from odoo.addons.agenda_dasei.models.event import resolve_checkout_domain_code
+
+    domain_code = resolve_checkout_domain_code(parsed)
+
+    DomainUser = env['crearis.domainuser'].sudo()
+    exec_users = DomainUser.search([
+        ('domain_id.domain_code', '=', domain_code),
+        ('role', '=', 'exec'),
+        ('active', '=', True),
+    ])
+
+    if not exec_users:
+        _logger.warning(
+            "No exec domainusers for domain_code '%s' — skipping notification (ref=%s)",
+            domain_code, parsed['original_ref'],
+        )
         return
 
-    manager_emails = group.users.mapped('partner_id.email')
+    manager_emails = exec_users.mapped('user_id.partner_id.email')
     manager_emails = [e for e in manager_emails if e]
     if not manager_emails:
-        _logger.warning("No managers with email in group_checkout_manager")
+        _logger.warning(
+            "Exec domainusers for '%s' have no email — skipping notification",
+            domain_code,
+        )
         return
 
     ref = parsed['original_ref']
@@ -415,7 +431,7 @@ def _send_manager_notification(env, partner, parsed, contact, notes, full_course
     # Build body
     lines = [
         '<div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">',
-        '<h2 style="color: #8B4513;">Neue Anmeldung (manuelle Bearbeitung)</h2>',
+        f'<h2 style="color: #8B4513;">Neue Anmeldung — {domain_code} (manuelle Bearbeitung)</h2>',
         '<table style="border-collapse: collapse; width: 100%;">',
     ]
 
