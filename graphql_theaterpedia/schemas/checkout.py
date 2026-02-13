@@ -4,20 +4,30 @@
 """
 CheckoutMutation for DASEi checkout flow.
 
-Creates partner, sale.order, product.package.event.line(s), and event.registration(s) 
-from NUXT checkout form. Replaces old PowerAutomate/SharePoint integration.
+Two-tier checkout:
+- AUTO (location m/n + flag w/x): Creates partner, sale.order,
+  product.package.event.line(s), and event.registration(s).
+- MANUAL_REVIEW (z*, module letters c/d/e, single events): Creates partner,
+  sends customer confirmation + manager notification emails. No sale.order.
+
+ProductRef format: {location}{cohort}{flag}
+- location: m=München, n=Nürnberg, z=zentral
+- cohort: 15, 17, 18 (year code)
+- flag: w=Tageskurs, x=Block, a-g=module letters
+
+Also accepts: MOD-A style (backwards compat), ra_1373 style (single events).
 
 Usage:
     mutation {
         checkout(checkout: {
-            product_ref: "M18E",
-            path: "muenchen_block",
+            product_ref: "m18w",
             contact: { email: "...", vorname: "...", nachname: "..." },
             accept_terms: true,
             accept_privacy: true,
             accept_cancellation: true
         }) {
             success
+            checkoutType
             error
             order { id name }
             partner { id email }
@@ -25,15 +35,10 @@ Usage:
             packageLines
         }
     }
-
-Path options:
-- muenchen_block: München events, Blockseminar schedule
-- muenchen_day: München events, Tageskurs schedule
-- nuernberg_block: Nürnberg events, Blockseminar schedule
-- nuernberg_day: Nürnberg events, Tageskurs schedule
 """
 
 import logging
+import re
 
 import graphene
 from graphql import GraphQLError
@@ -56,6 +61,92 @@ def _get_client_ip():
     return request.httprequest.remote_addr
 
 
+# --- Product ref parsing ---
+
+# Flag → Odoo default_code mapping
+_FLAG_TO_PRODUCT = {
+    'w': 'MOD-A',  # Tageskurs format → Module A product
+    'x': 'MOD-B',  # Block format → Module B product (different price)
+    'a': 'MOD-A',
+    'b': 'MOD-B',
+    'c': 'MOD-C',
+    'd': 'MOD-D',
+    # 'e': future Module E product
+}
+
+# Location → city name for event filtering
+_LOCATION_TO_CITY = {
+    'm': 'München',
+    'n': 'Nürnberg',
+}
+
+# Auto tier: only Module A format variants (w/x) in real locations (m/n)
+_AUTO_FLAGS = {'w', 'x'}
+_AUTO_LOCATIONS = {'m', 'n'}
+
+
+def _parse_product_ref(product_ref):
+    """Parse shortcode into structured checkout info.
+
+    Supports three patterns:
+    1. Course shortcode: m18w, n18x, m17c, z15e
+    2. Single event: ra_1373, la_1560
+    3. Direct default_code: MOD-A (backwards compat)
+
+    Returns dict with keys:
+        location, cohort, flag, default_code, checkout_tier,
+        is_single_event, city_filter, original_ref
+    """
+    ref = (product_ref or '').strip().lower()
+
+    # Pattern 1: Course shortcode {location}{cohort}{flag}
+    match = re.match(r'^([mnz])(\d{2})([a-z])$', ref)
+    if match:
+        location, cohort, flag = match.groups()
+        default_code = _FLAG_TO_PRODUCT.get(flag)
+        city_filter = _LOCATION_TO_CITY.get(location)
+        tier = 'auto' if (location in _AUTO_LOCATIONS and flag in _AUTO_FLAGS) else 'manual_review'
+        return {
+            'location': location,
+            'cohort': cohort,
+            'flag': flag,
+            'default_code': default_code,
+            'checkout_tier': tier,
+            'is_single_event': False,
+            'city_filter': city_filter,
+            'original_ref': ref,
+        }
+
+    # Pattern 2: Single event {code}_{id}  e.g. ra_1373
+    match = re.match(r'^([a-z]{2})_(\d+)$', ref)
+    if match:
+        event_code, event_num = match.groups()
+        return {
+            'location': None,
+            'cohort': None,
+            'flag': None,
+            'default_code': None,
+            'checkout_tier': 'manual_review',
+            'is_single_event': True,
+            'city_filter': None,
+            'event_code': event_code,
+            'event_num': event_num,
+            'original_ref': ref,
+        }
+
+    # Pattern 3: Direct default_code (MOD-A, MOD-B etc.) — backwards compat
+    return {
+        'location': None,
+        'cohort': None,
+        'flag': None,
+        'default_code': ref.upper(),
+        'checkout_tier': 'auto',
+        'is_single_event': False,
+        'city_filter': None,
+        'original_ref': ref,
+    }
+
+
 class CheckoutContactInput(graphene.InputObjectType):
     """Contact information for checkout"""
     email = graphene.String(required=True)
@@ -70,22 +161,23 @@ class CheckoutContactInput(graphene.InputObjectType):
 class CheckoutInput(graphene.InputObjectType):
     """Input for checkout mutation"""
     product_ref = graphene.String(
-        required=True, 
-        description="Product default_code, e.g. 'M18E'"
+        required=True,
+        description="Shortcode (m18w, z15e, ra_1373) or default_code (MOD-A)"
     )
     contact = graphene.Field(CheckoutContactInput, required=True)
-    path = graphene.String(
-        description="Path choice for event prefilling: muenchen_block, muenchen_day, nuernberg_block, nuernberg_day"
-    )
     notes = graphene.String(description="Optional booking notes")
     accept_terms = graphene.Boolean(required=True)
     accept_privacy = graphene.Boolean(required=True)
     accept_cancellation = graphene.Boolean(required=True)
+    request_full_course = graphene.Boolean(
+        description="For z15e: interest in full Berufsabschluss (BuT)"
+    )
 
 
 class CheckoutResult(graphene.ObjectType):
     """Result of checkout mutation"""
     success = graphene.Boolean()
+    checkout_type = graphene.String(description="'auto' or 'manual_review'")
     order = graphene.Field(Order)
     partner = graphene.Field(Partner)
     registrations = graphene.List(graphene.Int, description="Created event.registration IDs")
@@ -95,9 +187,13 @@ class CheckoutResult(graphene.ObjectType):
 
 class Checkout(graphene.Mutation):
     """
-    Complete checkout: create partner, sale.order, and event registrations.
-    
-    Replaces the old PowerAutomate/SharePoint flow.
+    Two-tier checkout mutation.
+
+    AUTO tier (m/n + w/x): Creates partner → sale.order → package lines →
+    registrations → confirmation email.
+
+    MANUAL_REVIEW tier (z*, module flags, single events): Creates partner →
+    customer "received" email → manager notification. No sale.order.
     """
     class Arguments:
         checkout = CheckoutInput(required=True)
@@ -111,8 +207,6 @@ class Checkout(graphene.Mutation):
         request.website = website
 
         # --- IP lock check ---
-        # When vsf_checkout_lock_ip is set (production), only requests from
-        # that IP or loopback are allowed.  Empty value = no restriction (dev).
         ICP = env['ir.config_parameter'].sudo()
         lock_ip = (ICP.get_param('vsf_checkout_lock_ip', '') or '').strip()
         if lock_ip:
@@ -136,165 +230,314 @@ class Checkout(graphene.Mutation):
         ]):
             return CheckoutResult(
                 success=False,
-                error=_('All terms must be accepted')
+                error=_('All terms must be accepted'),
             )
-        
-        # Find product by default_code
-        Product = env['product.template'].sudo()
-        product = Product.search([
-            ('default_code', '=ilike', checkout.product_ref)
-        ], limit=1)
-        
-        if not product:
-            return CheckoutResult(
-                success=False,
-                error=_('Product not found: %s') % checkout.product_ref
-            )
-        
-        # Get or create partner
-        contact = checkout.contact
-        Partner = env['res.partner'].sudo()
-        partner = Partner.search([('email', '=ilike', contact.email)], limit=1)
-        
-        if not partner:
-            partner_vals = {
-                'name': f"{contact.vorname} {contact.nachname}".strip(),
-                'email': contact.email,
-            }
-            # Add partner_firstname fields if available
-            if hasattr(Partner, 'firstname'):
-                partner_vals['firstname'] = contact.vorname
-                partner_vals['lastname'] = contact.nachname
-            # Add optional fields
-            if contact.mobil:
-                partner_vals['phone'] = contact.mobil
-            if contact.strasse:
-                partner_vals['street'] = contact.strasse
-            if contact.plz:
-                partner_vals['zip'] = contact.plz
-            if contact.ort:
-                partner_vals['city'] = contact.ort
-                
-            partner = Partner.create(partner_vals)
-        
-        # Create sale order
-        SaleOrder = env['sale.order'].sudo()
-        order = SaleOrder.create({
-            'partner_id': partner.id,
-            'partner_invoice_id': partner.id,
-            'partner_shipping_id': partner.id,
-            'website_id': website.id,
-            'note': checkout.notes or '',
-            'order_line': [(0, 0, {
-                'product_id': product.product_variant_id.id,
-                'product_uom_qty': 1,
-                'price_unit': product.list_price,
-            })],
-        })
-        
-        # Confirm order (draft → sent)
-        order.action_quotation_sent()
-        
-        # Update product.package.event.line records if product is event_package
-        # NOTE: SaleOrderLine.create() already creates pending package lines via
-        # _create_package_event_lines() - we UPDATE those, not create new ones
-        registration_ids = []
-        package_line_ids = []
-        
-        if product.detailed_type == 'event_package':
-            PackageEventLine = env['product.package.event.line'].sudo()
-            EventEvent = env['event.event'].sudo()
-            EventRegistration = env['event.registration'].sudo()
-            
-            # Parse path for city filter
-            path = checkout.path or ''
-            city_filter = None
-            if 'muenchen' in path.lower():
-                city_filter = 'München'
-            elif 'nuernberg' in path.lower():
-                city_filter = 'Nürnberg'
-            
-            sale_order_line = order.order_line[0] if order.order_line else False
-            
-            # Get existing package lines (created by SaleOrderLine.create)
-            existing_lines = PackageEventLine.search([
-                ('sale_order_line_id', '=', sale_order_line.id if sale_order_line else False),
-                ('state', '=', 'pending'),
-            ])
-            
-            for package_line in existing_lines:
-                event_type = package_line.event_type_id
-                
-                # Build domain for finding events
-                domain = [
-                    ('event_type_id', '=', event_type.id),
-                    ('stage_id.pipe_end', '=', False),  # Not cancelled/done
-                ]
-                if product.package_date_start:
-                    domain.append(('date_begin', '>=', product.package_date_start))
-                if product.package_date_end:
-                    domain.append(('date_end', '<=', product.package_date_end))
-                
-                # Apply city filter from path
-                if city_filter:
-                    domain.append(('address_id.city', 'ilike', city_filter))
-                
-                # Find next available event
-                event = EventEvent.search(domain, order='date_begin asc', limit=1)
-                
-                if event:
-                    # Update package line with selected event
-                    update_vals = {
-                        'event_id': event.id,
-                        'state': 'selected',
-                    }
-                    
-                    # Create registration for selected event
-                    existing_reg = EventRegistration.search([
-                        ('partner_id', '=', partner.id),
-                        ('event_id', '=', event.id),
-                    ], limit=1)
-                    
-                    if not existing_reg:
-                        # NOTE: Don't pass sale_order_line_id here!
-                        # event_sale's EventRegistration.create() would overwrite our event_id
-                        # with so_line.event_id (which is False for event_package products).
-                        # We link via package_line.registration_id instead.
-                        registration = EventRegistration.create({
-                            'partner_id': partner.id,
-                            'event_id': event.id,
-                            'sale_order_id': order.id,
-                        })
-                        registration_ids.append(registration.id)
-                        update_vals['registration_id'] = registration.id
-                        update_vals['state'] = 'registered'
-                    else:
-                        # Link existing registration
-                        registration_ids.append(existing_reg.id)
-                        update_vals['registration_id'] = existing_reg.id
-                        update_vals['state'] = 'registered'
-                    
-                    package_line.write(update_vals)
-                
-                package_line_ids.append(package_line.id)
-        
-        # Send checkout confirmation email (T2)
-        # Template: agenda_dasei.mail_template_checkout_confirmation
-        try:
-            mail_template = env.ref('agenda_dasei.mail_template_checkout_confirmation', raise_if_not_found=False)
-            if mail_template:
-                mail_template.send_mail(order.id, force_send=False)  # Queue, don't block
-        except Exception as e:
-            # Log but don't fail checkout if email fails
-            _logger.warning("Checkout email send failed for order %s: %s", order.name, str(e))
-        
-        return CheckoutResult(
-            success=True,
-            order=order,
-            partner=partner,
-            registrations=registration_ids,
-            package_lines=package_line_ids,
+
+        # Parse product reference
+        parsed = _parse_product_ref(checkout.product_ref)
+        tier = parsed['checkout_tier']
+        _logger.info(
+            "Checkout: ref=%s tier=%s parsed=%s",
+            checkout.product_ref, tier, parsed,
         )
+
+        # Get or create partner (both tiers need this)
+        partner = _get_or_create_partner(env, checkout.contact)
+
+        # Store requestFullCourse flag on partner if applicable
+        if checkout.request_full_course and parsed.get('flag') == 'e':
+            note = "⚑ Interesse am vollständigen Berufsabschluss Theaterpädagogik (BuT)"
+            existing_comment = partner.comment or ''
+            if note not in existing_comment:
+                partner.sudo().write({
+                    'comment': (existing_comment + '\n' + note).strip(),
+                })
+            _logger.info("requestFullCourse set for partner %s", partner.id)
+
+        # --- Dispatch by tier ---
+        if tier == 'auto':
+            return _checkout_auto(env, website, checkout, parsed, partner)
+        else:
+            return _checkout_manual_review(env, checkout, parsed, partner)
+
+
+def _get_or_create_partner(env, contact):
+    """Find existing partner by email or create new one."""
+    Partner = env['res.partner'].sudo()
+    partner = Partner.search([('email', '=ilike', contact.email)], limit=1)
+
+    if not partner:
+        partner_vals = {
+            'name': f"{contact.vorname} {contact.nachname}".strip(),
+            'email': contact.email,
+        }
+        # Add partner_firstname fields if available
+        if hasattr(Partner, 'firstname'):
+            partner_vals['firstname'] = contact.vorname
+            partner_vals['lastname'] = contact.nachname
+        # Add optional fields
+        if contact.mobil:
+            partner_vals['phone'] = contact.mobil
+        if contact.strasse:
+            partner_vals['street'] = contact.strasse
+        if contact.plz:
+            partner_vals['zip'] = contact.plz
+        if contact.ort:
+            partner_vals['city'] = contact.ort
+
+        partner = Partner.create(partner_vals)
+    return partner
+
+
+def _checkout_auto(env, website, checkout, parsed, partner):
+    """AUTO tier: create sale.order + registrations + send confirmation."""
+    default_code = parsed.get('default_code')
+    if not default_code:
+        return CheckoutResult(
+            success=False,
+            checkout_type='auto',
+            error=_('No product mapping for ref: %s') % parsed['original_ref'],
+        )
+
+    Product = env['product.template'].sudo()
+    product = Product.search([
+        ('default_code', '=ilike', default_code),
+    ], limit=1)
+    if not product:
+        return CheckoutResult(
+            success=False,
+            checkout_type='auto',
+            error=_('Product not found: %s (from ref %s)') % (default_code, parsed['original_ref']),
+        )
+
+    # Create sale order
+    SaleOrder = env['sale.order'].sudo()
+    order = SaleOrder.create({
+        'partner_id': partner.id,
+        'partner_invoice_id': partner.id,
+        'partner_shipping_id': partner.id,
+        'website_id': website.id,
+        'note': checkout.notes or '',
+        'order_line': [(0, 0, {
+            'product_id': product.product_variant_id.id,
+            'product_uom_qty': 1,
+            'price_unit': product.list_price,
+        })],
+    })
+
+    # Confirm order (draft → sent)
+    order.action_quotation_sent()
+
+    # Update package event lines + create registrations
+    registration_ids = []
+    package_line_ids = []
+
+    if product.detailed_type == 'event_package':
+        registration_ids, package_line_ids = _process_package_lines(
+            env, order, product, partner, parsed.get('city_filter'),
+        )
+
+    # Send auto-checkout confirmation email (T2)
+    try:
+        tpl = env.ref('agenda_dasei.mail_template_checkout_confirmation', raise_if_not_found=False)
+        if tpl:
+            tpl.send_mail(order.id, force_send=False)
+    except Exception as e:
+        _logger.warning("Auto checkout email failed for order %s: %s", order.name, e)
+
+    return CheckoutResult(
+        success=True,
+        checkout_type='auto',
+        order=order,
+        partner=partner,
+        registrations=registration_ids,
+        package_lines=package_line_ids,
+    )
+
+
+def _checkout_manual_review(env, checkout, parsed, partner):
+    """MANUAL_REVIEW tier: send customer + manager emails, no sale.order."""
+
+    # Build context info for manager notification
+    contact = checkout.contact
+    ref = parsed['original_ref']
+    notes = checkout.notes or ''
+    full_course = getattr(checkout, 'request_full_course', False) or False
+
+    # --- Customer email: "We received your registration" ---
+    try:
+        tpl = env.ref('agenda_dasei.mail_template_checkout_review_customer', raise_if_not_found=False)
+        if tpl:
+            tpl.send_mail(partner.id, force_send=False)
+    except Exception as e:
+        _logger.warning("Manual review customer email failed for partner %s: %s", partner.id, e)
+
+    # --- Manager notification email ---
+    try:
+        _send_manager_notification(env, partner, parsed, contact, notes, full_course)
+    except Exception as e:
+        _logger.warning("Manager notification email failed for ref %s: %s", ref, e)
+
+    _logger.info(
+        "Manual review checkout completed: ref=%s partner=%s",
+        ref, partner.id,
+    )
+
+    return CheckoutResult(
+        success=True,
+        checkout_type='manual_review',
+        partner=partner,
+    )
+
+
+def _send_manager_notification(env, partner, parsed, contact, notes, full_course):
+    """Send checkout notification email to crearis.group_checkout_manager members."""
+    try:
+        group = env.ref('crearis.group_checkout_manager', raise_if_not_found=False)
+    except Exception:
+        group = None
+
+    if not group:
+        _logger.warning("group_checkout_manager not found — skipping manager notification")
+        return
+
+    manager_emails = group.users.mapped('partner_id.email')
+    manager_emails = [e for e in manager_emails if e]
+    if not manager_emails:
+        _logger.warning("No managers with email in group_checkout_manager")
+        return
+
+    ref = parsed['original_ref']
+    flag_info = parsed.get('flag') or 'single event'
+    location = parsed.get('location') or '–'
+    is_single = parsed.get('is_single_event', False)
+
+    # Build body
+    lines = [
+        '<div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">',
+        '<h2 style="color: #8B4513;">Neue Anmeldung (manuelle Bearbeitung)</h2>',
+        '<table style="border-collapse: collapse; width: 100%;">',
+    ]
+
+    def _row(label, value):
+        return (
+            f'<tr><td style="padding: 4px 8px; font-weight: bold; vertical-align: top;">'
+            f'{label}</td><td style="padding: 4px 8px;">{value}</td></tr>'
+        )
+
+    lines.append(_row('Produkt-Ref', ref))
+    if is_single:
+        lines.append(_row('Typ', 'Einzelveranstaltung'))
+        lines.append(_row('Event-Code', parsed.get('event_code', '–')))
+        lines.append(_row('Event-Nr', parsed.get('event_num', '–')))
+    else:
+        lines.append(_row('Typ', 'Kurs'))
+        lines.append(_row('Standort', location.upper()))
+        lines.append(_row('Flag', flag_info))
+
+    lines.append(_row('Name', f"{contact.vorname} {contact.nachname}"))
+    lines.append(_row('E-Mail', contact.email))
+    if contact.mobil:
+        lines.append(_row('Mobil', contact.mobil))
+    if contact.strasse:
+        lines.append(_row('Adresse', f"{contact.strasse}, {contact.plz or ''} {contact.ort or ''}"))
+    if notes:
+        lines.append(_row('Anmerkungen', notes))
+    if full_course:
+        lines.append(_row('⚑ Berufsabschluss', 'Interesse am vollständigen BuT'))
+
+    lines.append('</table>')
+    lines.append(
+        f'<p style="margin-top: 15px;">Partner in Odoo: '
+        f'<a href="/web#id={partner.id}&model=res.partner&view_type=form">'
+        f'{partner.name}</a> (ID {partner.id})</p>'
+    )
+    lines.append('</div>')
+
+    body_html = '\n'.join(lines)
+
+    MailMail = env['mail.mail'].sudo()
+    MailMail.create({
+        'subject': f'[Checkout] Neue Anmeldung: {ref} — {contact.vorname} {contact.nachname}',
+        'email_from': 'service@dasei.eu',
+        'email_to': ', '.join(manager_emails),
+        'body_html': body_html,
+        'auto_delete': False,
+    })
+
+
+def _process_package_lines(env, order, product, partner, city_filter):
+    """Update package event lines and create registrations.
+
+    Returns (registration_ids, package_line_ids).
+    """
+    PackageEventLine = env['product.package.event.line'].sudo()
+    EventEvent = env['event.event'].sudo()
+    EventRegistration = env['event.registration'].sudo()
+
+    sale_order_line = order.order_line[0] if order.order_line else False
+
+    existing_lines = PackageEventLine.search([
+        ('sale_order_line_id', '=', sale_order_line.id if sale_order_line else False),
+        ('state', '=', 'pending'),
+    ])
+
+    registration_ids = []
+    package_line_ids = []
+
+    for package_line in existing_lines:
+        event_type = package_line.event_type_id
+
+        # Build domain for finding events
+        domain = [
+            ('event_type_id', '=', event_type.id),
+            ('stage_id.pipe_end', '=', False),
+        ]
+        if product.package_date_start:
+            domain.append(('date_begin', '>=', product.package_date_start))
+        if product.package_date_end:
+            domain.append(('date_end', '<=', product.package_date_end))
+
+        # Apply city filter from parsed shortcode
+        if city_filter:
+            domain.append(('address_id.city', 'ilike', city_filter))
+
+        event = EventEvent.search(domain, order='date_begin asc', limit=1)
+
+        if event:
+            update_vals = {
+                'event_id': event.id,
+                'state': 'selected',
+            }
+
+            existing_reg = EventRegistration.search([
+                ('partner_id', '=', partner.id),
+                ('event_id', '=', event.id),
+            ], limit=1)
+
+            if not existing_reg:
+                # NOTE: Don't pass sale_order_line_id here!
+                # event_sale's EventRegistration.create() would overwrite our
+                # event_id with so_line.event_id (which is False for
+                # event_package products).
+                registration = EventRegistration.create({
+                    'partner_id': partner.id,
+                    'event_id': event.id,
+                    'sale_order_id': order.id,
+                })
+                registration_ids.append(registration.id)
+                update_vals['registration_id'] = registration.id
+                update_vals['state'] = 'registered'
+            else:
+                registration_ids.append(existing_reg.id)
+                update_vals['registration_id'] = existing_reg.id
+                update_vals['state'] = 'registered'
+
+            package_line.write(update_vals)
+
+        package_line_ids.append(package_line.id)
+
+    return registration_ids, package_line_ids
 
 
 class CheckoutMutation(graphene.ObjectType):

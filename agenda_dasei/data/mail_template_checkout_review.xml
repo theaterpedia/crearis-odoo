@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    Manual Review Checkout Email Templates
+    Triggered by: CheckoutMutation for non-auto-tier checkouts
+    Customer receives "received" confirmation, managers get notification.
+-->
+<odoo>
+    <data noupdate="1">
+
+        <!-- Customer: "We received your registration" -->
+        <record id="mail_template_checkout_review_customer" model="mail.template">
+            <field name="name">DASEi: Anmeldung erhalten (Manual Review)</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="email_from">service@dasei.eu</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="subject">Deine Anmeldung bei DAS Ei — wir melden uns!</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+    
+    <p>Liebe/r <t t-out="object.name or 'Teilnehmer/in'"/>,</p>
+    
+    <p>vielen Dank für deine Anmeldung!</p>
+    
+    <p>Wir haben deine Daten erhalten und werden deine Anmeldung 
+    <strong>innerhalb von 1–2 Werktagen</strong> bearbeiten.</p>
+    
+    <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid #8B4513;">
+        <h3 style="margin-top: 0; color: #8B4513;">WIE GEHT ES WEITER?</h3>
+        <p>Du erhältst in Kürze eine persönliche Bestätigung mit allen Details 
+        zu deinem Kurs, den Zahlungsmodalitäten und den nächsten Schritten.</p>
+        <p>Bei Fragen kannst du dich jederzeit an uns wenden.</p>
+    </div>
+
+    <!-- CONTACT -->
+    <div style="margin: 20px 0; padding: 15px; border-top: 1px solid #ddd;">
+        <p><strong>FRAGEN?</strong></p>
+        <p>
+            📧 <a href="mailto:service@dasei.eu">service@dasei.eu</a><br/>
+            📞 089 / 123 456 78 (Mo–Fr 10–16 Uhr)
+        </p>
+    </div>
+    
+    <p>Wir freuen uns auf dich!</p>
+    
+    <p>Herzliche Grüße,<br/>
+    Das Team von DAS Ei</p>
+    
+    <!-- FOOTER -->
+    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+        <p>
+            DAS Ei — theaterpädagogisches Institut Bayern e.V.<br/>
+            <a href="https://dasei.eu" style="color: #8B4513;">dasei.eu</a> | 
+            <a href="https://dasei.eu/impressum" style="color: #8B4513;">Impressum</a> | 
+            <a href="https://dasei.eu/datenschutz" style="color: #8B4513;">Datenschutz</a>
+        </p>
+    </div>
+    
+</div>
+]]></field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+    </data>
+</odoo>
