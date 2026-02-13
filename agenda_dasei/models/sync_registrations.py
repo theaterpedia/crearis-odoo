@@ -234,14 +234,29 @@ class AgendaSyncRegistrations(models.AbstractModel):
         - UE: Units attended
         - Bemerkung: Notes
         """
-        # Map status
-        status_id = sp_fields.get('StatusLookupId')
-        state = 'draft'
-        if status_id:
-            state = STATUS_TO_REGISTRATION_STATE.get(int(status_id), 'draft')
-
-        return {
-            'state': state,
+        vals = {
             'units': sp_fields.get('UE', 0) or 0,
             'internal_notes': sp_fields.get('Bemerkung', ''),
         }
+
+        # Map status — only set if we have a known mapping
+        # Unknown StatusLookupIds are logged and state is NOT overwritten
+        status_id = sp_fields.get('StatusLookupId')
+        if status_id is not None:
+            status_int = int(status_id)
+            state = STATUS_TO_REGISTRATION_STATE.get(status_int)
+            if state:
+                vals['state'] = state
+            else:
+                _logger.warning(
+                    "Unmapped StatusLookupId=%s for registration SP %s (event %s, partner %s) — state NOT updated",
+                    status_int,
+                    sp_fields.get('id', '?'),
+                    event.id if event else '?',
+                    partner.name if partner else '?',
+                )
+        else:
+            # No StatusLookupId at all — default to draft for new records only
+            vals['state'] = 'draft'
+
+        return vals

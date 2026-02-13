@@ -103,7 +103,7 @@ class EventEvent(models.Model):
     )
 
     teasertext = fields.Text('Teasertext', translate=True, default='')
-    schedule = fields.Text('Schedule', translate=True, default='')
+    schedule = fields.Text('Schedule', translate=False, default='')
     edit_mode = fields.Selection(
         string='Type',
         selection=[('locked', 'Locked'), ('blocks', 'edit blocks'), ('content', 'edit content'), ('full', 'edit all')],
