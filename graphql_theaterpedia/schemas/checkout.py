@@ -341,7 +341,7 @@ def _checkout_auto(env, website, checkout, parsed, partner):
     try:
         tpl = env.ref('agenda_dasei.mail_template_checkout_confirmation', raise_if_not_found=False)
         if tpl:
-            tpl.send_mail(order.id, force_send=False)
+            tpl.sudo().send_mail(order.id, force_send=False)
     except Exception as e:
         _logger.warning("Auto checkout email failed for order %s: %s", order.name, e)
 
@@ -364,33 +364,87 @@ def _checkout_manual_review(env, checkout, parsed, partner):
     notes = checkout.notes or ''
     full_course = getattr(checkout, 'request_full_course', False) or False
 
+    # --- Look up event data for single events ---
+    event = None
+    event_info = {}
+    registration = None
+    if parsed.get('is_single_event') and parsed.get('event_num'):
+        try:
+            event_id = int(parsed['event_num'])
+            event = env['event.event'].sudo().browse(event_id)
+            if event.exists():
+                event_info = {
+                    'event_id': event.id,
+                    'event_name': event.name or '',
+                    'event_code': parsed.get('event_code', '').upper(),
+                    'event_start': event.date_begin.strftime('%d.%m.%Y %H:%M') if event.date_begin else '',
+                    'event_start_date': event.date_begin.strftime('%d.%m.%Y') if event.date_begin else '',
+                }
+                
+                # --- Create event registration (draft state, no confirmation sent) ---
+                try:
+                    EventRegistration = env['event.registration'].sudo()
+                    registration = EventRegistration.create({
+                        'event_id': event.id,
+                        'partner_id': partner.id,
+                        'name': partner.name,
+                        'email': partner.email,
+                        'phone': partner.phone or '',
+                        'mobile': partner.mobile or '',
+                        'state': 'draft',  # Unconfirmed - staff will manually confirm
+                    })
+                    event_info['registration_id'] = registration.id
+                    _logger.info(
+                        "Created draft registration %s for event %s partner %s",
+                        registration.id, event.id, partner.id
+                    )
+                except Exception as e:
+                    _logger.warning("Failed to create registration for event %s: %s", event.id, e)
+                    
+        except (ValueError, Exception) as e:
+            _logger.warning("Could not look up event for ref %s: %s", ref, e)
+
+    # --- Get company phone ---
+    company = env['res.company'].sudo().browse(2)  # DASEi company
+    company_phone = company.phone or '+49 911 7808476'
+    # Clean up phone format
+    if company_phone.startswith("'"):
+        company_phone = company_phone[1:]
+
     # --- Customer email: "We received your registration" ---
     try:
         tpl = env.ref('agenda_dasei.mail_template_checkout_review_customer', raise_if_not_found=False)
         if tpl:
-            tpl.send_mail(partner.id, force_send=False)
+            # Pass event info and company phone as context for template rendering
+            ctx = {
+                **event_info,
+                'company_phone': company_phone,
+                'product_ref': ref,
+            }
+            tpl.sudo().with_context(ctx).send_mail(partner.id, force_send=False)
     except Exception as e:
         _logger.warning("Manual review customer email failed for partner %s: %s", partner.id, e)
 
     # --- Manager notification email ---
     try:
-        _send_manager_notification(env, partner, parsed, contact, notes, full_course)
+        _send_manager_notification(env, partner, parsed, contact, notes, full_course, event_info, company_phone)
     except Exception as e:
         _logger.warning("Manager notification email failed for ref %s: %s", ref, e)
 
     _logger.info(
-        "Manual review checkout completed: ref=%s partner=%s",
-        ref, partner.id,
+        "Manual review checkout completed: ref=%s partner=%s registration=%s",
+        ref, partner.id, registration.id if registration else None,
     )
 
     return CheckoutResult(
         success=True,
         checkout_type='manual_review',
         partner=partner,
+        registrations=[registration.id] if registration else [],
     )
 
 
-def _send_manager_notification(env, partner, parsed, contact, notes, full_course):
+def _send_manager_notification(env, partner, parsed, contact, notes, full_course, event_info=None, company_phone=None):
     """Send checkout notification to exec domainusers for the resolved domain.
 
     Uses agenda_dasei.resolve_checkout_domain_code() to find the target
@@ -398,6 +452,7 @@ def _send_manager_notification(env, partner, parsed, contact, notes, full_course
     """
     from odoo.addons.agenda_dasei.models.event import resolve_checkout_domain_code
 
+    event_info = event_info or {}
     domain_code = resolve_checkout_domain_code(parsed)
 
     DomainUser = env['crearis.domainuser'].sudo()
@@ -442,6 +497,11 @@ def _send_manager_notification(env, partner, parsed, contact, notes, full_course
         )
 
     lines.append(_row('Produkt-Ref', ref))
+    # Add event details if available
+    if event_info.get('event_name'):
+        lines.append(_row('Veranstaltung', event_info['event_name']))
+    if event_info.get('event_start'):
+        lines.append(_row('Start', event_info['event_start']))
     if is_single:
         lines.append(_row('Typ', 'Einzelveranstaltung'))
         lines.append(_row('Event-Code', parsed.get('event_code', '–')))

@@ -21,6 +21,18 @@
     
     <p>vielen Dank für deine Anmeldung!</p>
     
+    <!-- Event details if available -->
+    <t t-if="ctx.get('event_name')">
+    <div style="background: #fff8f0; padding: 15px; margin: 20px 0; border-left: 4px solid #8B4513;">
+        <h3 style="margin-top: 0; color: #8B4513;">DEINE ANMELDUNG</h3>
+        <p style="margin: 5px 0;"><strong>Veranstaltung:</strong> <t t-out="ctx.get('event_name')"/></p>
+        <t t-if="ctx.get('event_start_date')">
+        <p style="margin: 5px 0;"><strong>Start:</strong> <t t-out="ctx.get('event_start_date')"/></p>
+        </t>
+        <p style="margin: 5px 0; font-size: 12px; color: #666;">Referenz: <t t-out="ctx.get('product_ref', '')"/></p>
+    </div>
+    </t>
+    
     <p>Wir haben deine Daten erhalten und werden deine Anmeldung 
     <strong>innerhalb von 1–2 Werktagen</strong> bearbeiten.</p>
     
@@ -36,7 +48,7 @@
         <p><strong>FRAGEN?</strong></p>
         <p>
             📧 <a href="mailto:service@dasei.eu">service@dasei.eu</a><br/>
-            📞 089 / 123 456 78 (Mo–Fr 10–16 Uhr)
+            📞 <t t-out="ctx.get('company_phone', '+49 911 7808476')"/> (Mo–Fr 10–16 Uhr)
         </p>
     </div>
     
