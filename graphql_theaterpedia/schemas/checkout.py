@@ -87,6 +87,10 @@ _BUNDLE_TO_PRODUCTS = {
     'z': ['MOD-E', 'MOD-AUFBAU-R', 'MOD-AUFBAU-P'],  # Full Aufbau Profil R
 }
 
+# Consultation shortcodes (no product, manual_review only)
+# z15v = "Beraten & Ausprobieren" (Rike 3b flow) — contact-only, no sale.order
+_CONTACT_ONLY_FLAGS = {'v'}  # Only for z-location
+
 # Location → city name for event filtering
 _LOCATION_TO_CITY = {
     'm': 'München',
@@ -102,23 +106,40 @@ _AUTO_LOCATIONS = {'m', 'n'}
 def _parse_product_ref(product_ref):
     """Parse shortcode into structured checkout info.
 
-    Supports four patterns:
+    Supports five patterns:
     1. Course shortcode: m18w, n18x, m17c, z15e, z15t, z15r, z15p
     2. Bundle shortcode: z15y (Full Aufbau T), z15z (Full Aufbau R)
-    3. Single event: ra_1373, la_1560
-    4. Direct default_code: MOD-A (backwards compat)
+    3. Contact-only shortcode: z15v (Beratung, no product)
+    4. Single event: ra_1373, la_1560
+    5. Direct default_code: MOD-A (backwards compat)
 
     Returns dict with keys:
         location, cohort, flag, default_code, default_codes (for bundles),
-        checkout_tier, is_single_event, is_bundle, city_filter, original_ref
+        checkout_tier, is_single_event, is_bundle, is_contact_only, city_filter, original_ref
     """
     ref = (product_ref or '').strip().lower()
 
-    # Pattern 1+2: Course/Bundle shortcode {location}{cohort}{flag}
+    # Pattern 1+2+3: Course/Bundle/Contact-only shortcode {location}{cohort}{flag}
     match = re.match(r'^([mnz])(\d{2})([a-z])$', ref)
     if match:
         location, cohort, flag = match.groups()
         city_filter = _LOCATION_TO_CITY.get(location)
+
+        # Check if this is a contact-only shortcode (z15v = "Beraten & Ausprobieren")
+        if location == 'z' and flag in _CONTACT_ONLY_FLAGS:
+            return {
+                'location': location,
+                'cohort': cohort,
+                'flag': flag,
+                'default_code': None,  # No product
+                'default_codes': None,
+                'checkout_tier': 'manual_review',  # Contact-only always manual
+                'is_single_event': False,
+                'is_bundle': False,
+                'is_contact_only': True,  # Tier 3: partner + notification only
+                'city_filter': city_filter,
+                'original_ref': ref,
+            }
 
         # Check if this is a bundle shortcode (y/z)
         if flag in _BUNDLE_TO_PRODUCTS:
