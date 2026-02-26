@@ -442,8 +442,9 @@ def _checkout_manual_review(env, checkout, parsed, partner):
         except (ValueError, Exception) as e:
             _logger.warning("Could not look up event for ref %s: %s", ref, e)
 
-    # --- Get company phone ---
-    company = env['res.company'].sudo().browse(2)  # DASEi company
+    # --- Get company phone from website's company ---
+    website = env['website'].get_current_website()
+    company = website.company_id or env.company
     company_phone = company.phone or '+49 911 7808476'
     # Clean up phone format
     if company_phone.startswith("'"):
