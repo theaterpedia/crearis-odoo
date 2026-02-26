@@ -151,8 +151,9 @@ def _parse_product_ref(product_ref):
             'original_ref': ref,
         }
 
-    # Pattern 3: Single event {code}_{id}  e.g. ra_1373
-    match = re.match(r'^([a-z]{2})_(\d+)$', ref)
+    # Pattern 3: Single event {code}_{id}  e.g. ra_1373, t0_50, x1_45
+    # Note: [a-z0-9] to handle event types with digits (T0, R0, X1)
+    match = re.match(r'^([a-z0-9]{2})_(\d+)$', ref)
     if match:
         event_code, event_num = match.groups()
         return {
