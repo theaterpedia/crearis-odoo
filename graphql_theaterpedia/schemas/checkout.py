@@ -64,20 +64,34 @@ def _get_client_ip():
 # --- Product ref parsing ---
 
 # Flag → Odoo default_code mapping
+# For bundles (y/z), see _BUNDLE_TO_PRODUCTS below
 _FLAG_TO_PRODUCT = {
+    # Grundlagen (Module A-D)
     'w': 'MOD-A',  # Tageskurs format → Module A product
     'x': 'MOD-B',  # Block format → Module B product (different price)
     'a': 'MOD-A',
     'b': 'MOD-B',
     'c': 'MOD-C',
     'd': 'MOD-D',
-    # 'e': future Module E product
+    # Aufbaustufe (Module E+)
+    'e': 'MOD-E',           # Vertiefung (Lenka checkout)
+    't': 'MOD-AUFBAU-T',    # Profil Theatrales Lernen
+    'r': 'MOD-AUFBAU-R',    # Profil Performance & Interkulturell
+    'p': 'MOD-AUFBAU-P',    # Berufsabschluss: Kolloquium & Praxis
+}
+
+# Bundle shortcodes → multiple products (Mattis/Rike full Aufbau checkout)
+# These resolve to 3 products + loyalty discount applied at cart level
+_BUNDLE_TO_PRODUCTS = {
+    'y': ['MOD-E', 'MOD-AUFBAU-T', 'MOD-AUFBAU-P'],  # Full Aufbau Profil T
+    'z': ['MOD-E', 'MOD-AUFBAU-R', 'MOD-AUFBAU-P'],  # Full Aufbau Profil R
 }
 
 # Location → city name for event filtering
 _LOCATION_TO_CITY = {
     'm': 'München',
     'n': 'Nürnberg',
+    'z': None,  # zentral (Aufbaustufe) - no city filter
 }
 
 # Auto tier: only Module A format variants (w/x) in real locations (m/n)
@@ -88,36 +102,56 @@ _AUTO_LOCATIONS = {'m', 'n'}
 def _parse_product_ref(product_ref):
     """Parse shortcode into structured checkout info.
 
-    Supports three patterns:
-    1. Course shortcode: m18w, n18x, m17c, z15e
-    2. Single event: ra_1373, la_1560
-    3. Direct default_code: MOD-A (backwards compat)
+    Supports four patterns:
+    1. Course shortcode: m18w, n18x, m17c, z15e, z15t, z15r, z15p
+    2. Bundle shortcode: z15y (Full Aufbau T), z15z (Full Aufbau R)
+    3. Single event: ra_1373, la_1560
+    4. Direct default_code: MOD-A (backwards compat)
 
     Returns dict with keys:
-        location, cohort, flag, default_code, checkout_tier,
-        is_single_event, city_filter, original_ref
+        location, cohort, flag, default_code, default_codes (for bundles),
+        checkout_tier, is_single_event, is_bundle, city_filter, original_ref
     """
     ref = (product_ref or '').strip().lower()
 
-    # Pattern 1: Course shortcode {location}{cohort}{flag}
+    # Pattern 1+2: Course/Bundle shortcode {location}{cohort}{flag}
     match = re.match(r'^([mnz])(\d{2})([a-z])$', ref)
     if match:
         location, cohort, flag = match.groups()
-        default_code = _FLAG_TO_PRODUCT.get(flag)
         city_filter = _LOCATION_TO_CITY.get(location)
+
+        # Check if this is a bundle shortcode (y/z)
+        if flag in _BUNDLE_TO_PRODUCTS:
+            return {
+                'location': location,
+                'cohort': cohort,
+                'flag': flag,
+                'default_code': None,  # No single product
+                'default_codes': _BUNDLE_TO_PRODUCTS[flag],  # Multiple products
+                'checkout_tier': 'manual_review',  # Bundles need review
+                'is_single_event': False,
+                'is_bundle': True,
+                'city_filter': city_filter,
+                'original_ref': ref,
+            }
+
+        # Regular product shortcode
+        default_code = _FLAG_TO_PRODUCT.get(flag)
         tier = 'auto' if (location in _AUTO_LOCATIONS and flag in _AUTO_FLAGS) else 'manual_review'
         return {
             'location': location,
             'cohort': cohort,
             'flag': flag,
             'default_code': default_code,
+            'default_codes': None,
             'checkout_tier': tier,
             'is_single_event': False,
+            'is_bundle': False,
             'city_filter': city_filter,
             'original_ref': ref,
         }
 
-    # Pattern 2: Single event {code}_{id}  e.g. ra_1373
+    # Pattern 3: Single event {code}_{id}  e.g. ra_1373
     match = re.match(r'^([a-z]{2})_(\d+)$', ref)
     if match:
         event_code, event_num = match.groups()
@@ -126,22 +160,26 @@ def _parse_product_ref(product_ref):
             'cohort': None,
             'flag': None,
             'default_code': None,
+            'default_codes': None,
             'checkout_tier': 'manual_review',
             'is_single_event': True,
+            'is_bundle': False,
             'city_filter': None,
             'event_code': event_code,
             'event_num': event_num,
             'original_ref': ref,
         }
 
-    # Pattern 3: Direct default_code (MOD-A, MOD-B etc.) — backwards compat
+    # Pattern 4: Direct default_code (MOD-A, MOD-B etc.) — backwards compat
     return {
         'location': None,
         'cohort': None,
         'flag': None,
         'default_code': ref.upper(),
+        'default_codes': None,
         'checkout_tier': 'auto',
         'is_single_event': False,
+        'is_bundle': False,
         'city_filter': None,
         'original_ref': ref,
     }

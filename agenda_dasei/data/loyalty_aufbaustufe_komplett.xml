@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Aufbaustufe Komplett Promotion
+            When customer buys MOD-E + MOD-AUFBAU-T/R + MOD-AUFBAU-P together: EUR 440 discount
+            (2 Raten = 2 x EUR 220 = EUR 440 savings for full course commitment)
+
+            Related SAC: [[02-26-SAC_aufbaustufe_checkout]]
+            Pattern from: architecture_checkout_komplett_paket.md
+        -->
+
+        <!-- Product tag for Aufbaustufe continuation modules -->
+        <record id="product_tag_aufbaustufe_continuation" model="product.tag">
+            <field name="name">Aufbaustufe Continuation (E/T/R/P)</field>
+        </record>
+
+        <!-- Loyalty program for full Aufbaustufe discount -->
+        <record id="loyalty_aufbaustufe_komplett" model="loyalty.program">
+            <field name="name">Aufbaustufe Weiterbildung Komplett</field>
+            <field name="program_type">promotion</field>
+            <field name="trigger">auto</field>
+            <field name="applies_on">current</field>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Rule: 3 Aufbaustufe modules required (E + T/R + P) -->
+        <record id="loyalty_aufbaustufe_komplett_rule" model="loyalty.rule">
+            <field name="program_id" ref="loyalty_aufbaustufe_komplett"/>
+            <field name="minimum_qty">3</field>
+            <field name="product_tag_id" ref="product_tag_aufbaustufe_continuation"/>
+        </record>
+
+        <!-- Reward: EUR 440 fixed discount (2 x EUR 220) -->
+        <record id="loyalty_aufbaustufe_komplett_reward" model="loyalty.reward">
+            <field name="program_id" ref="loyalty_aufbaustufe_komplett"/>
+            <field name="reward_type">discount</field>
+            <field name="discount">440</field>
+            <field name="discount_mode">per_order</field>
+            <field name="discount_applicability">order</field>
+        </record>
+    </data>
+</odoo>

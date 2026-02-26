@@ -36,7 +36,8 @@ Features:
         'portal',                 # For customer portal
         'product',
         'event',
-        'website_event',  # For website event templates
+        'website_event',          # For website event templates
+        'website_sale_loyalty',   # For Aufbaustufe Komplett bundle discount
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -46,6 +47,7 @@ Features:
         'data/product_template_data.xml',  # Grundkurs module products (A, B, C, D)
         'data/product_defaults.xml',  # Assign Bildungsleistungen category to course products
         'data/event_tag_data.xml',  # Location type tags (online, on_request_*, tbd)
+        'data/loyalty_aufbaustufe_komplett.xml',  # SAC: Aufbaustufe bundle discount
         'data/mail_template_checkout.xml',  # T2: Checkout confirmation email template
         'data/mail_template_checkout_review.xml',  # Manual review tier email template
         'views/agenda_dasei_menu.xml',  # DA1: DASEi submenu structure
