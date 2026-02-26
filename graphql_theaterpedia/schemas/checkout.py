@@ -87,6 +87,25 @@ _BUNDLE_TO_PRODUCTS = {
     'z': ['MOD-E', 'MOD-AUFBAU-R', 'MOD-AUFBAU-P'],  # Full Aufbau Profil R
 }
 
+# Shortcode flag → human-readable title for emails
+_FLAG_TO_TITLE = {
+    # Grundlagen
+    'w': 'Grundlagenbildung Theaterpädagogik (Tageskurs)',
+    'x': 'Grundlagenbildung Theaterpädagogik (Blockkurs)',
+    'a': 'Modul A: Einstiege ins Theaterspiel',
+    'b': 'Modul B: Eine Bühne voll Erfahrung',
+    'c': 'Modul C: Szenische Welten',
+    'd': 'Modul D: Präsentation',
+    # Aufbaustufe
+    'e': 'Aufbaustufe Teil 1: Modul E – Vertiefung',
+    't': 'Aufbaustufe Profil: Theatrales Lernen',
+    'r': 'Aufbaustufe Profil: Performance & Interkulturell',
+    'p': 'Aufbaustufe Abschluss: Berufsabschluss (BuT)',
+    'y': 'Aufbaustufe komplett: Profil Theatrales Lernen',
+    'z': 'Aufbaustufe komplett: Profil Performance & Interkulturell',
+    'v': 'Beratung: Aufbaustufe / Beraten & Ausprobieren',
+}
+
 # Location → city name for event filtering
 _LOCATION_TO_CITY = {
     'm': 'München',
@@ -403,6 +422,24 @@ def _checkout_manual_review(env, checkout, parsed, partner):
     notes = checkout.notes or ''
     full_course = getattr(checkout, 'request_full_course', False) or False
 
+    # --- Build product/bundle info for non-single-event checkouts ---
+    product_info = {}
+    if not parsed.get('is_single_event') and parsed.get('flag'):
+        flag = parsed['flag']
+        title = _FLAG_TO_TITLE.get(flag, '')
+        is_bundle = parsed.get('is_bundle', False)
+        cohort = parsed.get('cohort', '')
+        location = parsed.get('location', 'z')
+        # Build start info: Aufbaustufe courses start in specific cohort year
+        cohort_year = f'20{cohort}' if cohort else ''
+        product_info = {
+            'product_title': title,
+            'product_ref': ref.upper(),
+            'is_bundle': is_bundle,
+            'cohort_year': cohort_year,
+            'product_codes': parsed.get('default_codes') or ([parsed.get('default_code')] if parsed.get('default_code') else []),
+        }
+
     # --- Look up event data for single events ---
     event = None
     event_info = {}
@@ -455,9 +492,10 @@ def _checkout_manual_review(env, checkout, parsed, partner):
     try:
         tpl = env.ref('agenda_dasei.mail_template_checkout_review_customer', raise_if_not_found=False)
         if tpl:
-            # Pass event info and company phone as context for template rendering
+            # Pass event/product info and company phone as context for template rendering
             ctx = {
                 **event_info,
+                **product_info,
                 'company_phone': company_phone,
                 'product_ref': ref,
             }

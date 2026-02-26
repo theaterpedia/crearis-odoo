@@ -32,6 +32,20 @@
         <p style="margin: 5px 0; font-size: 12px; color: #666;">Referenz: <t t-out="ctx.get('product_ref', '')"/></p>
     </div>
     </t>
+    <!-- Product/bundle info for Aufbaustufe checkouts (no single event tied) -->
+    <t t-if="ctx.get('product_title') and not ctx.get('event_name')">
+    <div style="background: #fff8f0; padding: 15px; margin: 20px 0; border-left: 4px solid #8B4513;">
+        <h3 style="margin-top: 0; color: #8B4513;">DEINE ANMELDUNG</h3>
+        <p style="margin: 5px 0;"><strong>Kurs:</strong> <t t-out="ctx.get('product_title')"/></p>
+        <t t-if="ctx.get('cohort_year')">
+        <p style="margin: 5px 0;"><strong>Jahrgang:</strong> <t t-out="ctx.get('cohort_year')"/></p>
+        </t>
+        <t t-if="ctx.get('is_bundle')">
+        <p style="margin: 5px 0; font-size: 12px; color: #666;">Paket: Alle Module der Aufbaustufe</p>
+        </t>
+        <p style="margin: 5px 0; font-size: 12px; color: #666;">Referenz: <t t-out="ctx.get('product_ref', '')"/></p>
+    </div>
+    </t>
     
     <p>Wir haben deine Daten erhalten und werden deine Anmeldung 
     <strong>innerhalb von 1–2 Werktagen</strong> bearbeiten.</p>
