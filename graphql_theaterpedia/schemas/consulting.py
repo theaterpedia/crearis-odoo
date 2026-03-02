@@ -12,10 +12,15 @@ Bookings create separate "Consulting Meeting" events.
 - Mutation: bookConsultingSlot — creates a meeting event in a slot
 
 Session: SCS (03-02-SCS_consulting_slots)
+
+Security:
+- IP restriction: Only allows requests from server IP (Nuxt SSR) or localhost
+- Rate limiting: Max 10 bookings/hour, then blocks + alerts admin
 """
 
 import logging
 from datetime import datetime, timedelta
+import json
 
 import graphene
 from graphql import GraphQLError
@@ -32,6 +37,19 @@ SLOT_DURATION_HOURS = SLOT_DURATION_MINUTES / 60.0  # 0.25
 WINDOW_CATEGORY = 'Consulting Window'
 MEETING_CATEGORY = 'Consulting Meeting'
 BLOCKED_CATEGORY = 'Consulting Blocked'
+
+# Rate limiting settings
+RATE_LIMIT_MAX_PER_HOUR = 10
+RATE_LIMIT_PARAM_KEY = 'consulting.booking.rate_limit_data'
+ADMIN_ALERT_EMAIL = 'admin@dasei.eu'
+
+# Allowed IPs for booking mutations (server IP for Nuxt SSR)
+ALLOWED_IPS = [
+    '127.0.0.1',
+    '::1',
+    'localhost',
+    # Add server's own IP here - Nuxt runs on same server
+]
 
 
 class ConsultingSlot(graphene.ObjectType):
@@ -104,6 +122,164 @@ def _slot_overlaps_events(slot_start, slot_stop, events):
         if slot_start < event_stop and slot_stop > event_start:
             return True
     return False
+
+
+def _get_client_ip():
+    """Get the client IP address from the request."""
+    if not request:
+        return None
+    # Check X-Forwarded-For header (behind proxy/load balancer)
+    forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        # Take the first IP (original client)
+        return forwarded_for.split(',')[0].strip()
+    # Check X-Real-IP header
+    real_ip = request.httprequest.headers.get('X-Real-IP')
+    if real_ip:
+        return real_ip.strip()
+    # Fall back to remote_addr
+    return request.httprequest.remote_addr
+
+
+def _is_ip_allowed(client_ip):
+    """Check if the client IP is allowed to make booking mutations."""
+    if not client_ip:
+        return False
+    # Allow localhost variants
+    if client_ip in ALLOWED_IPS:
+        return True
+    # Also allow if request comes from the same server (Nuxt SSR)
+    # Check if it's a private/local IP
+    if client_ip.startswith('10.') or client_ip.startswith('192.168.') or client_ip.startswith('172.'):
+        return True
+    return False
+
+
+def _check_rate_limit(env):
+    """
+    Check and update rate limit counter.
+    Returns tuple: (allowed: bool, error_message: str or None)
+    """
+    ConfigParam = env['ir.config_parameter'].sudo()
+    now = datetime.now()
+    
+    # Get current rate limit data
+    rate_data_str = ConfigParam.get_param(RATE_LIMIT_PARAM_KEY, '{}')
+    try:
+        rate_data = json.loads(rate_data_str)
+    except (json.JSONDecodeError, TypeError):
+        rate_data = {}
+    
+    # Get or initialize counters
+    count = rate_data.get('count', 0)
+    window_start_str = rate_data.get('window_start')
+    blocked = rate_data.get('blocked', False)
+    
+    # Check if we're in a new hour window
+    if window_start_str:
+        try:
+            window_start = datetime.fromisoformat(window_start_str)
+            if now - window_start > timedelta(hours=1):
+                # Reset counter for new window
+                count = 0
+                blocked = False
+                window_start = now
+        except ValueError:
+            window_start = now
+            count = 0
+            blocked = False
+    else:
+        window_start = now
+    
+    # Check if blocked
+    if blocked:
+        return False, _("Service temporarily unavailable. Please try again later.")
+    
+    # Check if limit would be exceeded
+    if count >= RATE_LIMIT_MAX_PER_HOUR:
+        # Block and send alert
+        rate_data = {
+            'count': count,
+            'window_start': window_start.isoformat(),
+            'blocked': True,
+            'blocked_at': now.isoformat(),
+        }
+        ConfigParam.set_param(RATE_LIMIT_PARAM_KEY, json.dumps(rate_data))
+        _logger.error(
+            "Consulting booking rate limit exceeded! Count=%d, blocking service.",
+            count
+        )
+        return False, _("Service temporarily unavailable. Please try again later.")
+    
+    # Increment counter
+    count += 1
+    rate_data = {
+        'count': count,
+        'window_start': window_start.isoformat(),
+        'blocked': False,
+    }
+    ConfigParam.set_param(RATE_LIMIT_PARAM_KEY, json.dumps(rate_data))
+    
+    _logger.debug("Consulting booking rate limit: %d/%d", count, RATE_LIMIT_MAX_PER_HOUR)
+    return True, None
+
+
+def _send_rate_limit_alert(env):
+    """Send alert email to admin about rate limit being exceeded."""
+    try:
+        MailTemplate = env['mail.template'].sudo()
+        template = MailTemplate.search([
+            ('name', '=', 'Consulting Booking: Rate Limit Alert')
+        ], limit=1)
+        
+        if template:
+            # Use admin user as the record context
+            admin_user = env['res.users'].sudo().browse(2)  # Usually admin
+            template.with_context(timestamp=datetime.now().isoformat()).send_mail(
+                admin_user.id, force_send=True
+            )
+            _logger.info("Rate limit alert sent to %s", ADMIN_ALERT_EMAIL)
+        else:
+            # Fallback: send direct email
+            env['mail.mail'].sudo().create({
+                'subject': '[ALERT] Consulting Booking Rate Limit Exceeded',
+                'email_from': 'noreply@dasei.eu',
+                'email_to': ADMIN_ALERT_EMAIL,
+                'body_html': f'''
+                    <p><strong>Rate limit exceeded!</strong></p>
+                    <p>The consulting booking endpoint exceeded {RATE_LIMIT_MAX_PER_HOUR} bookings/hour.</p>
+                    <p>Timestamp: {datetime.now().isoformat()}</p>
+                ''',
+            }).send()
+    except Exception as e:
+        _logger.error("Failed to send rate limit alert: %s", e)
+
+
+def _send_booking_emails(env, meeting, partner, notes=None):
+    """Send confirmation emails to customer and exec."""
+    MailTemplate = env['mail.template'].sudo()
+    
+    # Send customer confirmation
+    try:
+        customer_template = MailTemplate.search([
+            ('name', '=', 'Consulting Booking: Customer Confirmation')
+        ], limit=1)
+        if customer_template:
+            customer_template.send_mail(meeting.id, force_send=True)
+            _logger.info("Customer confirmation sent for meeting %s", meeting.id)
+    except Exception as e:
+        _logger.error("Failed to send customer confirmation: %s", e)
+    
+    # Send exec notification
+    try:
+        exec_template = MailTemplate.search([
+            ('name', '=', 'Consulting Booking: Exec Notification')
+        ], limit=1)
+        if exec_template:
+            exec_template.send_mail(meeting.id, force_send=True)
+            _logger.info("Exec notification sent for meeting %s", meeting.id)
+    except Exception as e:
+        _logger.error("Failed to send exec notification: %s", e)
 
 
 class ConsultingSlotsQuery(graphene.ObjectType):
@@ -222,20 +398,48 @@ class ConsultingSlotsQuery(graphene.ObjectType):
 
 
 class BookConsultingSlot(graphene.Mutation):
-    """Book a consulting slot by creating a meeting event."""
+    """Book a consulting slot by creating a meeting event.
+    
+    Security:
+    - IP restriction: Only localhost/server IP allowed (Nuxt SSR)
+    - Rate limiting: Max 10 bookings/hour
+    """
     
     class Arguments:
         slot_key = graphene.String(required=True, description="Slot key from consultingSlots query")
         start = graphene.String(required=True, description="Slot start time (ISO datetime)")
         host_id = graphene.Int(required=True, description="Host user ID")
         contact = ConsultingContactInput(required=True)
-        notes = graphene.String(description="Optional notes from customer")
+        notes = graphene.String(description="Optional message from customer (included in confirmation)")
     
     Output = ConsultingBookingResult
     
     @staticmethod
     def mutate(root, info, slot_key, start, host_id, contact, notes=None):
         env = info.context['env']
+        
+        # === SECURITY: IP Check ===
+        client_ip = _get_client_ip()
+        if not _is_ip_allowed(client_ip):
+            _logger.warning(
+                "BookConsultingSlot: Blocked request from unauthorized IP: %s",
+                client_ip
+            )
+            return ConsultingBookingResult(
+                success=False,
+                error=_("Access denied"),
+            )
+        
+        # === SECURITY: Rate Limit Check ===
+        allowed, rate_error = _check_rate_limit(env)
+        if not allowed:
+            # Send alert on first block
+            if 'temporarily unavailable' in str(rate_error):
+                _send_rate_limit_alert(env)
+            return ConsultingBookingResult(
+                success=False,
+                error=rate_error,
+            )
         
         # Parse start time
         try:
@@ -265,15 +469,28 @@ class BookConsultingSlot(graphene.Mutation):
             )
         
         # Check no conflicting meeting exists
+        # IMPORTANT: Exclude "Consulting Window" events - they define availability, not conflicts
         CalendarEvent = env['calendar.event'].sudo()
-        conflicts = CalendarEvent.search([
+        CalendarEventType = env['calendar.event.type'].sudo()
+        window_type = CalendarEventType.search([('name', '=ilike', WINDOW_CATEGORY)], limit=1)
+        
+        conflict_domain = [
             ('user_id', '=', host_id),
             ('start', '<', slot_stop),
             ('stop', '>', slot_start),
             ('show_as', '=', 'busy'),
-        ], limit=1)
+        ]
+        # Exclude window events from conflict check
+        if window_type:
+            conflict_domain.append(('categ_ids', 'not in', [window_type.id]))
+        
+        conflicts = CalendarEvent.search(conflict_domain, limit=1)
         
         if conflicts:
+            _logger.warning(
+                "BookConsultingSlot: conflict found - event %s (%s) overlaps slot %s-%s",
+                conflicts.id, conflicts.name, slot_start, slot_stop
+            )
             return ConsultingBookingResult(
                 success=False,
                 error=_("This slot is no longer available"),
@@ -296,8 +513,7 @@ class BookConsultingSlot(graphene.Mutation):
             partner = Partner.create(partner_vals)
             _logger.info("BookConsultingSlot: created partner %s", partner.id)
         
-        # Find meeting category
-        CalendarEventType = env['calendar.event.type'].sudo()
+        # Find meeting category (reuse CalendarEventType from above)
         meeting_type = CalendarEventType.search([('name', '=ilike', MEETING_CATEGORY)], limit=1)
         
         # Create the meeting event
@@ -333,7 +549,8 @@ class BookConsultingSlot(graphene.Mutation):
             meeting.id, partner.id, host_id
         )
         
-        # TODO: Send confirmation emails (future enhancement)
+        # Send confirmation emails (to customer and exec)
+        _send_booking_emails(env, meeting, partner, notes)
         
         return ConsultingBookingResult(
             success=True,

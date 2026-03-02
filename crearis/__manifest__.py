@@ -49,6 +49,7 @@ Features:
         'data/event_stage_data.xml',
         'data/event_type_data.xml',
         'data/calendar_event_type_data.xml',  # SCS: Consulting slot category
+        'data/mail_template_consulting_data.xml',  # SCS: Consulting booking emails
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',

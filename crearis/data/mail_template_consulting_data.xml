@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Customer confirmation email for consulting slot booking -->
+        <record id="mail_template_consulting_booking_customer" model="mail.template">
+            <field name="name">Consulting Booking: Customer Confirmation</field>
+            <field name="model_id" ref="calendar.model_calendar_event"/>
+            <field name="subject">Ihre Beratungstermin-Bestätigung - {{ object.start.strftime('%d.%m.%Y %H:%M') }}</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or object.company_id.email_formatted or 'noreply@dasei.eu') }}</field>
+            <field name="email_to">{{ object.partner_ids[:1].email }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #2c3e50;">Beratungstermin bestätigt</h2>
+    
+    <p>Guten Tag <strong>{{ object.partner_ids[:1].name }}</strong>,</p>
+    
+    <p>Ihr Beratungstermin wurde erfolgreich gebucht:</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; width: 30%;"><strong>Datum:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.start.strftime('%A, %d. %B %Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Uhrzeit:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.start.strftime('%H:%M') }} - {{ object.stop.strftime('%H:%M') }} Uhr</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Berater:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.user_id.name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Dauer:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">15 Minuten</td>
+        </tr>
+    </table>
+    
+    % if object.description:
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <strong>Ihre Nachricht:</strong><br/>
+        {{ object.description | replace('\n', '<br/>') }}
+    </div>
+    % endif
+    
+    <p>Wir werden Sie zum vereinbarten Zeitpunkt kontaktieren.</p>
+    
+    <p style="margin-top: 30px;">
+        Mit freundlichen Grüßen,<br/>
+        <strong>{{ object.user_id.name }}</strong><br/>
+        {{ object.company_id.name }}
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px;">
+        Diese E-Mail wurde automatisch generiert. Bei Fragen wenden Sie sich bitte an {{ object.user_id.email or 'info@dasei.eu' }}.
+    </p>
+</div>
+]]></field>
+            <field name="lang">{{ object.partner_ids[:1].lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- Exec notification email for consulting slot booking -->
+        <record id="mail_template_consulting_booking_exec" model="mail.template">
+            <field name="name">Consulting Booking: Exec Notification</field>
+            <field name="model_id" ref="calendar.model_calendar_event"/>
+            <field name="subject">Neuer Beratungstermin: {{ object.partner_ids[:1].name }} - {{ object.start.strftime('%d.%m.%Y %H:%M') }}</field>
+            <field name="email_from">{{ object.company_id.email_formatted or 'noreply@dasei.eu' }}</field>
+            <field name="email_to">{{ object.user_id.email }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #27ae60;">Neuer Beratungstermin gebucht</h2>
+    
+    <p>Hallo <strong>{{ object.user_id.name }}</strong>,</p>
+    
+    <p>Ein neuer Beratungstermin wurde für Sie gebucht:</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Kunde:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ object.partner_ids[:1].name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>E-Mail:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><a href="mailto:{{ object.partner_ids[:1].email }}">{{ object.partner_ids[:1].email }}</a></td>
+        </tr>
+        % if object.partner_ids[:1].phone:
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Telefon:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ object.partner_ids[:1].phone }}</td>
+        </tr>
+        % endif
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Datum:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ object.start.strftime('%A, %d. %B %Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Uhrzeit:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ object.start.strftime('%H:%M') }} - {{ object.stop.strftime('%H:%M') }} Uhr</td>
+        </tr>
+    </table>
+    
+    % if object.description:
+    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
+        <strong>Kundennachricht:</strong><br/>
+        {{ object.description | replace('\n', '<br/>') }}
+    </div>
+    % endif
+    
+    <p>
+        <a href="{{ object.company_id.website }}/web#id={{ object.id }}&model=calendar.event&view_type=form" 
+           style="display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Termin in Odoo öffnen
+        </a>
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px;">
+        Diese Benachrichtigung wurde automatisch vom Beratungsbuchungssystem generiert.
+    </p>
+</div>
+]]></field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+        <!-- Rate limit alert email template -->
+        <record id="mail_template_consulting_rate_limit_alert" model="mail.template">
+            <field name="name">Consulting Booking: Rate Limit Alert</field>
+            <field name="model_id" ref="base.model_res_users"/>
+            <field name="subject">[ALERT] Consulting Booking Rate Limit Exceeded</field>
+            <field name="email_from">noreply@dasei.eu</field>
+            <field name="email_to">admin@dasei.eu</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #e74c3c;">⚠️ Rate Limit Alert</h2>
+    
+    <p>The consulting booking endpoint has exceeded the rate limit (10 bookings/hour).</p>
+    
+    <p>This may indicate:</p>
+    <ul>
+        <li>Automated abuse attempt</li>
+        <li>Mass booking attack</li>
+        <li>Legitimate high traffic (review and adjust limit if needed)</li>
+    </ul>
+    
+    <p><strong>The booking service is now temporarily blocked.</strong></p>
+    
+    <p>To resume service, clear the rate limit counter in system parameters:</p>
+    <code>consulting.booking.rate_limit_count</code>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px;">
+        Timestamp: {{ ctx.get('timestamp', 'N/A') }}<br/>
+        Server: service.dasei.eu
+    </p>
+</div>
+]]></field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+    </data>
+</odoo>
