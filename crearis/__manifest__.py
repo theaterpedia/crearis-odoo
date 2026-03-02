@@ -48,6 +48,7 @@ Features:
         'data/ir_cron_data.xml',
         'data/event_stage_data.xml',
         'data/event_type_data.xml',
+        'data/calendar_event_type_data.xml',  # SCS: Consulting slot category
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',

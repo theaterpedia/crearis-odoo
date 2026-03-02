@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Consulting event types for per-domain booking (availability window approach).
+            
+            - Consulting Window: Exec defines availability blocks (e.g., Mon 9-12 recurring)
+            - Consulting Meeting: System creates when customer books a 15-min slot
+            
+            Session: SCS (03-02-SCS_consulting_slots)
+        -->
+        <record id="calendar_event_type_consulting_window" model="calendar.event.type">
+            <field name="name">Consulting Window</field>
+        </record>
+        <record id="calendar_event_type_consulting_meeting" model="calendar.event.type">
+            <field name="name">Consulting Meeting</field>
+        </record>
+        <record id="calendar_event_type_consulting_blocked" model="calendar.event.type">
+            <field name="name">Consulting Blocked</field>
+        </record>
+    </data>
+</odoo>

@@ -27,6 +27,7 @@ from odoo.addons.graphql_theaterpedia.schemas import (
     website,
     checkout,
     package,
+    consulting,
 )
 
 
@@ -51,6 +52,7 @@ class Query(
     mailing_list.MailingListQuery,
     website.WebsiteQuery,
     package.PackageQuery,
+    consulting.ConsultingSlotsQuery,
 ):
     pass
 
@@ -71,6 +73,7 @@ class Mutation(
     mailing_list.NewsletterSubscribeMutation,
     order.OrderMutation,
     checkout.CheckoutMutation,
+    consulting.ConsultingMutation,
 ):
     pass
 
