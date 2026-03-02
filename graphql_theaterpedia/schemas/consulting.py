@@ -418,16 +418,14 @@ class BookConsultingSlot(graphene.Mutation):
     def mutate(root, info, slot_key, start, host_id, contact, notes=None):
         env = info.context['env']
         
-        # === SECURITY: IP Check ===
+        # === SECURITY: IP Check (logging only, not blocking) ===
+        # NOTE: Client-side calls come from user's browser IP, not server IP.
+        # Rate limiting (below) is the primary anti-abuse mechanism.
         client_ip = _get_client_ip()
         if not _is_ip_allowed(client_ip):
-            _logger.warning(
-                "BookConsultingSlot: Blocked request from unauthorized IP: %s",
+            _logger.info(
+                "BookConsultingSlot: Request from external IP: %s (allowed, rate-limited)",
                 client_ip
-            )
-            return ConsultingBookingResult(
-                success=False,
-                error=_("Access denied"),
             )
         
         # === SECURITY: Rate Limit Check ===
