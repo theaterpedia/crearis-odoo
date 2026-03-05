@@ -16,6 +16,18 @@ class ResCompany(models.Model):
              'Used as pre-filled value in the installment wizard.',
     )
 
+    installment_mode = fields.Selection(
+        selection=[
+            ('payment_term', 'One invoice with payment schedule'),
+            ('multi_invoice', 'One invoice per installment'),
+        ],
+        string='Installment Mode',
+        default='payment_term',
+        help='How installments are created:\n'
+             '- Payment schedule: single invoice with multiple due dates (default)\n'
+             '- Multi-invoice: separate invoice for each installment',
+    )
+
     simple_invoicing = fields.Boolean(
         string='Simple Invoicing',
         default=False,

@@ -1,14 +1,17 @@
 {
     'name': 'Crearis Accounting',
-    'version': '16.0.0.2.0',
+    'version': '16.0.0.3.0',
     'summary': 'Chart-agnostic accounting: fiscal positions, installment wizard, simple invoicing',
     'description': """
 Generic accounting configuration module providing:
 - Fiscal position "Bildungsleistung §4 Nr. 21 UStG" (19%/7% → 0%)
 - Product category "Bildungsleistungen" with chart-agnostic income account
-- Installment wizard on sale.order for splitting into monthly invoices
+- Installment wizard on sale.order and account.move with dual modes:
+  - Payment schedule: single invoice with multiple due dates (default)
+  - Multi-invoice: separate invoice per installment
+- Year-split support: automatically creates 2 invoices when crossing year boundary
 - Simple invoicing toggle for companies without chart of accounts
-- Default installment rate per company (res.company field)
+- Default installment rate and mode per company
 
 Works with SKR03, SKR04, SKR42, or no chart at all.
     """,
@@ -23,6 +26,7 @@ Works with SKR03, SKR04, SKR42, or no chart at all.
         'security/ir.model.access.csv',
         'data/product_category_data.xml',
         'wizard/installment_wizard_views.xml',
+        'views/account_move_views.xml',
         'views/sale_order_views.xml',
         'views/res_config_settings_views.xml',
     ],

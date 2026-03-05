@@ -11,6 +11,12 @@ class ResConfigSettings(models.TransientModel):
         string='Default Installment Rate',
     )
 
+    installment_mode = fields.Selection(
+        related='company_id.installment_mode',
+        readonly=False,
+        string='Installment Mode',
+    )
+
     simple_invoicing = fields.Boolean(
         related='company_id.simple_invoicing',
         readonly=False,

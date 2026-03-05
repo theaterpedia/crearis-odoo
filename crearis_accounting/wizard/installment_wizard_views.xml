@@ -6,12 +6,18 @@
         <field name="model">sale.installment.wizard</field>
         <field name="arch" type="xml">
             <form string="Ratenzahlung erstellen">
+                <field name="source_type" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="crosses_year_boundary" invisible="1"/>
+                <field name="installment_mode" invisible="1"/>
+
                 <group>
-                    <group string="Auftrag">
-                        <field name="sale_order_id"/>
+                    <group string="Quelle">
+                        <field name="sale_order_id" attrs="{'invisible': [('source_type', '!=', 'sale_order')]}"/>
+                        <field name="invoice_id" attrs="{'invisible': [('source_type', '!=', 'invoice')]}"/>
                         <field name="partner_id"/>
                         <field name="full_amount"/>
-                        <field name="currency_id" invisible="1"/>
                     </group>
                     <group string="Raten-Parameter">
                         <field name="rate_amount"/>
@@ -21,15 +27,28 @@
                     </group>
                 </group>
 
-                <div attrs="{'invisible': [('crosses_year_boundary', '=', False)]}">
-                    <div class="alert alert-danger" role="alert">
-                        <strong>Jahresgrenze!</strong>
-                        Der Ratenplan überschreitet eine Jahresgrenze.
-                        Bitte Rate oder Startmonat anpassen, damit alle Raten
-                        im selben Kalenderjahr liegen.
+                <group string="Modus" attrs="{'invisible': [('source_type', '=', 'invoice')]}">
+                    <field name="installment_mode" widget="radio" nolabel="1"/>
+                </group>
+
+                <!-- Year split info for payment_term mode -->
+                <div attrs="{'invisible': ['|', ('crosses_year_boundary', '=', False), ('installment_mode', '=', 'multi_invoice')]}">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Jahresgrenze:</strong>
+                        Es werden 2 Rechnungen erstellt (eine pro Jahr).
+                        <br/>
+                        <field name="year_split_info" readonly="1" nolabel="1"/>
                     </div>
                 </div>
-                <field name="crosses_year_boundary" invisible="1"/>
+
+                <!-- Year boundary error for multi_invoice mode -->
+                <div attrs="{'invisible': ['|', ('crosses_year_boundary', '=', False), ('installment_mode', '=', 'payment_term')]}">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>Jahresgrenze!</strong>
+                        Im Multi-Rechnungs-Modus muessen alle Raten im selben Kalenderjahr liegen.
+                        Bitte Rate, Startmonat anpassen oder den Zahlungsplan-Modus waehlen.
+                    </div>
+                </div>
 
                 <separator string="Vorschau"/>
                 <field name="preview_html" readonly="1" nolabel="1"/>
@@ -39,7 +58,7 @@
                             string="Rechnungen erstellen"
                             type="object"
                             class="btn-primary"
-                            attrs="{'invisible': [('crosses_year_boundary', '=', True)]}"/>
+                            attrs="{'invisible': ['&amp;', ('crosses_year_boundary', '=', True), ('installment_mode', '=', 'multi_invoice')]}"/>
                     <button string="Abbrechen" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
@@ -53,7 +72,7 @@
         <field name="view_id" ref="view_sale_installment_wizard_form"/>
         <field name="target">new</field>
         <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="context">{'default_sale_order_id': active_id}</field>
+        <field name="context">{'active_model': 'sale.order'}</field>
     </record>
 
 </odoo>
