@@ -10,10 +10,20 @@ from odoo.exceptions import UserError
 
 
 def _first_tuesday(year, month):
-    """Return the date of the first Tuesday in the given month."""
+    """Return the first Tuesday in the given month, or 3rd of month if Tuesday falls after 6th.
+    
+    This ensures due dates always fall between 1st and 6th of the month.
+    """
     first_day = date(year, month, 1)
     offset = (1 - first_day.weekday()) % 7  # days until Tuesday
-    return first_day.replace(day=1 + offset)
+    tuesday_day = 1 + offset
+    
+    # If first Tuesday is after 6th (month starts Wed/Thu), use 3rd instead
+    if tuesday_day > 6:
+        # Use 3rd of month as fallback (still a weekday in most cases)
+        return first_day.replace(day=3)
+    
+    return first_day.replace(day=tuesday_day)
 
 
 class InstallmentWizard(models.TransientModel):
