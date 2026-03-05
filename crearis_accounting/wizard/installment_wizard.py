@@ -322,7 +322,6 @@ class InstallmentWizard(models.TransientModel):
         # Create and apply payment term
         payment_term = self._create_payment_term(rows, invoice.company_id)
         invoice.write({'invoice_payment_term_id': payment_term.id})
-        invoice._onchange_invoice_payment_term_id()
 
         return {
             'type': 'ir.actions.act_window',
@@ -362,7 +361,6 @@ class InstallmentWizard(models.TransientModel):
             renumbered = [(i+1, r[1], r[2], r[3]) for i, r in enumerate(year_rows)]
             payment_term = self._create_payment_term(renumbered, invoice.company_id, year=year)
             invoice.write({'invoice_payment_term_id': payment_term.id})
-            invoice._onchange_invoice_payment_term_id()
 
             created_invoices |= invoice
 
@@ -415,6 +413,7 @@ class InstallmentWizard(models.TransientModel):
         payment_term = self.env['account.payment.term'].create({
             'name': name,
             'company_id': company.id,
+            'display_on_invoice': True,
             'line_ids': lines,
         })
 
