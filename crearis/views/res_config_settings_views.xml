@@ -167,7 +167,22 @@
                             These websites will be included in the event feed.
                         </div>
                         </div>
-                    </div>  
+                    </div>
+                    <!-- I2: Shortcode Configuration -->
+                    <div class="col-12 o_setting_box" id="crearis_shortcode_settings">
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="crearis_shortcode_config" string="Shortcode Configuration"/>
+                                    <div class="text-muted mb8">
+                                        Per-domain shortcode→product mapping for checkout flow. 
+                                        Format: <code>{"products": {"w": "MOD-A"}, "bundles": {"y": [...]}, "contact_only": ["v"]}</code>
+                                    </div>
+                                    <field name="crearis_shortcode_config" widget="text"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>

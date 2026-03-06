@@ -2,6 +2,7 @@
 # Copyright 2023 ODOOGAP/PROMPTEQUATION LDA
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
+import json
 import requests
 from odoo import models, fields, api
 
@@ -78,3 +79,27 @@ class Website(models.Model):
              '"bundles": {"y": {"products": [...]}}, "contact_only": ["v"]}',
         default=lambda self: {}
     )
+
+    shortcode_config_text = fields.Text(
+        string='Shortcode Configuration (JSON)',
+        compute='_compute_shortcode_config_text',
+        inverse='_inverse_shortcode_config_text',
+        help='Editable JSON text for shortcode configuration'
+    )
+
+    @api.depends('shortcode_config')
+    def _compute_shortcode_config_text(self):
+        for rec in self:
+            config = rec.shortcode_config or {}
+            rec.shortcode_config_text = json.dumps(config, indent=2) if config else '{}'
+
+    def _inverse_shortcode_config_text(self):
+        for rec in self:
+            text = (rec.shortcode_config_text or '').strip()
+            if not text or text == '{}':
+                rec.shortcode_config = {}
+            else:
+                try:
+                    rec.shortcode_config = json.loads(text)
+                except json.JSONDecodeError:
+                    pass  # Keep existing value on parse error

@@ -56,9 +56,10 @@ class ResConfigSettings(models.TransientModel):
     )
 
     # I2: Shortcode configuration (per-domain checkout flow)
-    crearis_shortcode_config = fields.Json(
+    # Use the computed text field for UI editing (JSON serialization)
+    crearis_shortcode_config = fields.Text(
         string='Shortcode Configuration',
-        related='website_id.shortcode_config',
+        related='website_id.shortcode_config_text',
         readonly=False,
         help='Per-domain shortcode→product mapping. Format: {"products": {...}, "bundles": {...}}'
     )
