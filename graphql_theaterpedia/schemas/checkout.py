@@ -261,8 +261,17 @@ def _parse_product_ref(product_ref, config=None):
                 'original_ref': ref,
             }
 
-        # Regular product shortcode
+        # Regular product shortcode - BLOCKING VALIDATION (I2)
         default_code = config['products'].get(flag)
+        if default_code is None:
+            # Flag not in products, bundles, or contact_only → invalid
+            return {
+                'validation_error': f"Unknown shortcode flag '{flag}' in '{ref}'. "
+                                   f"Valid flags: {sorted(config['products'].keys())} (products), "
+                                   f"{sorted(config['bundles'].keys())} (bundles), "
+                                   f"{sorted(config['contact_only'])} (contact-only)",
+                'original_ref': ref,
+            }
         tier = 'auto' if (location in config['auto_locations'] and flag in config['auto_flags']) else 'manual_review'
         return {
             'location': location,
@@ -401,6 +410,18 @@ class Checkout(graphene.Mutation):
         # Parse product reference (I2: config from website if available)
         shortcode_config = _get_shortcode_config(env)
         parsed = _parse_product_ref(checkout.product_ref, config=shortcode_config)
+        
+        # I2: Blocking validation - fail early if shortcode is unknown
+        if 'validation_error' in parsed:
+            _logger.warning(
+                "Checkout validation failed: ref=%s error=%s",
+                checkout.product_ref, parsed['validation_error']
+            )
+            return CheckoutResult(
+                success=False,
+                error=parsed['validation_error'],
+            )
+        
         tier = parsed['checkout_tier']
         _logger.info(
             "Checkout: ref=%s tier=%s from_website=%s parsed=%s",
