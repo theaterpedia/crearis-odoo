@@ -359,6 +359,8 @@ class InstallmentWizard(models.TransientModel):
         # Single invoice case
         if self.invoice_id:
             invoice = self.invoice_id
+            # Update invoice date to first installment date (payment term days are relative to this)
+            invoice.write({'invoice_date': rows[0][1]})
         elif self.sale_order_id:
             # Create invoice from SO
             invoice = self._create_invoice_from_so(self.sale_order_id, rows)
