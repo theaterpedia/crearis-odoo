@@ -153,7 +153,7 @@
         Server: service.dasei.eu
     </p>
 </div>
-</field>
+]]></field>
             <field name="auto_delete" eval="False"/>
         </record>
     </data>
