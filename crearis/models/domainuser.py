@@ -97,6 +97,17 @@ class DomainUser(models.Model):
         help='JSON structure containing security and content settings',
         default={}
     )
+
+    # SCL: MS Teams meeting data (D3, R5)
+    # Only relevant for exec role users
+    # Keys: videocall_url, videocall_id, phonecall_id, passkey, login_info_html
+    teams_meeting_data = fields.Json(
+        string='Teams Meeting Data',
+        help='MS Teams meeting credentials for consulting calls. '
+             'Keys: videocall_url, videocall_id, phonecall_id, passkey, login_info_html',
+        default={}
+    )
+
     version = fields.Integer(default=1)
 
     # ==================== SECURITY SECTION ====================

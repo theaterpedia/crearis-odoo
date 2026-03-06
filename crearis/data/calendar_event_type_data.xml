@@ -18,5 +18,34 @@
         <record id="calendar_event_type_consulting_blocked" model="calendar.event.type">
             <field name="name">Consulting Blocked</field>
         </record>
+
+        <!--
+            Consultation category types (SCL - Consulting Loop).
+            
+            Used to tag calendar.event meetings with topics the customer selected.
+            Stored via categ_ids M2M field. GraphQL receives string keys, maps to these.
+            
+            Order matches D24 (envelope template ordering):
+            1. prerequisites
+            2. terms_and_options
+            3. topics
+            4. schedules
+            5. custom (freeform)
+        -->
+        <record id="calendar_event_type_cat_prerequisites" model="calendar.event.type">
+            <field name="name">Consultation: Prerequisites</field>
+        </record>
+        <record id="calendar_event_type_cat_terms_and_options" model="calendar.event.type">
+            <field name="name">Consultation: Terms &amp; Options</field>
+        </record>
+        <record id="calendar_event_type_cat_topics" model="calendar.event.type">
+            <field name="name">Consultation: Topics</field>
+        </record>
+        <record id="calendar_event_type_cat_schedules" model="calendar.event.type">
+            <field name="name">Consultation: Schedules</field>
+        </record>
+        <record id="calendar_event_type_cat_custom" model="calendar.event.type">
+            <field name="name">Consultation: Custom</field>
+        </record>
     </data>
 </odoo>

@@ -61,6 +61,8 @@ class ConsultingSlot(graphene.ObjectType):
     duration = graphene.Float(required=True, description="Duration in hours (0.25 = 15min)")
     host_name = graphene.String(required=True, description="Exec user's display name")
     host_id = graphene.Int(required=True, description="res.users ID of host")
+    # D18/💡1: Host photo from domainuser.cimg
+    photo_url = graphene.String(description="Host photo URL from domainuser.cimg, empty string if none")
 
 
 class ConsultingContactInput(graphene.InputObjectType):
@@ -71,9 +73,32 @@ class ConsultingContactInput(graphene.InputObjectType):
     mobil = graphene.String()
 
 
+class ConsultingCategoryInput(graphene.InputObjectType):
+    """SCL: Consultation preferences selected in dialog (D17, R6).
+    
+    Categories are string keys that map to calendar.event.type records.
+    """
+    categories = graphene.List(
+        graphene.String,
+        required=True,
+        description="Category keys: prerequisites, terms_and_options, topics, schedules, custom"
+    )
+    freeform_text = graphene.String(
+        description="Optional custom text (max 240 chars) - D27"
+    )
+    call_type = graphene.String(
+        required=True,
+        description="'video' or 'phone' - D17"
+    )
+
+
 class ConsultingBookingResult(graphene.ObjectType):
-    """Result of booking a consulting slot."""
+    """Result of booking a consulting slot (D16)."""
     success = graphene.Boolean(required=True)
+    # D16: Return entity_id + entity_type for redirect
+    entity_id = graphene.String(description="ID for redirect (e.g., product slug)")
+    entity_type = graphene.String(description="Type: 'product' (default), 'event', etc.")
+    # Legacy fields (keep for backward compat)
     meeting_id = graphene.Int(description="Created calendar.event ID")
     start = graphene.String()
     host_name = graphene.String()
@@ -256,7 +281,7 @@ def _send_rate_limit_alert(env):
 
 
 def _send_booking_emails(env, meeting, partner, notes=None):
-    """Send confirmation emails to customer and exec."""
+    """Send confirmation emails to customer and exec, and log to partner chatter (R2)."""
     MailTemplate = env['mail.template'].sudo()
     
     # Send customer confirmation
@@ -280,6 +305,33 @@ def _send_booking_emails(env, meeting, partner, notes=None):
             _logger.info("Exec notification sent for meeting %s", meeting.id)
     except Exception as e:
         _logger.error("Failed to send exec notification: %s", e)
+    
+    # SCL R2: Log booking confirmation to partner chatter
+    try:
+        from datetime import datetime
+        start_str = meeting.start.strftime('%d.%m.%Y %H:%M') if meeting.start else ''
+        host_name = meeting.user_id.name if meeting.user_id else 'Host'
+        
+        # Build category list
+        category_names = [cat.name for cat in meeting.categ_ids 
+                         if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked']]
+        categories_str = ', '.join(category_names) if category_names else 'keine'
+        
+        chatter_body = f"""<p><strong>Beratungstermin gebucht</strong></p>
+<ul>
+    <li><strong>Datum:</strong> {start_str} Uhr</li>
+    <li><strong>Berater:</strong> {host_name}</li>
+    <li><strong>Themen:</strong> {categories_str}</li>
+</ul>"""
+        
+        partner.message_post(
+            body=chatter_body,
+            message_type='notification',
+            subtype_xmlid='mail.mt_note',
+        )
+        _logger.info("Chatter note posted for partner %s", partner.id)
+    except Exception as e:
+        _logger.error("Failed to post chatter note: %s", e)
 
 
 class ConsultingSlotsQuery(graphene.ObjectType):
@@ -369,6 +421,17 @@ class ConsultingSlotsQuery(graphene.ObjectType):
         # Combine meetings and blocked events for overlap check
         blocking_events = meetings | blocked_events
         
+        # D18: Build host_id → photo_url mapping from domainuser.cimg
+        host_photo_map = {}
+        if user_ids:
+            DomainUser = env['crearis.domainuser'].sudo()
+            exec_users = DomainUser.search([
+                ('user_id', 'in', user_ids),
+                ('role', '=', 'exec'),
+            ])
+            for du in exec_users:
+                host_photo_map[du.user_id.id] = du.cimg or ''
+        
         # Compute available slots
         available_slots = []
         for window in windows:
@@ -381,6 +444,9 @@ class ConsultingSlotsQuery(graphene.ObjectType):
                 if _slot_overlaps_events(slot_start, slot_stop, blocking_events):
                     continue
                 
+                # D18: Get photo from pre-built map
+                photo_url = host_photo_map.get(host_id, '')
+                
                 available_slots.append(ConsultingSlot(
                     slot_key=slot_key,
                     start=slot_start.isoformat(),
@@ -388,6 +454,7 @@ class ConsultingSlotsQuery(graphene.ObjectType):
                     duration=SLOT_DURATION_HOURS,
                     host_name=host_name,
                     host_id=host_id,
+                    photo_url=photo_url,
                 ))
         
         _logger.info(
@@ -403,6 +470,10 @@ class BookConsultingSlot(graphene.Mutation):
     Security:
     - IP restriction: Only localhost/server IP allowed (Nuxt SSR)
     - Rate limiting: Max 10 bookings/hour
+    
+    SCL additions (D16, D17):
+    - consultation: Categories, freeform_text, call_type
+    - product_slug: For return redirect (entity_id)
     """
     
     class Arguments:
@@ -411,11 +482,14 @@ class BookConsultingSlot(graphene.Mutation):
         host_id = graphene.Int(required=True, description="Host user ID")
         contact = ConsultingContactInput(required=True)
         notes = graphene.String(description="Optional message from customer (included in confirmation)")
+        # SCL additions
+        consultation = ConsultingCategoryInput(description="SCL: Category preferences from dialog")
+        product_slug = graphene.String(description="D16: Product slug for redirect (entity_id)")
     
     Output = ConsultingBookingResult
     
     @staticmethod
-    def mutate(root, info, slot_key, start, host_id, contact, notes=None):
+    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None):
         env = info.context['env']
         
         # === SECURITY: IP Check (logging only, not blocking) ===
@@ -514,6 +588,42 @@ class BookConsultingSlot(graphene.Mutation):
         # Find meeting category (reuse CalendarEventType from above)
         meeting_type = CalendarEventType.search([('name', '=ilike', MEETING_CATEGORY)], limit=1)
         
+        # SCL: Map consultation category keys to calendar.event.type IDs (D4, R1)
+        category_type_ids = []
+        if meeting_type:
+            category_type_ids.append(meeting_type.id)
+        
+        if consultation and consultation.categories:
+            # Map string keys to XML IDs
+            category_xmlid_map = {
+                'prerequisites': 'crearis.calendar_event_type_cat_prerequisites',
+                'terms_and_options': 'crearis.calendar_event_type_cat_terms_and_options',
+                'topics': 'crearis.calendar_event_type_cat_topics',
+                'schedules': 'crearis.calendar_event_type_cat_schedules',
+                'custom': 'crearis.calendar_event_type_cat_custom',
+            }
+            for cat_key in consultation.categories:
+                xmlid = category_xmlid_map.get(cat_key)
+                if xmlid:
+                    try:
+                        cat_type = env.ref(xmlid)
+                        if cat_type:
+                            category_type_ids.append(cat_type.id)
+                    except ValueError:
+                        _logger.warning("BookConsultingSlot: category xmlid not found: %s", xmlid)
+        
+        # SCL: Build description with consultation details
+        description_parts = []
+        if consultation:
+            call_type = getattr(consultation, 'call_type', None)
+            if call_type:
+                description_parts.append(f"Call Type: {call_type}")
+            freeform = getattr(consultation, 'freeform_text', None)
+            if freeform:
+                description_parts.append(f"Custom Notes: {freeform}")
+        if notes:
+            description_parts.append(f"Booking Notes:\n{notes}")
+        
         # Create the meeting event
         meeting_name = f"Consulting: {contact.vorname} {contact.nachname}"
         meeting_vals = {
@@ -526,11 +636,11 @@ class BookConsultingSlot(graphene.Mutation):
             'show_as': 'busy',
         }
         
-        if meeting_type:
-            meeting_vals['categ_ids'] = [(4, meeting_type.id)]
+        if category_type_ids:
+            meeting_vals['categ_ids'] = [(4, tid) for tid in category_type_ids]
         
-        if notes:
-            meeting_vals['description'] = f"Booking Notes:\n{notes}"
+        if description_parts:
+            meeting_vals['description'] = '\n'.join(description_parts)
         
         meeting = CalendarEvent.create(meeting_vals)
         
@@ -550,8 +660,11 @@ class BookConsultingSlot(graphene.Mutation):
         # Send confirmation emails (to customer and exec)
         _send_booking_emails(env, meeting, partner, notes)
         
+        # D16: Return entity_id (product_slug) and entity_type for redirect
         return ConsultingBookingResult(
             success=True,
+            entity_id=product_slug or '',
+            entity_type='product',  # D16: default to 'product'
             meeting_id=meeting.id,
             start=slot_start.isoformat(),
             host_name=host.name,

@@ -35,10 +35,24 @@
         </tr>
     </table>
     
+    <!-- SCL D24: Two-layer structure - Categories then Details -->
+    {% if object.categ_ids %}
+    <div style="margin: 20px 0;">
+        <strong>Deine Themen:</strong><br/>
+        <div style="margin-top: 8px;">
+        {% for cat in object.categ_ids %}
+            {% if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked'] %}
+            <span style="display: inline-block; background: #e3f2fd; color: #1565c0; padding: 4px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 13px;">{{ cat.name }}</span>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
     {% if object.description %}
     <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <strong>Info:</strong><br/>
-        {{ object.description }}
+        <strong>Details:</strong><br/>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;">{{ object.description }}</pre>
     </div>
     {% endif %}
     
@@ -100,10 +114,24 @@
         </tr>
     </table>
     
+    <!-- SCL D24: Two-layer structure - Categories then Details -->
+    {% if object.categ_ids %}
+    <div style="margin: 20px 0;">
+        <strong>Gewünschte Themen:</strong><br/>
+        <div style="margin-top: 8px;">
+        {% for cat in object.categ_ids %}
+            {% if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked'] %}
+            <span style="display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 13px;">{{ cat.name }}</span>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
     {% if object.description %}
     <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-        <strong>Info:</strong><br/>
-        {{ object.description }}
+        <strong>Details vom Kunden:</strong><br/>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;">{{ object.description }}</pre>
     </div>
     {% endif %}
     

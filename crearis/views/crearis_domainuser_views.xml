@@ -60,6 +60,20 @@
                         </group>
                     </group>
 
+                    <!-- Teams Meeting Data (only visible for exec role) -->
+                    <div attrs="{'invisible': [('role', '!=', 'exec')]}">
+                        <separator string="MS Teams Consulting"/>
+                        <group>
+                            <group string="Video Call">
+                                <field name="teams_meeting_data" widget="json" 
+                                       placeholder='{"videocall_url": "https://...", "videocall_id": "123 456 789", "phonecall_id": "+49 ...", "passkey": "...", "login_info_html": "..."}'/>
+                            </group>
+                        </group>
+                        <p class="text-muted">
+                            Enter Teams meeting data as JSON. Keys: videocall_url, videocall_id, phonecall_id, passkey, login_info_html
+                        </p>
+                    </div>
+
                     
                     <!-- Body Section (only visible if custom_md is true) -->
                     <div attrs="{'invisible': [('custom_md', '=', False)]}">
