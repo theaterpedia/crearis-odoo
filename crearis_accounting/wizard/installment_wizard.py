@@ -2,6 +2,7 @@
 # Copyright 2026 crearis oHG
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
+import json
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
@@ -99,6 +100,10 @@ class InstallmentWizard(models.TransientModel):
     year_split_info = fields.Char(
         compute='_compute_preview', store=True,
         help='Info about year split if applicable',
+    )
+    schedule_data = fields.Text(
+        compute='_compute_preview', store=True,
+        help='JSON-serialized schedule for consistency between preview and creation',
     )
 
     # ── computed source ──────────────────────────────────────────────
@@ -208,6 +213,7 @@ class InstallmentWizard(models.TransientModel):
         for wiz in self:
             wiz.crosses_year_boundary = False
             wiz.year_split_info = ''
+            wiz.schedule_data = ''
 
             rows = wiz._build_schedule()
             if not rows:
@@ -215,6 +221,14 @@ class InstallmentWizard(models.TransientModel):
                 wiz.last_rate_amount = 0
                 wiz.preview_html = ''
                 continue
+
+            # Store schedule as JSON for consistent use at creation time
+            # Format: [[nr, "YYYY-MM-DD", label, amount], ...]
+            schedule_list = [
+                [nr, due.isoformat(), label, amt]
+                for nr, due, label, amt in rows
+            ]
+            wiz.schedule_data = json.dumps(schedule_list)
 
             wiz.num_installments = len(rows)
             wiz.last_rate_amount = rows[-1][3]
@@ -272,6 +286,27 @@ class InstallmentWizard(models.TransientModel):
 
     # ── helpers ───────────────────────────────────────────────────────
 
+    def _get_stored_schedule(self):
+        """Load schedule from stored JSON, ensuring consistency with preview.
+        
+        Returns list of (nr, due_date, label, amount) tuples.
+        Falls back to _build_schedule() if no stored data.
+        """
+        self.ensure_one()
+        if not self.schedule_data:
+            return self._build_schedule()
+        
+        try:
+            data = json.loads(self.schedule_data)
+            # Convert back to tuple format with date objects
+            return [
+                (item[0], date.fromisoformat(item[1]), item[2], item[3])
+                for item in data
+            ]
+        except (json.JSONDecodeError, ValueError, IndexError):
+            # Fallback if stored data is corrupted
+            return self._build_schedule()
+
     def _line_label(self, index, total):
         """Build invoice line description, e.g. 'Kursrate - Modul A 3/5'."""
         product_name = ''
@@ -315,7 +350,8 @@ class InstallmentWizard(models.TransientModel):
         If year boundary is crossed, creates 2 invoices (one per year).
         """
         self.ensure_one()
-        rows = self._build_schedule()
+        # Use stored schedule to ensure consistency with preview
+        rows = self._get_stored_schedule()
 
         if self.crosses_year_boundary:
             return self._create_year_split_invoices(rows)
@@ -526,7 +562,8 @@ class InstallmentWizard(models.TransientModel):
             ))
 
         order = self.sale_order_id
-        rows = self._build_schedule()
+        # Use stored schedule to ensure consistency with preview
+        rows = self._get_stored_schedule()
         created_moves = self.env['account.move']
 
         for nr, due, label, amt in rows:
