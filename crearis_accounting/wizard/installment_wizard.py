@@ -359,16 +359,15 @@ class InstallmentWizard(models.TransientModel):
         # Single invoice case
         if self.invoice_id:
             invoice = self.invoice_id
-            # Update invoice date to first installment date (payment term days are relative to this)
-            invoice.write({'invoice_date': rows[0][1]})
+            # Keep invoice_date as today (or existing date), payment term days calculated accordingly
         elif self.sale_order_id:
             # Create invoice from SO
             invoice = self._create_invoice_from_so(self.sale_order_id, rows)
         else:
             raise UserError(_("No source document found."))
 
-        # Create and apply payment term
-        payment_term = self._create_payment_term(rows, invoice.company_id)
+        # Create and apply payment term (days calculated from invoice_date)
+        payment_term = self._create_payment_term(rows, invoice.company_id, invoice_date=invoice.invoice_date)
         invoice.write({'invoice_payment_term_id': payment_term.id})
 
         return {
@@ -407,7 +406,7 @@ class InstallmentWizard(models.TransientModel):
             # Create payment term for this year's installments
             # Renumber rows for this year
             renumbered = [(i+1, r[1], r[2], r[3]) for i, r in enumerate(year_rows)]
-            payment_term = self._create_payment_term(renumbered, invoice.company_id, year=year)
+            payment_term = self._create_payment_term(renumbered, invoice.company_id, year=year, invoice_date=invoice.invoice_date)
             invoice.write({'invoice_payment_term_id': payment_term.id})
 
             created_invoices |= invoice
@@ -435,20 +434,24 @@ class InstallmentWizard(models.TransientModel):
             'target': 'current',
         }
 
-    def _create_payment_term(self, rows, company, year=None):
-        """Create a dynamic payment term with lines for each installment."""
+    def _create_payment_term(self, rows, company, year=None, invoice_date=None):
+        """Create a dynamic payment term with lines for each installment.
+        
+        Args:
+            invoice_date: The invoice date (today). Days are calculated relative to this.
+        """
         total = sum(r[3] for r in rows)
         name = f"Ratenzahlung {len(rows)}x ({rows[0][1].strftime('%m/%Y')})"
         if year:
             name = f"Ratenzahlung {len(rows)}x {year}"
 
-        # Calculate days from first due date for each installment
-        first_due = rows[0][1]
+        # Calculate days from invoice_date (today) for each installment
+        base_date = invoice_date or fields.Date.context_today(self)
         lines = []
 
         for i, (nr, due, label, amt) in enumerate(rows):
-            # Days from invoice date (which will be set to first due date)
-            days = (due - first_due).days if i > 0 else 0
+            # Days from invoice_date to due date
+            days = (due - base_date).days
             is_last = (i == len(rows) - 1)
 
             lines.append((0, 0, {
@@ -474,8 +477,7 @@ class InstallmentWizard(models.TransientModel):
         if not invoices:
             raise UserError(_("Could not create invoice from sale order."))
         invoice = invoices[0]
-        # Set invoice date to first installment due date
-        invoice.write({'invoice_date': rows[0][1]})
+        # Invoice date stays as today (default)
         return invoice
 
     def _create_invoice_from_so_for_year(self, order, year_rows, year_total, year):
