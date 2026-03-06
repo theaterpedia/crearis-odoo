@@ -63,9 +63,12 @@ def _get_client_ip():
 
 # --- Product ref parsing ---
 
+# DEFAULT shortcode mappings (legacy fallback)
+# These are overridden by website.shortcode_config when available (I2)
+
 # Flag → Odoo default_code mapping
-# For bundles (y/z), see _BUNDLE_TO_PRODUCTS below
-_FLAG_TO_PRODUCT = {
+# For bundles (y/z), see _DEFAULT_BUNDLE_TO_PRODUCTS below
+_DEFAULT_FLAG_TO_PRODUCT = {
     # Grundlagen (Module A-D)
     'w': 'MOD-A',  # Tageskurs format → Module A product
     'x': 'MOD-B',  # Block format → Module B product (different price)
@@ -82,14 +85,14 @@ _FLAG_TO_PRODUCT = {
 
 # Bundle shortcodes → multiple products (Mattis/Rike full Aufbau checkout)
 # These resolve to 3 products + loyalty discount applied at cart level
-_BUNDLE_TO_PRODUCTS = {
+_DEFAULT_BUNDLE_TO_PRODUCTS = {
     'y': ['MOD-E', 'MOD-AUFBAU-T', 'MOD-AUFBAU-P'],  # Full Aufbau Profil T
     'z': ['MOD-E', 'MOD-AUFBAU-R', 'MOD-AUFBAU-P'],  # Full Aufbau Profil R
 }
 
 # Consultation shortcodes (no product, manual_review only)
 # z15v = "Beraten & Ausprobieren" (Rike 3b flow) — contact-only, no sale.order
-_CONTACT_ONLY_FLAGS = {'v'}  # Only for z-location
+_DEFAULT_CONTACT_ONLY_FLAGS = {'v'}  # Only for z-location
 
 # Shortcode flag → human-readable title for emails
 _FLAG_TO_TITLE = {
@@ -111,18 +114,85 @@ _FLAG_TO_TITLE = {
 }
 
 # Location → city name for event filtering
-_LOCATION_TO_CITY = {
+_DEFAULT_LOCATION_TO_CITY = {
     'm': 'München',
     'n': 'Nürnberg',
     'z': None,  # zentral (Aufbaustufe) - no city filter
 }
 
 # Auto tier: only Module A format variants (w/x) in real locations (m/n)
-_AUTO_FLAGS = {'w', 'x'}
-_AUTO_LOCATIONS = {'m', 'n'}
+_DEFAULT_AUTO_FLAGS = {'w', 'x'}
+_DEFAULT_AUTO_LOCATIONS = {'m', 'n'}
 
 
-def _parse_product_ref(product_ref):
+def _get_shortcode_config(env):
+    """Get shortcode config from current website or return defaults.
+    
+    I2: Per-domain shortcode configuration stored in website.shortcode_config.
+    Falls back to hardcoded defaults if no config exists.
+    
+    Returns dict with keys: products, bundles, contact_only, locations, auto_flags, auto_locations
+    """
+    website = None
+    try:
+        website = env['website'].get_current_website()
+    except Exception:
+        pass  # Not in website context
+    
+    if website and website.shortcode_config:
+        cfg = website.shortcode_config
+        # Build config from website JSONB, with defaults for missing keys
+        products = {}
+        for flag, pdata in cfg.get('products', {}).items():
+            if isinstance(pdata, dict):
+                products[flag] = pdata.get('default_code', _DEFAULT_FLAG_TO_PRODUCT.get(flag))
+            else:
+                products[flag] = pdata  # Simple string mapping
+        
+        bundles = {}
+        for flag, bdata in cfg.get('bundles', {}).items():
+            if isinstance(bdata, dict):
+                bundles[flag] = bdata.get('products', _DEFAULT_BUNDLE_TO_PRODUCTS.get(flag, []))
+            else:
+                bundles[flag] = bdata  # Direct list
+        
+        contact_only = set(cfg.get('contact_only', _DEFAULT_CONTACT_ONLY_FLAGS))
+        
+        locations = {}
+        for loc, ldata in cfg.get('locations', {}).items():
+            if isinstance(ldata, dict):
+                locations[loc] = ldata.get('city')
+            else:
+                locations[loc] = ldata  # Simple string
+        if not locations:
+            locations = _DEFAULT_LOCATION_TO_CITY
+        
+        auto_flags = set(cfg.get('auto_flags', _DEFAULT_AUTO_FLAGS))
+        auto_locations = set(cfg.get('auto_locations', _DEFAULT_AUTO_LOCATIONS))
+        
+        return {
+            'products': products if products else _DEFAULT_FLAG_TO_PRODUCT,
+            'bundles': bundles if bundles else _DEFAULT_BUNDLE_TO_PRODUCTS,
+            'contact_only': contact_only,
+            'locations': locations,
+            'auto_flags': auto_flags,
+            'auto_locations': auto_locations,
+            'from_website': True,
+        }
+    
+    # Return defaults
+    return {
+        'products': _DEFAULT_FLAG_TO_PRODUCT,
+        'bundles': _DEFAULT_BUNDLE_TO_PRODUCTS,
+        'contact_only': _DEFAULT_CONTACT_ONLY_FLAGS,
+        'locations': _DEFAULT_LOCATION_TO_CITY,
+        'auto_flags': _DEFAULT_AUTO_FLAGS,
+        'auto_locations': _DEFAULT_AUTO_LOCATIONS,
+        'from_website': False,
+    }
+
+
+def _parse_product_ref(product_ref, config=None):
     """Parse shortcode into structured checkout info.
 
     Supports five patterns:
@@ -132,20 +202,36 @@ def _parse_product_ref(product_ref):
     4. Single event: ra_1373, la_1560
     5. Direct default_code: MOD-A (backwards compat)
 
+    Args:
+        product_ref: Shortcode string to parse
+        config: Optional shortcode config dict from _get_shortcode_config().
+                If None, uses hardcoded defaults.
+
     Returns dict with keys:
         location, cohort, flag, default_code, default_codes (for bundles),
         checkout_tier, is_single_event, is_bundle, is_contact_only, city_filter, original_ref
     """
+    # Use defaults if no config provided
+    if config is None:
+        config = {
+            'products': _DEFAULT_FLAG_TO_PRODUCT,
+            'bundles': _DEFAULT_BUNDLE_TO_PRODUCTS,
+            'contact_only': _DEFAULT_CONTACT_ONLY_FLAGS,
+            'locations': _DEFAULT_LOCATION_TO_CITY,
+            'auto_flags': _DEFAULT_AUTO_FLAGS,
+            'auto_locations': _DEFAULT_AUTO_LOCATIONS,
+        }
+    
     ref = (product_ref or '').strip().lower()
 
     # Pattern 1+2+3: Course/Bundle/Contact-only shortcode {location}{cohort}{flag}
     match = re.match(r'^([mnz])(\d{2})([a-z])$', ref)
     if match:
         location, cohort, flag = match.groups()
-        city_filter = _LOCATION_TO_CITY.get(location)
+        city_filter = config['locations'].get(location)
 
         # Check if this is a contact-only shortcode (z15v = "Beraten & Ausprobieren")
-        if location == 'z' and flag in _CONTACT_ONLY_FLAGS:
+        if location == 'z' and flag in config['contact_only']:
             return {
                 'location': location,
                 'cohort': cohort,
@@ -161,13 +247,13 @@ def _parse_product_ref(product_ref):
             }
 
         # Check if this is a bundle shortcode (y/z)
-        if flag in _BUNDLE_TO_PRODUCTS:
+        if flag in config['bundles']:
             return {
                 'location': location,
                 'cohort': cohort,
                 'flag': flag,
                 'default_code': None,  # No single product
-                'default_codes': _BUNDLE_TO_PRODUCTS[flag],  # Multiple products
+                'default_codes': config['bundles'][flag],  # Multiple products
                 'checkout_tier': 'manual_review',  # Bundles need review
                 'is_single_event': False,
                 'is_bundle': True,
@@ -176,8 +262,8 @@ def _parse_product_ref(product_ref):
             }
 
         # Regular product shortcode
-        default_code = _FLAG_TO_PRODUCT.get(flag)
-        tier = 'auto' if (location in _AUTO_LOCATIONS and flag in _AUTO_FLAGS) else 'manual_review'
+        default_code = config['products'].get(flag)
+        tier = 'auto' if (location in config['auto_locations'] and flag in config['auto_flags']) else 'manual_review'
         return {
             'location': location,
             'cohort': cohort,
@@ -312,12 +398,13 @@ class Checkout(graphene.Mutation):
                 error=_('All terms must be accepted'),
             )
 
-        # Parse product reference
-        parsed = _parse_product_ref(checkout.product_ref)
+        # Parse product reference (I2: config from website if available)
+        shortcode_config = _get_shortcode_config(env)
+        parsed = _parse_product_ref(checkout.product_ref, config=shortcode_config)
         tier = parsed['checkout_tier']
         _logger.info(
-            "Checkout: ref=%s tier=%s parsed=%s",
-            checkout.product_ref, tier, parsed,
+            "Checkout: ref=%s tier=%s from_website=%s parsed=%s",
+            checkout.product_ref, tier, shortcode_config.get('from_website', False), parsed,
         )
 
         # Get or create partner (both tiers need this)

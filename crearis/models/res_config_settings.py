@@ -54,3 +54,11 @@ class ResConfigSettings(models.TransientModel):
         related='website_id.event_domain_ids', 
         readonly=False
     )
+
+    # I2: Shortcode configuration (per-domain checkout flow)
+    crearis_shortcode_config = fields.Json(
+        string='Shortcode Configuration',
+        related='website_id.shortcode_config',
+        readonly=False,
+        help='Per-domain shortcode→product mapping. Format: {"products": {...}, "bundles": {...}}'
+    )

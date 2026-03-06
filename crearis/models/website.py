@@ -66,3 +66,15 @@ class Website(models.Model):
         column2="b_id",
         string="Event-Domains",
     )
+
+    # =========================
+    # SHORTCODE CONFIGURATION (I2)
+    # =========================
+
+    shortcode_config = fields.Json(
+        string='Shortcode Configuration',
+        help='Per-domain shortcode→product mapping for checkout flow. '
+             'Format: {"products": {"w": {"default_code": "...", "tier": "..."}}, '
+             '"bundles": {"y": {"products": [...]}}, "contact_only": ["v"]}',
+        default=lambda self: {}
+    )
