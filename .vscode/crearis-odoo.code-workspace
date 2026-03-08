@@ -312,7 +312,7 @@
                 "type": "shell",
                 "args": [
                     "--database=${config:odoo.module}",
-                    "--update=${config:odoo.module}",
+                    "--update=${config:odoo.module},graphql_theaterpedia",
                     "--addons-path=${config:odoo.addonsPaths}",
                     "--log-level=${config:odoo.logLevel}",
                     "--stop-after-init",

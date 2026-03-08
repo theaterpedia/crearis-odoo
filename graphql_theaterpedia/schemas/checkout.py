@@ -265,12 +265,15 @@ def _parse_product_ref(product_ref, config=None):
         default_code = config['products'].get(flag)
         if default_code is None:
             # Flag not in products, bundles, or contact_only → invalid
+            # Still include city_filter for schedule resolution (D18)
             return {
                 'validation_error': f"Unknown shortcode flag '{flag}' in '{ref}'. "
                                    f"Valid flags: {sorted(config['products'].keys())} (products), "
                                    f"{sorted(config['bundles'].keys())} (bundles), "
                                    f"{sorted(config['contact_only'])} (contact-only)",
                 'original_ref': ref,
+                'city_filter': city_filter,  # D18: still provide city for schedule filtering
+                'location': location,
             }
         tier = 'auto' if (location in config['auto_locations'] and flag in config['auto_flags']) else 'manual_review'
         return {
