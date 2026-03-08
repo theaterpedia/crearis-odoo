@@ -10,63 +10,68 @@
             <field name="email_to">{{ object.partner_ids[:1].email }}</field>
             <field name="body_html"><![CDATA[
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    <h2 style="color: #2c3e50;">Beratungstermin bestätigt</h2>
     
-    <p>Hallo <strong>{{ object.partner_ids[:1].name }}</strong>,</p>
+    <p>Hallo <strong><t t-out="object.partner_ids[:1].name.split()[0] if object.partner_ids[:1].name else ''"/></strong>,</p>
     
-    <p>Dein Beratungstermin wurde erfolgreich gebucht:</p>
+    <p>Dein Beratungstermin ist gebucht:</p>
     
     <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #eee; width: 30%;"><strong>Datum:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE') }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE')"/></td>
         </tr>
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Uhrzeit:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE') }} - {{ format_datetime(dt=object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE') }} Uhr</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> - <t t-out="format_datetime(object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</td>
         </tr>
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>mit:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.user_id.name }}</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Dauer:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">15 Minuten</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><t t-out="object.user_id.name"/></td>
         </tr>
     </table>
     
-    <!-- SCL D24: Two-layer structure - Categories then Details -->
-    {% if object.categ_ids %}
-    <div style="margin: 20px 0;">
-        <strong>Deine Themen:</strong><br/>
-        <div style="margin-top: 8px;">
-        {% for cat in object.categ_ids %}
-            {% if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked'] %}
-            <span style="display: inline-block; background: #e3f2fd; color: #1565c0; padding: 4px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 13px;">{{ cat.name }}</span>
-            {% endif %}
-        {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    
-    {% if object.description %}
+    <t t-if="object.description">
     <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <strong>Details:</strong><br/>
-        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;">{{ object.description }}</pre>
+        <strong>Info:</strong><br/>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;"><t t-out="object.description"/></pre>
     </div>
-    {% endif %}
+    </t>
+    
+    <!-- SCL: QWeb schedules snippet - shows next 5 events for the related product -->
+    <t t-set="related_events" t-value="object.get_related_events(5)"/>
+    <t t-if="related_events">
+    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+    <div style="background: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <strong>Nächste Termine:</strong>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <t t-foreach="related_events" t-as="ev">
+            <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #ddd; vertical-align: top; width: 25%;">
+                    <span style="color: #888; font-size: 11px; text-transform: uppercase;"><t t-out="ev['event_type']"/></span><br/>
+                    <t t-if="ev['overline']"><span style="color: #666; font-size: 12px;"><t t-out="ev['overline']"/></span><br/></t>
+                    <strong><t t-out="ev['headline']"/></strong>
+                </td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #ddd; vertical-align: top; text-align: right;">
+                    <t t-out="ev['start']"/><br/>
+                    <t t-if="ev['location']"><span style="color: #666;"><t t-out="ev['location']"/></span></t>
+                </td>
+            </tr>
+            </t>
+        </table>
+    </div>
+    </t>
     
     <p>Wir werden dich zum vereinbarten Zeitpunkt kontaktieren.</p>
     
     <p style="margin-top: 30px;">
         Mit freundlichen Grüßen,<br/>
-        <strong>{{ object.user_id.name }}</strong><br/>
-        {{ object.user_id.company_id.name }}
+        <strong><t t-out="object.user_id.name"/></strong><br/>
+        <t t-out="object.user_id.company_id.name"/>
     </p>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px;">
-        Diese E-Mail wurde automatisch generiert. Bei Fragen wende dich bitte an {{ object.user_id.email or 'info@dasei.eu' }}.
+        Diese E-Mail wurde automatisch generiert. Bei Fragen wende dich bitte an <t t-out="object.user_id.email or 'info@dasei.eu'"/>.
     </p>
 </div>
 ]]></field>
@@ -83,60 +88,45 @@
             <field name="email_to">{{ object.user_id.email }}</field>
             <field name="body_html"><![CDATA[
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    <h2 style="color: #27ae60;">Neuer Beratungstermin gebucht</h2>
     
-    <p>Hallo <strong>{{ object.user_id.name }}</strong>,</p>
+    <t t-set="partner" t-value="object.partner_ids[:1]"/>
+    <t t-set="partner_firstname" t-value="partner.firstname if hasattr(partner, 'firstname') and partner.firstname else (partner.name.split()[0] if partner.name else '')"/>
+    <t t-set="exec_firstname" t-value="object.user_id.partner_id.firstname if hasattr(object.user_id.partner_id, 'firstname') and object.user_id.partner_id.firstname else (object.user_id.name.split()[0] if object.user_id.name else '')"/>
     
-    <p>Ein neuer Beratungstermin wurde für dich gebucht:</p>
+    <p>Hallo <strong><t t-out="exec_firstname"/></strong>,</p>
+    
+    <p>du hast eine neue Beratung mit: <strong><t t-out="partner.name"/></strong></p>
     
     <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
         <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Kunde:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ object.partner_ids[:1].name }}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>E-Mail:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.email"/></td>
         </tr>
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>E-Mail:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><a href="mailto:{{ object.partner_ids[:1].email }}">{{ object.partner_ids[:1].email }}</a></td>
-        </tr>
-        {% if object.partner_ids[:1].phone or object.partner_ids[:1].mobile %}
+        <t t-if="partner.phone or partner.mobile">
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Telefon:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ object.partner_ids[:1].phone or object.partner_ids[:1].mobile }}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.phone or partner.mobile"/></td>
         </tr>
-        {% endif %}
+        </t>
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Datum:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE') }}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE')"/></td>
         </tr>
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Uhrzeit:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;">{{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE') }} - {{ format_datetime(dt=object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE') }} Uhr</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> - <t t-out="format_datetime(object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</td>
         </tr>
     </table>
     
-    <!-- SCL D24: Two-layer structure - Categories then Details -->
-    {% if object.categ_ids %}
-    <div style="margin: 20px 0;">
-        <strong>Gewünschte Themen:</strong><br/>
-        <div style="margin-top: 8px;">
-        {% for cat in object.categ_ids %}
-            {% if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked'] %}
-            <span style="display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 13px;">{{ cat.name }}</span>
-            {% endif %}
-        {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    
-    {% if object.description %}
+    <t t-if="object.description">
     <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-        <strong>Details vom Kunden:</strong><br/>
-        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;">{{ object.description }}</pre>
+        <strong>Beratung zu:</strong><br/>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;"><t t-out="object.description"/></pre>
     </div>
-    {% endif %}
+    </t>
     
     <p>
-        <a href="https://service.dasei.eu/web#id={{ object.id }}&amp;model=calendar.event&amp;view_type=form" 
+        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=calendar.event&amp;view_type=form'" 
            style="display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Termin in Odoo öffnen
         </a>
@@ -179,6 +169,125 @@
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px;">
         Server: service.dasei.eu
+    </p>
+</div>
+]]></field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+        <!-- Reconfirmation request email (36h before) -->
+        <record id="mail_template_consulting_reconfirm" model="mail.template">
+            <field name="name">Consulting Booking: Reconfirmation Request</field>
+            <field name="model_id" ref="calendar.model_calendar_event"/>
+            <field name="subject">Bitte bestätige deinen Beratungstermin - {{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='dd.MM.yyyy HH:mm') }}</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or object.user_id.company_id.email_formatted or 'noreply@dasei.eu') }}</field>
+            <field name="email_to">{{ object.partner_ids[:1].email }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <t t-set="partner" t-value="object.partner_ids[:1]"/>
+    <t t-set="partner_firstname" t-value="partner.firstname if hasattr(partner, 'firstname') and partner.firstname else (partner.name.split()[0] if partner.name else '')"/>
+    
+    <p>Hallo <strong><t t-out="partner_firstname"/></strong>,</p>
+    
+    <p>dein Beratungstermin steht in Kürze an. Bitte bestätige, dass du teilnehmen kannst:</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Datum:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE')"/></td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Uhrzeit:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> - <t t-out="format_datetime(object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>mit:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="object.user_id.name"/></td>
+        </tr>
+    </table>
+    
+    <div style="margin: 30px 0; text-align: center;">
+        <a t-att-href="object.get_confirm_url()" 
+           style="display: inline-block; background: #27ae60; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+            ✓ Termin bestätigen
+        </a>
+        <a t-att-href="object.get_cancel_url()" 
+           style="display: inline-block; background: #e74c3c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">
+            ✗ Termin absagen
+        </a>
+    </div>
+    
+    <p style="color: #666; font-size: 13px;">
+        Falls wir keine Bestätigung erhalten, werden wir dich kurz vor dem Termin nochmals kontaktieren.
+    </p>
+    
+    <p style="margin-top: 30px;">
+        Mit freundlichen Grüßen,<br/>
+        <strong><t t-out="object.user_id.name"/></strong>
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px;">
+        Diese E-Mail wurde automatisch generiert.
+    </p>
+</div>
+]]></field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- Consultant alert email (6h before, customer hasn't confirmed) -->
+        <record id="mail_template_consulting_alert" model="mail.template">
+            <field name="name">Consulting Booking: Consultant Alert</field>
+            <field name="model_id" ref="calendar.model_calendar_event"/>
+            <field name="subject">⚠️ Unbestätigter Termin in 6h: {{ object.partner_ids[:1].name }}</field>
+            <field name="email_from">{{ object.user_id.company_id.email_formatted or 'noreply@dasei.eu' }}</field>
+            <field name="email_to">{{ object.user_id.email }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <t t-set="partner" t-value="object.partner_ids[:1]"/>
+    <t t-set="exec_firstname" t-value="object.user_id.partner_id.firstname if hasattr(object.user_id.partner_id, 'firstname') and object.user_id.partner_id.firstname else (object.user_id.name.split()[0] if object.user_id.name else '')"/>
+    
+    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+        <strong>⚠️ Achtung:</strong> Der Kunde hat den Beratungstermin noch nicht bestätigt.
+    </div>
+    
+    <p>Hallo <strong><t t-out="exec_firstname"/></strong>,</p>
+    
+    <p>Folgender Beratungstermin wurde noch nicht vom Kunden bestätigt:</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Kunde:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.name"/></td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>E-Mail:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.email"/></td>
+        </tr>
+        <t t-if="partner.phone or partner.mobile">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Telefon:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.phone or partner.mobile"/></td>
+        </tr>
+        </t>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Termin:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y HH:mm', lang_code='de_DE')"/> Uhr</td>
+        </tr>
+    </table>
+    
+    <p>Du solltest den Kunden ggf. direkt kontaktieren, um den Termin zu bestätigen oder abzusagen.</p>
+    
+    <p>
+        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=calendar.event&amp;view_type=form'" 
+           style="display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Termin in Odoo öffnen
+        </a>
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px;">
+        Diese Warnung wurde automatisch generiert.
     </p>
 </div>
 ]]></field>

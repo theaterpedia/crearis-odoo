@@ -13,4 +13,30 @@
         <field name="doall">False</field>
         <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 06:00:00')"/>
     </record>
+    
+    <!-- SCL: Consulting reconfirmation check (runs every 2 hours) -->
+    <record id="ir_cron_consulting_reconfirm" model="ir.cron">
+        <field name="name">Consulting: Send Reconfirmation Emails (36h)</field>
+        <field name="model_id" ref="model_calendar_event"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_consulting_reconfirm()</field>
+        <field name="interval_number">2</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+        <field name="doall">False</field>
+    </record>
+    
+    <!-- SCL: Consulting consultant alert (runs every hour) -->
+    <record id="ir_cron_consulting_alert" model="ir.cron">
+        <field name="name">Consulting: Consultant Alert (6h)</field>
+        <field name="model_id" ref="model_calendar_event"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_consulting_alert()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+        <field name="doall">False</field>
+    </record>
 </odoo>

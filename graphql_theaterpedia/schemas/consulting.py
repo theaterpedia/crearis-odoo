@@ -73,18 +73,33 @@ class ConsultingContactInput(graphene.InputObjectType):
     mobil = graphene.String()
 
 
-class ConsultingCategoryInput(graphene.InputObjectType):
-    """SCL: Consultation preferences selected in dialog (D17, R6).
+class CategorySelectionInput(graphene.InputObjectType):
+    """SCL: A single category with its selected options and optional freeform text.
     
-    Categories are string keys that map to calendar.event.type records.
+    Part of the per-category options schema (D17, R6).
     """
-    categories = graphene.List(
-        graphene.String,
+    category = graphene.String(
         required=True,
-        description="Category keys: prerequisites, terms_and_options, topics, schedules, custom"
+        description="Category key: prerequisites, terms_and_options, topics, schedules, custom"
     )
-    freeform_text = graphene.String(
-        description="Optional custom text (max 240 chars) - D27"
+    options = graphene.List(
+        graphene.String,
+        description="Selected option keys within this category"
+    )
+    text = graphene.String(
+        description="Optional freeform text for this category (max 240 chars)"
+    )
+
+
+class ConsultingCategoryInput(graphene.InputObjectType):
+    """SCL: Consultation preferences with per-category options (D17, R6).
+    
+    New schema (2026-03-08): selections[] + callType replaces flat categories[].
+    """
+    selections = graphene.List(
+        CategorySelectionInput,
+        required=True,
+        description="Per-category selections with options and text"
     )
     call_type = graphene.String(
         required=True,
@@ -280,8 +295,13 @@ def _send_rate_limit_alert(env):
         _logger.error("Failed to send rate limit alert: %s", e)
 
 
-def _send_booking_emails(env, meeting, partner, notes=None):
-    """Send confirmation emails to customer and exec, and log to partner chatter (R2)."""
+def _send_booking_emails(env, meeting, partner, notes=None, selections=None, call_type=None):
+    """Send confirmation emails to customer and exec, and log to partner chatter (R2).
+    
+    Args:
+        selections: List of dicts with keys: key, label, options[], text (from parsed_selections)
+        call_type: 'video' or 'phone'
+    """
     MailTemplate = env['mail.template'].sudo()
     
     # Send customer confirmation
@@ -290,7 +310,10 @@ def _send_booking_emails(env, meeting, partner, notes=None):
             ('name', '=', 'Consulting Booking: Customer Confirmation')
         ], limit=1)
         if customer_template:
-            customer_template.send_mail(meeting.id, force_send=True)
+            # Don't auto-follow/subscribe; email only, no chatter log
+            customer_template.with_context(mail_post_autofollow=False).send_mail(
+                meeting.id, force_send=True, email_values={'auto_delete': True}
+            )
             _logger.info("Customer confirmation sent for meeting %s", meeting.id)
     except Exception as e:
         _logger.error("Failed to send customer confirmation: %s", e)
@@ -301,28 +324,53 @@ def _send_booking_emails(env, meeting, partner, notes=None):
             ('name', '=', 'Consulting Booking: Exec Notification')
         ], limit=1)
         if exec_template:
-            exec_template.send_mail(meeting.id, force_send=True)
+            # Don't log to chatter; exec-only notification
+            exec_template.with_context(mail_post_autofollow=False).send_mail(
+                meeting.id, force_send=True, email_values={'auto_delete': False}
+            )
             _logger.info("Exec notification sent for meeting %s", meeting.id)
     except Exception as e:
         _logger.error("Failed to send exec notification: %s", e)
     
-    # SCL R2: Log booking confirmation to partner chatter
+    # SCL R2: Log booking confirmation to partner chatter (enhanced 2026-03-08)
     try:
-        from datetime import datetime
         start_str = meeting.start.strftime('%d.%m.%Y %H:%M') if meeting.start else ''
         host_name = meeting.user_id.name if meeting.user_id else 'Host'
         
-        # Build category list
-        category_names = [cat.name for cat in meeting.categ_ids 
-                         if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked']]
-        categories_str = ', '.join(category_names) if category_names else 'keine'
+        # Build enhanced category HTML with options and text
+        categories_html = ''
+        if selections:
+            categories_html = '<ul style="margin: 8px 0; padding-left: 16px;">'
+            for sel in selections:
+                cat_html = f'<li><strong>{sel["label"]}</strong>'
+                if sel['options']:
+                    options_str = ', '.join(sel['options'])
+                    cat_html += f': <span style="color: #1565c0;">{options_str}</span>'
+                if sel['text']:
+                    cat_html += f'<br/><em style="color: #666;">→ {sel["text"]}</em>'
+                cat_html += '</li>'
+                categories_html += cat_html
+            categories_html += '</ul>'
+        else:
+            # Fallback to simple category list from meeting
+            category_names = [cat.name for cat in meeting.categ_ids 
+                             if cat.name not in ['Consulting Window', 'Consulting Meeting', 'Consulting Blocked']]
+            categories_html = ', '.join(category_names) if category_names else 'keine'
         
-        chatter_body = f"""<p><strong>Beratungstermin gebucht</strong></p>
+        # Build call type label
+        call_type_html = ''
+        if call_type:
+            call_label = '📹 Video-Call' if call_type == 'video' else '📞 Telefon'
+            call_type_html = f'<li><strong>Format:</strong> {call_label}</li>'
+        
+        chatter_body = f"""<p><strong>🗓️ Beratungstermin gebucht</strong></p>
 <ul>
     <li><strong>Datum:</strong> {start_str} Uhr</li>
     <li><strong>Berater:</strong> {host_name}</li>
-    <li><strong>Themen:</strong> {categories_str}</li>
-</ul>"""
+    {call_type_html}
+</ul>
+<p><strong>Themen:</strong></p>
+{categories_html}"""
         
         partner.message_post(
             body=chatter_body,
@@ -485,11 +533,15 @@ class BookConsultingSlot(graphene.Mutation):
         # SCL additions
         consultation = ConsultingCategoryInput(description="SCL: Category preferences from dialog")
         product_slug = graphene.String(description="D16: Product slug for redirect (entity_id)")
+        allow_cancellation = graphene.Boolean(
+            default_value=False,
+            description="SCL: If True, customer can cancel via link (bypass 6h rule)"
+        )
     
     Output = ConsultingBookingResult
     
     @staticmethod
-    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None):
+    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None, allow_cancellation=False):
         env = info.context['env']
         
         # === SECURITY: IP Check (logging only, not blocking) ===
@@ -589,11 +641,15 @@ class BookConsultingSlot(graphene.Mutation):
         meeting_type = CalendarEventType.search([('name', '=ilike', MEETING_CATEGORY)], limit=1)
         
         # SCL: Map consultation category keys to calendar.event.type IDs (D4, R1)
+        # Updated 2026-03-08: Parse selections[] with per-category options
         category_type_ids = []
         if meeting_type:
             category_type_ids.append(meeting_type.id)
         
-        if consultation and consultation.categories:
+        # Store parsed selections for chatter/email enrichment
+        parsed_selections = []
+        
+        if consultation and consultation.selections:
             # Map string keys to XML IDs
             category_xmlid_map = {
                 'prerequisites': 'crearis.calendar_event_type_cat_prerequisites',
@@ -602,7 +658,28 @@ class BookConsultingSlot(graphene.Mutation):
                 'schedules': 'crearis.calendar_event_type_cat_schedules',
                 'custom': 'crearis.calendar_event_type_cat_custom',
             }
-            for cat_key in consultation.categories:
+            # Human-readable labels for description
+            category_labels = {
+                'prerequisites': 'Voraussetzungen',
+                'terms_and_options': 'Zahlungsbedingungen',
+                'topics': 'Profile',
+                'schedules': 'Verläufe',
+                'custom': 'Individuell',
+            }
+            for sel in consultation.selections:
+                cat_key = sel.category
+                options = sel.options or []
+                text = sel.text or ''
+                
+                # Store for later use
+                parsed_selections.append({
+                    'key': cat_key,
+                    'label': category_labels.get(cat_key, cat_key),
+                    'options': options,
+                    'text': text,
+                })
+                
+                # Map to calendar event type
                 xmlid = category_xmlid_map.get(cat_key)
                 if xmlid:
                     try:
@@ -612,20 +689,45 @@ class BookConsultingSlot(graphene.Mutation):
                     except ValueError:
                         _logger.warning("BookConsultingSlot: category xmlid not found: %s", xmlid)
         
-        # SCL: Build description with consultation details
+        # SCL: Build description with consultation details (per-category)
         description_parts = []
         if consultation:
             call_type = getattr(consultation, 'call_type', None)
             if call_type:
-                description_parts.append(f"Call Type: {call_type}")
-            freeform = getattr(consultation, 'freeform_text', None)
-            if freeform:
-                description_parts.append(f"Custom Notes: {freeform}")
+                call_label = 'Video-Call' if call_type == 'video' else 'Telefon'
+                description_parts.append(f"Beratungsformat: {call_label}")
+            
+            # Add per-category details
+            for sel in parsed_selections:
+                cat_line = f"\n{sel['label']}:"
+                if sel['options']:
+                    cat_line += f" {', '.join(sel['options'])}"
+                if sel['text']:
+                    cat_line += f"\n  → {sel['text']}"
+                description_parts.append(cat_line)
+        
         if notes:
-            description_parts.append(f"Booking Notes:\n{notes}")
+            description_parts.append(f"\nNotizen:\n{notes}")
         
         # Create the meeting event
         meeting_name = f"Consulting: {contact.vorname} {contact.nachname}"
+        
+        # SCL: Determine consulting status (Vorbehalt logic)
+        # - >4 days ahead: pending_reconfirm (needs confirmation email 36h before)
+        # - ≤4 days ahead: confirmed (no action needed)
+        # - allow_cancellation=True: cancellable (can cancel via link anytime)
+        days_until_meeting = (slot_start - datetime.now()).days
+        if allow_cancellation:
+            consulting_status = 'cancellable'
+        elif days_until_meeting > 4:
+            consulting_status = 'pending_reconfirm'
+        else:
+            consulting_status = 'confirmed'
+        
+        # Generate consulting token for confirm/cancel links
+        import secrets
+        consulting_token = secrets.token_urlsafe(32)
+        
         meeting_vals = {
             'name': meeting_name,
             'start': slot_start,
@@ -634,6 +736,11 @@ class BookConsultingSlot(graphene.Mutation):
             'user_id': host_id,
             'partner_ids': [(4, partner.id)],
             'show_as': 'busy',
+            # SCL: Vorbehalt fields
+            'consulting_status': consulting_status,
+            'consulting_token': consulting_token,
+            'product_slug': product_slug or '',
+            'consulting_selections_raw': json.dumps(parsed_selections) if parsed_selections else '',
         }
         
         if category_type_ids:
@@ -652,13 +759,36 @@ class BookConsultingSlot(graphene.Mutation):
             'state': 'accepted',
         })
         
+        # SCL: Attach reminder alarm (15min before) to meeting
+        try:
+            Alarm = env['calendar.alarm'].sudo()
+            # Find or create a 15-minute notification alarm
+            reminder_alarm = Alarm.search([
+                ('alarm_type', '=', 'notification'),
+                ('duration', '=', 15),
+                ('interval', '=', 'minutes'),
+            ], limit=1)
+            if not reminder_alarm:
+                reminder_alarm = Alarm.create({
+                    'name': 'Beratung: 15 Min. Erinnerung',
+                    'alarm_type': 'notification',
+                    'duration': 15,
+                    'interval': 'minutes',
+                })
+            meeting.write({'alarm_ids': [(4, reminder_alarm.id)]})
+            _logger.debug("Alarm attached to meeting %s", meeting.id)
+        except Exception as e:
+            _logger.warning("Failed to attach alarm to meeting %s: %s", meeting.id, e)
+        
         _logger.info(
             "BookConsultingSlot: created meeting %s for partner %s with host %s",
             meeting.id, partner.id, host_id
         )
         
-        # Send confirmation emails (to customer and exec)
-        _send_booking_emails(env, meeting, partner, notes)
+        # Send confirmation emails (to customer and exec) with enhanced chatter
+        call_type_val = getattr(consultation, 'call_type', None) if consultation else None
+        _send_booking_emails(env, meeting, partner, notes, 
+                           selections=parsed_selections, call_type=call_type_val)
         
         # D16: Return entity_id (product_slug) and entity_type for redirect
         return ConsultingBookingResult(

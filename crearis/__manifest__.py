@@ -66,6 +66,7 @@ Features:
         'views/event_schedule_views.xml',
         'views/agenda_line_views.xml',
         'views/event_type_views.xml',
+        'views/consulting_templates.xml',
     ],
     'assets': {
         'web.assets_backend': [

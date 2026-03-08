@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- SCL: Consulting confirmation/cancellation result page -->
+    <template id="consulting_result_page" name="Consulting Result Page">
+        <t t-call="website.layout">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-6 text-center">
+                        <div t-attf-class="alert alert-#{success and 'success' or 'warning'} p-4">
+                            <h2 class="mb-3">
+                                <t t-if="success">
+                                    <i class="fa fa-check-circle text-success me-2"/>
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-exclamation-triangle text-warning me-2"/>
+                                </t>
+                                <t t-out="title"/>
+                            </h2>
+                            <p class="mb-0 lead"><t t-out="message"/></p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="/" class="btn btn-primary">
+                                <i class="fa fa-home me-1"/> Zur Startseite
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>
