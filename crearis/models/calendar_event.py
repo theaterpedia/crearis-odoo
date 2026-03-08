@@ -95,24 +95,38 @@ class CalendarEvent(models.Model):
             return []
 
         # Find product by slug
-        Product = self.env['product.product'].sudo()
-        # Try computed slug field first, fall back to name matching
-        product = Product.search([
-            '|',
+        Product = self.env['product.template'].sudo()
+        # Try default_code on product.product or name matching on template
+        ProductProduct = self.env['product.product'].sudo()
+        product_variant = ProductProduct.search([
             ('default_code', '=ilike', self.product_slug),
-            ('name', 'ilike', self.product_slug.replace('-', ' ')),
         ], limit=1)
+        
+        if product_variant:
+            product = product_variant.product_tmpl_id
+        else:
+            # Fall back to template name match
+            product = Product.search([
+                ('name', 'ilike', self.product_slug.replace('-', ' ')),
+            ], limit=1)
 
-        if not product or not product.event_type_id:
+        if not product:
+            return []
+        
+        # Get event types from package (Many2many field)
+        event_type_ids = []
+        if hasattr(product, 'package_event_type_ids') and product.package_event_type_ids:
+            event_type_ids = product.package_event_type_ids.ids
+        
+        if not event_type_ids:
             return []
 
-        # Find upcoming events of this type
+        # Find upcoming events of these types
         Event = self.env['event.event'].sudo()
         now = datetime.now()
         events = Event.search([
-            ('event_type_id', '=', product.event_type_id.id),
+            ('event_type_id', 'in', event_type_ids),
             ('date_begin', '>', now),
-            ('state', 'in', ['confirm', 'draft']),
         ], order='date_begin asc', limit=limit)
 
         result = []
