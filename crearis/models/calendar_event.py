@@ -48,6 +48,20 @@ class CalendarEvent(models.Model):
         help='Related product slug for smart enrichment (e.g., dasei1)'
     )
 
+    # SCL: Domain-aware schedules (D18 level-2 enrichment)
+    domain_code = fields.Char(
+        string='Domain Code',
+        help='Source domain (e.g., dasei1, dasei2) for journey-aware schedules'
+    )
+    schedule_product_slugs = fields.Text(
+        string='Schedule Product Slugs',
+        help='JSON list of product codes for schedules (resolved from domain + product)'
+    )
+    schedule_city = fields.Char(
+        string='Schedule City',
+        help='City filter for events in schedules (from shortcode location)'
+    )
+
     # SCL: Store selections as JSON for QWeb templates (Odoo 16 pattern)
     consulting_selections_raw = fields.Text(
         string='Consulting Selections JSON',
@@ -88,46 +102,69 @@ class CalendarEvent(models.Model):
     def get_related_events(self, limit=5):
         """Get next events for the related product (for QWeb schedules snippet).
         
+        Uses schedule_product_slugs (resolved from domain_code + product_slug)
+        and schedule_city for filtering. Falls back to product_slug if not set.
+        
         Returns list of dicts with event info for template rendering.
         """
         self.ensure_one()
-        if not self.product_slug:
+        
+        # D18: Use pre-resolved schedule product slugs if available
+        product_codes = []
+        if self.schedule_product_slugs:
+            try:
+                product_codes = json.loads(self.schedule_product_slugs)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        # Fall back to product_slug if no resolved codes
+        if not product_codes and self.product_slug:
+            product_codes = [self.product_slug]
+        
+        if not product_codes:
             return []
 
-        # Find product by slug
+        # Find products by default_code
         Product = self.env['product.template'].sudo()
-        # Try default_code on product.product or name matching on template
         ProductProduct = self.env['product.product'].sudo()
-        product_variant = ProductProduct.search([
-            ('default_code', '=ilike', self.product_slug),
-        ], limit=1)
         
-        if product_variant:
-            product = product_variant.product_tmpl_id
-        else:
-            # Fall back to template name match
-            product = Product.search([
-                ('name', 'ilike', self.product_slug.replace('-', ' ')),
+        all_event_type_ids = []
+        for code in product_codes:
+            product_variant = ProductProduct.search([
+                ('default_code', '=ilike', code),
             ], limit=1)
+            
+            if product_variant:
+                product = product_variant.product_tmpl_id
+            else:
+                # Fall back to template name match
+                product = Product.search([
+                    ('name', 'ilike', code.replace('-', ' ')),
+                ], limit=1)
 
-        if not product:
-            return []
+            if product:
+                # Get event types from package (Many2many field)
+                if hasattr(product, 'package_event_type_ids') and product.package_event_type_ids:
+                    all_event_type_ids.extend(product.package_event_type_ids.ids)
         
-        # Get event types from package (Many2many field)
-        event_type_ids = []
-        if hasattr(product, 'package_event_type_ids') and product.package_event_type_ids:
-            event_type_ids = product.package_event_type_ids.ids
-        
-        if not event_type_ids:
+        if not all_event_type_ids:
             return []
 
         # Find upcoming events of these types
         Event = self.env['event.event'].sudo()
         now = datetime.now()
-        events = Event.search([
-            ('event_type_id', 'in', event_type_ids),
+        
+        # Build search domain
+        event_domain = [
+            ('event_type_id', 'in', all_event_type_ids),
             ('date_begin', '>', now),
-        ], order='date_begin asc', limit=limit)
+        ]
+        
+        # D18: Filter by schedule_city if set
+        if self.schedule_city:
+            event_domain.append(('address_id.city', 'ilike', self.schedule_city))
+        
+        events = Event.search(event_domain, order='date_begin asc', limit=limit)
 
         result = []
         for ev in events:

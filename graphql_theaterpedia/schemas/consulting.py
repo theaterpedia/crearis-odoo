@@ -19,6 +19,7 @@ Security:
 """
 
 import logging
+import re
 from datetime import datetime, timedelta
 import json
 
@@ -27,7 +28,18 @@ from graphql import GraphQLError
 from odoo import _
 from odoo.http import request
 
+from .checkout import _parse_product_ref, _get_shortcode_config, _DEFAULT_FLAG_TO_PRODUCT
+
 _logger = logging.getLogger(__name__)
+
+# DASEi domain-code to products mapping (D18 level-2 schedules)
+# domain_code -> list of product default_codes to show in schedules
+# TODO: Refactor - will move to VSF customer UI per domain later
+DOMAIN_JOURNEY_PRODUCTS = {
+    'dasei1': ['MOD-A'],  # Grundlagen entry, extensible to ['MOD-A', 'MOD-B', 'MOD-C', 'MOD-D']
+    'dasei2': ['MOD-B', 'MOD-C', 'MOD-D'],  # Continuing Grundlagen
+    # dasei3: Aufbaustufe - not applicable for confirmation schedules
+}
 
 # Slot duration in minutes
 SLOT_DURATION_MINUTES = 15
@@ -567,6 +579,7 @@ class BookConsultingSlot(graphene.Mutation):
         # SCL additions
         consultation = ConsultingCategoryInput(description="SCL: Category preferences from dialog")
         product_slug = graphene.String(description="D16: Product slug for redirect (entity_id)")
+        domain_code = graphene.String(description="D18: Source domain for journey-aware schedules (e.g., dasei1)")
         allow_cancellation = graphene.Boolean(
             default_value=False,
             description="SCL: If True, customer can cancel via link (bypass 6h rule)"
@@ -575,7 +588,7 @@ class BookConsultingSlot(graphene.Mutation):
     Output = ConsultingBookingResult
     
     @staticmethod
-    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None, allow_cancellation=False):
+    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None, domain_code=None, allow_cancellation=False):
         env = info.context['env']
         
         # === SECURITY: IP Check (logging only, not blocking) ===
@@ -762,6 +775,35 @@ class BookConsultingSlot(graphene.Mutation):
         import secrets
         consulting_token = secrets.token_urlsafe(32)
         
+        # D18: Resolve schedule products from domain_code + product_slug
+        schedule_product_slugs = []
+        schedule_city = ''
+        if product_slug:
+            # Try parsing as shortcode (e.g., m18w)
+            shortcode_config = _get_shortcode_config(env)
+            parsed = _parse_product_ref(product_slug, config=shortcode_config)
+            
+            # Extract city filter from shortcode location
+            if parsed.get('city_filter'):
+                schedule_city = parsed['city_filter']
+            
+            # Get default_code from parsed shortcode
+            if parsed.get('default_code'):
+                base_code = parsed['default_code']
+            elif parsed.get('default_codes'):  # Bundle
+                base_code = parsed['default_codes'][0] if parsed['default_codes'] else ''
+            elif parsed.get('is_contact_only'):
+                base_code = ''
+            else:
+                # Direct default_code (e.g., MOD-A)
+                base_code = product_slug
+            
+            # Apply domain journey mapping if available
+            if domain_code and domain_code in DOMAIN_JOURNEY_PRODUCTS:
+                schedule_product_slugs = DOMAIN_JOURNEY_PRODUCTS[domain_code]
+            elif base_code:
+                schedule_product_slugs = [base_code]
+        
         meeting_vals = {
             'name': meeting_name,
             'start': slot_start,
@@ -775,6 +817,10 @@ class BookConsultingSlot(graphene.Mutation):
             'consulting_token': consulting_token,
             'product_slug': product_slug or '',
             'consulting_selections_raw': json.dumps(parsed_selections) if parsed_selections else '',
+            # D18: Schedule resolution
+            'domain_code': domain_code or '',
+            'schedule_product_slugs': json.dumps(schedule_product_slugs) if schedule_product_slugs else '',
+            'schedule_city': schedule_city,
         }
         
         if category_type_ids:
