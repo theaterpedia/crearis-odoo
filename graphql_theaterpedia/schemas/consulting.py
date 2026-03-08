@@ -310,8 +310,11 @@ def _send_booking_emails(env, meeting, partner, notes=None, selections=None, cal
             ('name', '=', 'Consulting Booking: Customer Confirmation')
         ], limit=1)
         if customer_template:
-            # Don't auto-follow/subscribe; email only, no chatter log
-            customer_template.with_context(mail_post_autofollow=False).send_mail(
+            # Don't log to chatter (we post to partner chatter separately)
+            customer_template.with_context(
+                mail_post_autofollow=False,
+                mail_create_nolog=True,
+            ).send_mail(
                 meeting.id, force_send=True, email_values={'auto_delete': True}
             )
             _logger.info("Customer confirmation sent for meeting %s", meeting.id)
@@ -324,8 +327,11 @@ def _send_booking_emails(env, meeting, partner, notes=None, selections=None, cal
             ('name', '=', 'Consulting Booking: Exec Notification')
         ], limit=1)
         if exec_template:
-            # Don't log to chatter; exec-only notification
-            exec_template.with_context(mail_post_autofollow=False).send_mail(
+            # Don't log to meeting chatter (exec gets email only)
+            exec_template.with_context(
+                mail_post_autofollow=False,
+                mail_create_nolog=True,
+            ).send_mail(
                 meeting.id, force_send=True, email_values={'auto_delete': False}
             )
             _logger.info("Exec notification sent for meeting %s", meeting.id)
@@ -380,6 +386,34 @@ def _send_booking_emails(env, meeting, partner, notes=None, selections=None, cal
         _logger.info("Chatter note posted for partner %s", partner.id)
     except Exception as e:
         _logger.error("Failed to post chatter note: %s", e)
+    
+    # SCL R2b: Log booking confirmation to consultant's partner chatter
+    try:
+        consultant_partner = meeting.user_id.partner_id if meeting.user_id else None
+        if consultant_partner:
+            customer_name = partner.name if partner else 'Kunde'
+            customer_email = partner.email if partner else ''
+            customer_phone = partner.phone or partner.mobile or '' if partner else ''
+            
+            exec_chatter_body = f"""<p><strong>🗓️ Neuer Beratungstermin</strong></p>
+<ul>
+    <li><strong>Kunde:</strong> {customer_name}</li>
+    <li><strong>E-Mail:</strong> {customer_email}</li>
+    {'<li><strong>Telefon:</strong> ' + customer_phone + '</li>' if customer_phone else ''}
+    <li><strong>Datum:</strong> {start_str} Uhr</li>
+    {call_type_html}
+</ul>
+<p><strong>Themen:</strong></p>
+{categories_html}"""
+            
+            consultant_partner.message_post(
+                body=exec_chatter_body,
+                message_type='notification',
+                subtype_xmlid='mail.mt_note',
+            )
+            _logger.info("Chatter note posted for consultant %s", consultant_partner.id)
+    except Exception as e:
+        _logger.error("Failed to post consultant chatter note: %s", e)
 
 
 class ConsultingSlotsQuery(graphene.ObjectType):
