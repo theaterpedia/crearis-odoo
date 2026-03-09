@@ -45,27 +45,20 @@ class CalendarEvent(models.Model):
     # SCL: Product context for smart enrichment
     product_slug = fields.Char(
         string='Product Slug',
-        help='Related product slug for smart enrichment (e.g., dasei1)'
+        help='Related product slug for smart enrichment (e.g., m18w)'
     )
 
-    # SCL: Domain-aware schedules (D18 level-2 enrichment)
-    domain_code = fields.Char(
-        string='Domain Code',
-        help='Source domain (e.g., dasei1, dasei2) for journey-aware schedules'
-    )
-    schedule_product_slugs = fields.Text(
-        string='Schedule Product Slugs',
-        help='JSON list of product codes for schedules (resolved from domain + product)'
-    )
-    schedule_city = fields.Char(
-        string='Schedule City',
-        help='City filter for events in schedules (from shortcode location)'
-    )
-
-    # SCL: Store selections as JSON for QWeb templates (Odoo 16 pattern)
-    consulting_selections_raw = fields.Text(
-        string='Consulting Selections JSON',
-        help='Stored as JSON array of {key, label, options[], text}'
+    # SCL: Consulting data as JSONB (selections, schedule config, call type)
+    # Structure:
+    # {
+    #     "selections": [{"key": "schedules", "label": "Verläufe", "options": [...], "text": "..."}],
+    #     "schedule": {"product_slugs": ["MOD-A"], "city": "München", "city_exclude": false},
+    #     "call_type": "video"
+    # }
+    consulting_data = fields.Json(
+        string='Consulting Data',
+        help='JSON with consultation selections, schedule config, call type',
+        default=False
     )
 
     @api.model
@@ -74,14 +67,28 @@ class CalendarEvent(models.Model):
         return secrets.token_urlsafe(32)
 
     def get_consulting_selections(self):
-        """Helper for QWeb - returns parsed list of dicts."""
+        """Helper for QWeb - returns parsed list of selection dicts."""
         self.ensure_one()
-        if not self.consulting_selections_raw:
+        if not self.consulting_data or not isinstance(self.consulting_data, dict):
             return []
-        try:
-            return json.loads(self.consulting_selections_raw)
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return self.consulting_data.get('selections', [])
+
+    def get_consulting_option(self, section, key=None, default=None):
+        """Helper for QWeb - get nested value from consulting_data.
+        
+        Examples:
+            get_consulting_option('schedule', 'city')  # → 'München'
+            get_consulting_option('call_type')  # → 'video'
+            get_consulting_option('schedule')  # → {'product_slugs': [...], 'city': '...'}
+        """
+        self.ensure_one()
+        if not self.consulting_data or not isinstance(self.consulting_data, dict):
+            return default
+        
+        value = self.consulting_data.get(section, default)
+        if key and isinstance(value, dict):
+            return value.get(key, default)
+        return value
 
     def get_confirm_url(self):
         """Get the reconfirmation URL."""
@@ -99,23 +106,73 @@ class CalendarEvent(models.Model):
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         return f"{base_url}/consulting/cancel/{self.consulting_token}"
 
+    # ===== Generic Event Helpers (no company-specific logic) =====
+    
+    def search_upcoming_events(self, event_type_ids, city=None, city_exclude=False, limit=5):
+        """Search upcoming events by type + city filter.
+        
+        Generic helper for QWeb templates - no product knowledge.
+        Respects multi-company access rules (no sudo).
+        
+        Args:
+            event_type_ids: list of event.type IDs to filter by
+            city: optional city filter string
+            city_exclude: if True, exclude events IN this city (inverse filter)
+            limit: max events to return
+            
+        Returns:
+            event.event recordset
+        """
+        if not event_type_ids:
+            return self.env['event.event'].browse()
+        
+        domain = [
+            ('event_type_id', 'in', event_type_ids),
+            ('date_begin', '>', datetime.now()),
+        ]
+        
+        if city:
+            op = 'not ilike' if city_exclude else 'ilike'
+            domain.append(('address_id.city', op, city))
+        
+        return self.env['event.event'].search(
+            domain, order='date_begin asc', limit=limit
+        )
+
+    def format_event_for_template(self, event):
+        """Format single event record for QWeb rendering.
+        
+        Generic helper - returns dict with standard event info.
+        """
+        return {
+            'id': event.id,
+            'name': event.name,
+            'event_type': event.event_type_id.name if event.event_type_id else '',
+            'overline': event.subtitle if hasattr(event, 'subtitle') else '',
+            'headline': event.name,
+            'start': event.date_begin.strftime('%d.%m.%Y %H:%M') if event.date_begin else '',
+            'end': event.date_end.strftime('%d.%m.%Y %H:%M') if event.date_end else '',
+            'location': event.address_id.city if event.address_id else '',
+        }
+
     def get_related_events(self, limit=5):
-        """Get next events for the related product (for QWeb schedules snippet).
+        """DEPRECATED: Use QWeb template resolution instead.
         
-        Uses schedule_product_slugs (resolved from domain_code + product_slug)
-        and schedule_city for filtering. Falls back to product_slug if not set.
+        This method contains company-specific product→event logic.
+        New templates should call search_upcoming_events() directly
+        after resolving event_type_ids via product.get_linked_event_type_ids().
         
-        Returns list of dicts with event info for template rendering.
+        See mail_template_consulting_data.xml for the QWeb pattern.
+        
+        Kept for backward compatibility during migration.
         """
         self.ensure_one()
         
-        # D18: Use pre-resolved schedule product slugs if available
-        product_codes = []
-        if self.schedule_product_slugs:
-            try:
-                product_codes = json.loads(self.schedule_product_slugs)
-            except (json.JSONDecodeError, TypeError):
-                pass
+        # Read config from JSONB
+        schedule = self.get_consulting_option('schedule', default={})
+        product_codes = schedule.get('product_slugs', []) if isinstance(schedule, dict) else []
+        city_filter = schedule.get('city', '') if isinstance(schedule, dict) else ''
+        city_exclude = schedule.get('city_exclude', False) if isinstance(schedule, dict) else False
         
         # Fall back to product_slug if no resolved codes
         if not product_codes and self.product_slug:
@@ -124,47 +181,19 @@ class CalendarEvent(models.Model):
         if not product_codes:
             return []
 
-        # Find products by default_code
-        Product = self.env['product.template'].sudo()
+        # DEPRECATED: Product→EventType resolution (now in QWeb)
         ProductProduct = self.env['product.product'].sudo()
-        
         all_event_type_ids = []
         for code in product_codes:
-            product_variant = ProductProduct.search([
-                ('default_code', '=ilike', code),
-            ], limit=1)
-            
-            if product_variant:
-                product = product_variant.product_tmpl_id
-            else:
-                # Fall back to template name match
-                product = Product.search([
-                    ('name', 'ilike', code.replace('-', ' ')),
-                ], limit=1)
-
-            if product:
-                # Get event types from package (Many2many field)
-                if hasattr(product, 'package_event_type_ids') and product.package_event_type_ids:
-                    all_event_type_ids.extend(product.package_event_type_ids.ids)
+            pv = ProductProduct.search([('default_code', '=ilike', code)], limit=1)
+            if pv and hasattr(pv.product_tmpl_id, 'get_linked_event_type_ids'):
+                all_event_type_ids.extend(pv.product_tmpl_id.get_linked_event_type_ids())
         
         if not all_event_type_ids:
             return []
 
-        # Find upcoming events of these types
-        Event = self.env['event.event'].sudo()
-        now = datetime.now()
-        
-        # Build search domain
-        event_domain = [
-            ('event_type_id', 'in', all_event_type_ids),
-            ('date_begin', '>', now),
-        ]
-        
-        # D18: Filter by schedule_city if set
-        if self.schedule_city:
-            event_domain.append(('address_id.city', 'ilike', self.schedule_city))
-        
-        events = Event.search(event_domain, order='date_begin asc', limit=limit)
+        # Use generic helper for event search
+        events = self.search_upcoming_events(all_event_type_ids, city_filter, city_exclude, limit)
 
         result = []
         for ev in events:

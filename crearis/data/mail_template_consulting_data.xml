@@ -37,23 +37,35 @@
     </div>
     </t>
     
-    <!-- SCL: QWeb schedules snippet - shows next 5 events for the related product -->
-    <t t-set="related_events" t-value="object.get_related_events(5)"/>
-    <t t-if="related_events">
+    <!-- SCL: QWeb schedules snippet - company-customizable event resolution -->
+    <!-- Step 1: Read JSONB config (generic) -->
+    <t t-set="schedule" t-value="object.get_consulting_option('schedule', default={}) or {}"/>
+    <t t-set="slugs" t-value="schedule.get('product_slugs', []) if schedule else []"/>
+    <t t-set="city" t-value="schedule.get('city', '') if schedule else ''"/>
+    <t t-set="city_exclude" t-value="schedule.get('city_exclude', False) if schedule else False"/>
+    
+    <!-- Step 2: Product → Event Type (company-specific - uses crearis_event_package) -->
+    <t t-set="products" t-value="env['product.product'].sudo().search([('default_code', 'in', slugs)])"/>
+    <t t-set="type_ids" t-value="sum([p.product_tmpl_id.get_linked_event_type_ids() for p in products if hasattr(p.product_tmpl_id, 'get_linked_event_type_ids')], [])"/>
+    
+    <!-- Step 3: Search events (generic helper) -->
+    <t t-set="events" t-value="object.search_upcoming_events(type_ids, city, city_exclude, 5)"/>
+    
+    <t t-if="events">
     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
     <div style="background: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <strong>Nächste Termine:</strong>
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-            <t t-foreach="related_events" t-as="ev">
+            <t t-foreach="events" t-as="ev">
             <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #ddd; vertical-align: top; width: 25%;">
-                    <span style="color: #888; font-size: 11px; text-transform: uppercase;"><t t-out="ev['event_type']"/></span><br/>
-                    <t t-if="ev['overline']"><span style="color: #666; font-size: 12px;"><t t-out="ev['overline']"/></span><br/></t>
-                    <strong><t t-out="ev['headline']"/></strong>
+                    <span style="color: #888; font-size: 11px; text-transform: uppercase;"><t t-out="ev.event_type_id.name if ev.event_type_id else ''"/></span><br/>
+                    <t t-if="hasattr(ev, 'subtitle') and ev.subtitle"><span style="color: #666; font-size: 12px;"><t t-out="ev.subtitle"/></span><br/></t>
+                    <strong><t t-out="ev.name"/></strong>
                 </td>
                 <td style="padding: 8px 0; border-bottom: 1px solid #ddd; vertical-align: top; text-align: right;">
-                    <t t-out="ev['start']"/><br/>
-                    <t t-if="ev['location']"><span style="color: #666;"><t t-out="ev['location']"/></span></t>
+                    <t t-out="ev.date_begin.strftime('%d.%m.%Y %H:%M') if ev.date_begin else ''"/><br/>
+                    <t t-if="ev.address_id and ev.address_id.city"><span style="color: #666;"><t t-out="ev.address_id.city"/></span></t>
                 </td>
             </tr>
             </t>

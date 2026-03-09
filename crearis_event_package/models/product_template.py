@@ -83,6 +83,17 @@ class ProductTemplate(models.Model):
         type_mapping['event_package'] = 'service'
         return type_mapping
 
+    def get_linked_event_type_ids(self):
+        """Return event type IDs linked to this product.
+        
+        Used by QWeb templates to resolve product → events.
+        This is the crearis_event_package implementation using package_event_type_ids.
+        """
+        self.ensure_one()
+        if self.package_event_type_ids:
+            return self.package_event_type_ids.ids
+        return []
+
 
 class ProductProduct(models.Model):
     _inherit = 'product.product'

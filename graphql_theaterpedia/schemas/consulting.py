@@ -778,6 +778,9 @@ class BookConsultingSlot(graphene.Mutation):
         # D18: Resolve schedule products from domain_code + product_slug
         schedule_product_slugs = []
         schedule_city = ''
+        schedule_city_exclude = False  # T8-I1: True for Blockkurs (flag 'x')
+        shortcode_flag = None
+        
         if product_slug:
             # Try parsing as shortcode (e.g., m18w)
             shortcode_config = _get_shortcode_config(env)
@@ -786,6 +789,13 @@ class BookConsultingSlot(graphene.Mutation):
             # Extract city filter from shortcode location
             if parsed.get('city_filter'):
                 schedule_city = parsed['city_filter']
+            
+            # Extract flag for city_exclude logic
+            shortcode_flag = parsed.get('flag', '')
+            
+            # T8-I1: Blockkurs (flag 'x') held in non-home city → exclude home city
+            if shortcode_flag == 'x':
+                schedule_city_exclude = True
             
             # Get default_code from parsed shortcode
             if parsed.get('default_code'):
@@ -804,6 +814,19 @@ class BookConsultingSlot(graphene.Mutation):
             elif base_code:
                 schedule_product_slugs = [base_code]
         
+        # Build consulting_data JSONB structure
+        call_type_val = getattr(consultation, 'call_type', None) if consultation else None
+        consulting_data = {
+            'selections': parsed_selections,
+            'schedule': {
+                'product_slugs': schedule_product_slugs,
+                'city': schedule_city,
+                'city_exclude': schedule_city_exclude,
+            },
+            'call_type': call_type_val or 'video',
+            'domain_code': domain_code or '',
+        }
+        
         meeting_vals = {
             'name': meeting_name,
             'start': slot_start,
@@ -816,11 +839,8 @@ class BookConsultingSlot(graphene.Mutation):
             'consulting_status': consulting_status,
             'consulting_token': consulting_token,
             'product_slug': product_slug or '',
-            'consulting_selections_raw': json.dumps(parsed_selections) if parsed_selections else '',
-            # D18: Schedule resolution
-            'domain_code': domain_code or '',
-            'schedule_product_slugs': json.dumps(schedule_product_slugs) if schedule_product_slugs else '',
-            'schedule_city': schedule_city,
+            # D18: All consulting data in single JSONB
+            'consulting_data': consulting_data,
         }
         
         if category_type_ids:
