@@ -738,11 +738,67 @@ class BookConsultingSlot(graphene.Mutation):
         
         # SCL: Build description with consultation details (per-category)
         description_parts = []
+        teams_videocall_url = ''
+        
+        # Get host's teams_meeting_data from domainuser
+        # First find domain (website) from domain_code
+        host_domainuser = None
+        if domain_code:
+            Website = env['website'].sudo()
+            domain_website = Website.search([('domain_code', '=', domain_code)], limit=1)
+            _logger.info("BookConsultingSlot: domain_code=%s, website_id=%s", domain_code, domain_website.id if domain_website else None)
+            if domain_website:
+                DomainUser = env['crearis.domainuser'].sudo()
+                host_domainuser = DomainUser.search([
+                    ('user_id', '=', host_id),
+                    ('domain_id', '=', domain_website.id),
+                    ('role', '=', 'exec'),
+                ], limit=1)
+                _logger.info("BookConsultingSlot: host_id=%s, domainuser_id=%s, has_teams=%s", 
+                    host_id, host_domainuser.id if host_domainuser else None, 
+                    bool(host_domainuser.teams_meeting_data) if host_domainuser else False)
+        
+        teams_data = host_domainuser.teams_meeting_data if host_domainuser else {}
+        _logger.info("BookConsultingSlot: teams_data type=%s, value=%s", type(teams_data).__name__, str(teams_data)[:100] if teams_data else 'empty')
+        # Handle case where teams_meeting_data is stored as JSON string (from widget="text")
+        if isinstance(teams_data, str):
+            try:
+                # User may have entered newlines in textarea - escape them for JSON parsing
+                # Replace literal newlines with escaped \n before parsing
+                teams_data_cleaned = teams_data.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+                teams_data = json.loads(teams_data_cleaned)
+                _logger.info("BookConsultingSlot: parsed teams_data, videocall_url=%s", teams_data.get('videocall_url', 'not found')[:50] if teams_data else 'empty')
+            except (json.JSONDecodeError, TypeError) as e:
+                _logger.warning("BookConsultingSlot: JSON parse error: %s", e)
+                teams_data = {}
+        if teams_data:
+            teams_videocall_url = teams_data.get('videocall_url', '')
+            _logger.info("BookConsultingSlot: teams_videocall_url=%s", teams_videocall_url[:50] if teams_videocall_url else 'empty')
+        
         if consultation:
             call_type = getattr(consultation, 'call_type', None)
             if call_type:
                 call_label = 'Video-Call' if call_type == 'video' else 'Telefon'
                 description_parts.append(f"Beratungsformat: {call_label}")
+                
+                # Add MS Teams info for video calls (computed from atomic fields)
+                if call_type == 'video' and host_domainuser:
+                    login_info = host_domainuser.get_teams_login_html()
+                    if login_info:
+                        # Convert HTML to plain text for calendar description
+                        import re
+                        plain_login = re.sub(r'<br/?>', '\n', login_info)
+                        plain_login = re.sub(r'<hr[^>]*/?>', '\n---\n', plain_login)
+                        plain_login = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>[^<]*</a>', r'\1', plain_login)
+                        plain_login = re.sub(r'<[^>]+>', '', plain_login)
+                        description_parts.append(f"\n--- MS Teams Zugangsdaten ---\n{plain_login}")
+                    elif teams_videocall_url:
+                        # Fallback to basic URL info
+                        description_parts.append(f"\nMeeting-Link: {teams_videocall_url}")
+                        if teams_data.get('videocall_id'):
+                            description_parts.append(f"Meeting-ID: {teams_data['videocall_id']}")
+                        if teams_data.get('passkey'):
+                            description_parts.append(f"Passcode: {teams_data['passkey']}")
             
             # Add per-category details
             for sel in parsed_selections:
@@ -825,6 +881,8 @@ class BookConsultingSlot(graphene.Mutation):
             },
             'call_type': call_type_val or 'video',
             'domain_code': domain_code or '',
+            # Store teams info for email template access
+            'teams_meeting_data': teams_data if isinstance(teams_data, dict) else {},
         }
         
         meeting_vals = {
@@ -842,6 +900,10 @@ class BookConsultingSlot(graphene.Mutation):
             # D18: All consulting data in single JSONB
             'consulting_data': consulting_data,
         }
+        
+        # Add MS Teams videocall URL if available
+        if teams_videocall_url:
+            meeting_vals['videocall_location'] = teams_videocall_url
         
         if category_type_ids:
             meeting_vals['categ_ids'] = [(4, tid) for tid in category_type_ids]

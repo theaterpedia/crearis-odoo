@@ -5,7 +5,7 @@
         <record id="mail_template_consulting_booking_customer" model="mail.template">
             <field name="name">Consulting Booking: Customer Confirmation</field>
             <field name="model_id" ref="calendar.model_calendar_event"/>
-            <field name="subject">Dein Beratungstermin - {{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='dd.MM.yyyy HH:mm') }}</field>
+            <field name="subject">Fragen &amp; Antworten mit {{ object.user_id.name }} - {{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='dd.MM.yyyy HH:mm') }}</field>
             <field name="email_from">{{ (object.user_id.email_formatted or object.user_id.company_id.email_formatted or 'noreply@dasei.eu') }}</field>
             <field name="email_to">{{ object.partner_ids[:1].email }}</field>
             <field name="body_html"><![CDATA[
@@ -13,29 +13,52 @@
     
     <p>Hallo <strong><t t-out="object.partner_ids[:1].name.split()[0] if object.partner_ids[:1].name else ''"/></strong>,</p>
     
-    <p>Dein Beratungstermin ist gebucht:</p>
+    <p>schön, dass du dich gemeldet hast! Hier sind die Details zu unserem Gespräch:</p>
     
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; width: 30%;"><strong>Datum:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE')"/></td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Uhrzeit:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> - <t t-out="format_datetime(object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>mit:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><t t-out="object.user_id.name"/></td>
-        </tr>
-    </table>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fragen &amp; Antworten mit</div>
+        <div style="font-size: 20px; font-weight: bold; margin: 5px 0 15px 0;"><t t-out="object.user_id.name"/></div>
+        <div style="font-size: 16px; font-weight: bold;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM', lang_code='de_DE')"/> um <t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</div>
+        
+        <!-- Video call info directly in header -->
+        <t t-if="object.videocall_location">
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+            <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Video-Call</div>
+            <div style="margin-top: 5px;">
+                <a t-att-href="object.videocall_location" style="color: #0066cc; text-decoration: none;">
+                    <t t-out="'🎥 Zum Meeting beitreten'"/>
+                </a>
+            </div>
+            <t t-set="teams_data" t-value="object.get_consulting_option('teams_meeting_data', default={}) or {}"/>
+            <t t-if="teams_data.get('videocall_id')">
+            <div style="color: #666; font-size: 13px; margin-top: 5px;">Besprechungs-ID: <t t-out="teams_data.get('videocall_id')"/></div>
+            </t>
+            <t t-if="teams_data.get('phonecall_id')">
+            <div style="color: #666; font-size: 13px; margin-top: 8px;">falls Video nicht klappt einfach per Telefon einwählen:<br/>tel:<t t-out="teams_data.get('phonecall_id')"/></div>
+            <t t-if="teams_data.get('phonecall_conference_id')">
+            <div style="color: #666; font-size: 13px;">Telefonkonferenz-ID: <t t-out="teams_data.get('phonecall_conference_id')"/></div>
+            </t>
+            </t>
+        </div>
+        </t>
+    </div>
     
-    <t t-if="object.description">
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <strong>Info:</strong><br/>
-        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;"><t t-out="object.description"/></pre>
+    <!-- Schwerpunkte section - iterate over selections list -->
+    <t t-set="selections" t-value="object.get_consulting_option('selections', default=[]) or []"/>
+    <t t-if="selections">
+    <div style="margin: 20px 0;">
+        <div style="color: #555;"><strong>Schwerpunkte:</strong></div>
+        <t t-foreach="selections" t-as="sel">
+        <t t-if="sel.get('options') or sel.get('text')">
+        <div style="color: #555; margin: 4px 0;">- <t t-out="sel.get('label', sel.get('key', ''))"/>: <t t-if="sel.get('options')"><t t-out="', '.join(sel.get('options', []))"/></t><t t-if="sel.get('text')"> [<t t-out="sel.get('text')"/>]</t></div>
+        </t>
+        </t>
     </div>
     </t>
+    
+    <p style="margin-top: 20px;"><strong>Bis bald!</strong></p>
+    
+    <p style="color: #666; font-size: 14px;">PS: Du darfst gerne einfach auf diese Email antworten 😊</p>
     
     <!-- SCL: QWeb schedules snippet - company-customizable event resolution -->
     <!-- Step 1: Read JSONB config (generic) -->
@@ -53,18 +76,39 @@
     
     <t t-if="events">
     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-    <div style="background: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <strong>Nächste Termine:</strong>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+    <div style="margin: 20px 0;">
+        <!-- Category overline header like website -->
+        <div style="color: #c17a00; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Termine &amp; Zeitplanung</div>
+        <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">Verläufe</div>
+        <table style="width: 100%; border-collapse: collapse;">
             <t t-foreach="events" t-as="ev">
+            <t t-set="ev_name" t-value="(ev.name.get('de_DE') or ev.name.get('en_US') or str(ev.name)) if isinstance(ev.name, dict) else str(ev.name)"/>
+            <!-- Parse name: "Overline **Headline**" pattern -->
+            <t t-set="has_headline" t-value="'**' in ev_name"/>
+            <t t-set="overline_part" t-value="ev_name.split('**')[0].strip() if has_headline else ''"/>
+            <t t-set="headline_part" t-value="ev_name.split('**')[1].strip() if has_headline and len(ev_name.split('**')) > 1 else ev_name.replace('**', '')"/>
+            <!-- Get template code if is_template_code=True -->
+            <t t-set="type_name_raw" t-value="ev.event_type_id.name if ev.event_type_id else {}"/>
+            <t t-set="type_code" t-value="(type_name_raw.get('en_US') or type_name_raw.get('de_DE') or '') if isinstance(type_name_raw, dict) else str(type_name_raw or '')"/>
+            <t t-set="show_code" t-value="ev.event_type_id and ev.event_type_id.is_template_code and type_code"/>
+            <!-- Date range formatting -->
+            <t t-set="start_date" t-value="ev.date_begin"/>
+            <t t-set="end_date" t-value="ev.date_end"/>
+            <t t-set="same_day" t-value="start_date.date() == end_date.date() if start_date and end_date else True"/>
+            <t t-set="weekdays" t-value="['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO']"/>
             <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #ddd; vertical-align: top; width: 25%;">
-                    <span style="color: #888; font-size: 11px; text-transform: uppercase;"><t t-out="ev.event_type_id.name if ev.event_type_id else ''"/></span><br/>
-                    <t t-if="hasattr(ev, 'subtitle') and ev.subtitle"><span style="color: #666; font-size: 12px;"><t t-out="ev.subtitle"/></span><br/></t>
-                    <strong><t t-out="ev.name"/></strong>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; vertical-align: top; width: 65%;">
+                    <t t-if="show_code"><span style="color: #888; font-size: 11px; text-transform: uppercase;"><t t-out="type_code"/></span> </t><t t-if="overline_part"><span style="color: #555; font-size: 13px;"><t t-out="overline_part"/></span><br/></t>
+                    <strong><t t-out="headline_part"/></strong>
                 </td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #ddd; vertical-align: top; text-align: right;">
-                    <t t-out="ev.date_begin.strftime('%d.%m.%Y %H:%M') if ev.date_begin else ''"/><br/>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; vertical-align: top; text-align: right;">
+                    <t t-if="same_day">
+                    <t t-out="start_date.strftime('%d.%m.%Y') if start_date else ''"/> <t t-out="start_date.strftime('%H:%M') if start_date and start_date.hour != 7 else '09:00'"/><br/>
+                    </t>
+                    <t t-if="not same_day">
+                    <t t-out="start_date.strftime('%d.')"/>-<t t-out="end_date.strftime('%d.%m.%Y')"/><br/>
+                    <span style="font-size: 12px;">(<t t-out="weekdays[start_date.weekday()]"/> <t t-out="start_date.strftime('%H:%M') if start_date.hour != 7 else '18:00'"/> - <t t-out="weekdays[end_date.weekday()]"/> <t t-out="end_date.strftime('%H:%M') if end_date.hour != 7 else '15:00'"/>)</span><br/>
+                    </t>
                     <t t-if="ev.address_id and ev.address_id.city"><span style="color: #666;"><t t-out="ev.address_id.city"/></span></t>
                 </td>
             </tr>
@@ -73,17 +117,9 @@
     </div>
     </t>
     
-    <p>Wir werden dich zum vereinbarten Zeitpunkt kontaktieren.</p>
-    
-    <p style="margin-top: 30px;">
-        Mit freundlichen Grüßen,<br/>
-        <strong><t t-out="object.user_id.name"/></strong><br/>
-        <t t-out="object.user_id.company_id.name"/>
-    </p>
-    
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
-    <p style="color: #888; font-size: 12px;">
-        Diese E-Mail wurde automatisch generiert. Bei Fragen wende dich bitte an <t t-out="object.user_id.email or 'info@dasei.eu'"/>.
+    <p style="color: #888; font-size: 12px; text-align: center;">
+        powered by <a href="https://theaterpedia.org" style="color: #888;">Theaterpedia</a>
     </p>
 </div>
 ]]></field>
@@ -191,7 +227,7 @@
         <record id="mail_template_consulting_reconfirm" model="mail.template">
             <field name="name">Consulting Booking: Reconfirmation Request</field>
             <field name="model_id" ref="calendar.model_calendar_event"/>
-            <field name="subject">Bitte bestätige deinen Beratungstermin - {{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='dd.MM.yyyy HH:mm') }}</field>
+            <field name="subject">Unser Gespräch am {{ format_datetime(dt=object.start, tz='Europe/Berlin', dt_format='EEEE', lang_code='de_DE') }} - bist du dabei?</field>
             <field name="email_from">{{ (object.user_id.email_formatted or object.user_id.company_id.email_formatted or 'noreply@dasei.eu') }}</field>
             <field name="email_to">{{ object.partner_ids[:1].email }}</field>
             <field name="body_html"><![CDATA[
@@ -201,46 +237,38 @@
     
     <p>Hallo <strong><t t-out="partner_firstname"/></strong>,</p>
     
-    <p>dein Beratungstermin steht in Kürze an. Bitte bestätige, dass du teilnehmen kannst:</p>
+    <p>unser Gespräch rückt näher! Kurze Frage: Passt der Termin noch für dich?</p>
     
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Datum:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y', lang_code='de_DE')"/></td>
-        </tr>
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Uhrzeit:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> - <t t-out="format_datetime(object.stop, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</td>
-        </tr>
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>mit:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="object.user_id.name"/></td>
-        </tr>
-    </table>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fragen &amp; Antworten mit</div>
+        <div style="font-size: 20px; font-weight: bold; margin: 5px 0 15px 0;"><t t-out="object.user_id.name"/></div>
+        <div style="color: #666;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM', lang_code='de_DE')"/></div>
+        <div style="font-size: 16px;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</div>
+    </div>
     
     <div style="margin: 30px 0; text-align: center;">
         <a t-att-href="object.get_confirm_url()" 
            style="display: inline-block; background: #27ae60; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-right: 10px;">
-            ✓ Termin bestätigen
+            ✓ Ja, bin dabei!
         </a>
         <a t-att-href="object.get_cancel_url()" 
            style="display: inline-block; background: #e74c3c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">
-            ✗ Termin absagen
+            ✗ Muss absagen
         </a>
     </div>
     
     <p style="color: #666; font-size: 13px;">
-        Falls wir keine Bestätigung erhalten, werden wir dich kurz vor dem Termin nochmals kontaktieren.
+        Falls ich nichts höre, melde ich mich kurz vor dem Termin nochmal.
     </p>
     
-    <p style="margin-top: 30px;">
-        Mit freundlichen Grüßen,<br/>
+    <p style="margin-top: 20px;">
+        Bis bald,<br/>
         <strong><t t-out="object.user_id.name"/></strong>
     </p>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px;">
-        Diese E-Mail wurde automatisch generiert.
+        Bei Fragen erreichst du mich unter <t t-out="object.user_id.email or 'info@dasei.eu'"/>.
     </p>
 </div>
 ]]></field>
