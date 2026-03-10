@@ -292,4 +292,101 @@ if records:
               action="action_controlling_forced"
               sequence="25"/>
     
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         S2L: Two-Lanes Controlling Dashboard (Direction 4)
+         Unified view across: agenda.line, calendar.event, crm.lead
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <!-- Dashboard Form View -->
+    <record id="view_controlling_dashboard_form" model="ir.ui.view">
+        <field name="name">controlling.dashboard.form</field>
+        <field name="model">controlling.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="S2L Dashboard">
+                <header>
+                    <button name="action_refresh" type="object" string="🔄 Refresh" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>S2L Controlling Dashboard</h1>
+                    </div>
+                    
+                    <!-- Stats Boxes -->
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-list" disabled="1">
+                            <field name="line_count" widget="statinfo" string="Total"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-video-camera" disabled="1">
+                            <field name="consulting_count" widget="statinfo" string="Calls"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-envelope" disabled="1">
+                            <field name="inquiry_count" widget="statinfo" string="Emails"/>
+                        </button>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <group>
+                        <group>
+                            <field name="exec_id"/>
+                            <field name="domain_code"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Lines -->
+                    <notebook>
+                        <page string="All Lines" name="lines">
+                            <field name="line_ids">
+                                <tree decoration-info="source_type == 'inquiry'"
+                                      decoration-success="state == 'confirmed'"
+                                      decoration-warning="state == 'pending_reconfirm'"
+                                      decoration-muted="state == 'cancelled'">
+                                    <field name="date"/>
+                                    <field name="partner_name"/>
+                                    <field name="lane_type" widget="badge"/>
+                                    <field name="domain_code"/>
+                                    <field name="category_summary"/>
+                                    <field name="assigned_exec_id" widget="many2one_avatar_user"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="source_type" invisible="1"/>
+                                    <button name="action_open_source" type="object" 
+                                            string="→" title="Open Source Record"
+                                            class="btn-link"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Dashboard Action -->
+    <record id="action_s2l_dashboard" model="ir.actions.act_window">
+        <field name="name">S2L Dashboard</field>
+        <field name="res_model">controlling.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+    
+    <!-- Server Action to open fresh dashboard -->
+    <record id="action_open_s2l_dashboard" model="ir.actions.server">
+        <field name="name">Open S2L Dashboard</field>
+        <field name="model_id" ref="model_controlling_dashboard"/>
+        <field name="state">code</field>
+        <field name="code">
+action = env['controlling.dashboard'].action_open_dashboard()
+        </field>
+    </record>
+    
+    <!-- Menu Item for S2L Dashboard -->
+    <menuitem id="menu_s2l_dashboard"
+              name="📊 S2L Dashboard"
+              parent="menu_controlling_root"
+              action="action_open_s2l_dashboard"
+              sequence="5"/>
+    
 </odoo>

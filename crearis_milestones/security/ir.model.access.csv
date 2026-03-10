@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_agenda_line_blocker_user,agenda.line.blocker user,model_agenda_line_blocker,base.group_user,1,0,0,0
 access_agenda_line_blocker_event_manager,agenda.line.blocker event manager,model_agenda_line_blocker,event.group_event_manager,1,1,1,1
+access_controlling_line_user,controlling.line user,model_controlling_line,base.group_user,1,1,1,1
+access_controlling_dashboard_user,controlling.dashboard user,model_controlling_dashboard,base.group_user,1,1,1,1

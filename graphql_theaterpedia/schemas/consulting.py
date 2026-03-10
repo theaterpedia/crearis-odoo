@@ -968,6 +968,164 @@ class BookConsultingSlot(graphene.Mutation):
         )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# S2L: Email-Only Inquiry Mutation (Direction 4)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class EmailInquiryResult(graphene.ObjectType):
+    """Result of creating an email-only inquiry."""
+    success = graphene.Boolean(required=True)
+    lead_id = graphene.Int(description="Created crm.lead ID")
+    error = graphene.String()
+
+
+class CreateEmailInquiry(graphene.Mutation):
+    """S2L: Create email-only consulting inquiry (crm.lead).
+    
+    Direction 4 architecture: crm.lead serves as native home for email-only lane.
+    No calendar slot needed - exec assigned via domainuser.
+    
+    Security:
+    - Rate limiting: Same as BookConsultingSlot (10/hour)
+    """
+    
+    class Arguments:
+        contact = ConsultingContactInput(required=True, description="Customer contact info")
+        consultation = ConsultingCategoryInput(required=True, description="Category selections")
+        domain_code = graphene.String(required=True, description="Source domain (dasei1/dasei2/dasei3)")
+        product_slug = graphene.String(description="Product context (for routing)")
+    
+    Output = EmailInquiryResult
+    
+    @staticmethod
+    def mutate(root, info, contact, consultation, domain_code, product_slug=None):
+        env = info.context['env']
+        
+        # === SECURITY: Rate Limit Check ===
+        allowed, rate_error = _check_rate_limit(env)
+        if not allowed:
+            if 'temporarily unavailable' in str(rate_error):
+                _send_rate_limit_alert(env)
+            return EmailInquiryResult(success=False, error=rate_error)
+        
+        # Find or create partner
+        Partner = env['res.partner'].sudo()
+        partner = Partner.search([('email', '=ilike', contact.email)], limit=1)
+        
+        if not partner:
+            partner_vals = {
+                'name': f"{contact.vorname} {contact.nachname}".strip(),
+                'email': contact.email,
+            }
+            if hasattr(Partner, 'firstname'):
+                partner_vals['firstname'] = contact.vorname
+                partner_vals['lastname'] = contact.nachname
+            if contact.mobil:
+                partner_vals['phone'] = contact.mobil
+            partner = Partner.create(partner_vals)
+            _logger.info("CreateEmailInquiry: created partner %s", partner.id)
+        
+        # Map category keys to crm.tag IDs
+        CrmTag = env['crm.tag'].sudo()
+        tag_xmlid_map = {
+            'prerequisites': 'crearis.crm_tag_consulting_prerequisites',
+            'terms_and_options': 'crearis.crm_tag_consulting_terms',
+            'topics': 'crearis.crm_tag_consulting_topics',
+            'schedules': 'crearis.crm_tag_consulting_schedules',
+            'custom': 'crearis.crm_tag_consulting_custom',
+        }
+        category_labels = {
+            'prerequisites': 'Voraussetzungen',
+            'terms_and_options': 'Zahlungsbedingungen',
+            'topics': 'Profile',
+            'schedules': 'Verläufe',
+            'custom': 'Individuell',
+        }
+        
+        tag_ids = []
+        description_parts = []
+        
+        if consultation and consultation.selections:
+            for sel in consultation.selections:
+                cat_key = sel.category
+                options = sel.options or []
+                text = sel.text or ''
+                
+                # Build description
+                part = f"**{category_labels.get(cat_key, cat_key)}**"
+                if options:
+                    part += f": {', '.join(options)}"
+                if text:
+                    part += f"\n→ {text}"
+                description_parts.append(part)
+                
+                # Map to crm.tag
+                xmlid = tag_xmlid_map.get(cat_key)
+                if xmlid:
+                    try:
+                        tag = env.ref(xmlid)
+                        if tag:
+                            tag_ids.append(tag.id)
+                    except ValueError:
+                        _logger.warning("CreateEmailInquiry: tag xmlid not found: %s", xmlid)
+        
+        description = "\n\n".join(description_parts)
+        if product_slug:
+            description = f"Produkt-Referenz: {product_slug}\n\n{description}"
+        
+        # Find exec via domainuser
+        exec_user_id = False
+        Website = env['website'].sudo()
+        DomainUser = env['crearis.domainuser'].sudo()
+        
+        website = Website.search([('domain_code', '=', domain_code)], limit=1)
+        if website:
+            exec_du = DomainUser.search([
+                ('domain_id', '=', website.id),
+                ('role', '=', 'exec'),
+                ('active', '=', True),
+            ], limit=1)
+            if exec_du and exec_du.user_id:
+                exec_user_id = exec_du.user_id.id
+        
+        # Create CRM lead
+        CrmLead = env['crm.lead'].sudo()
+        lead = CrmLead.create({
+            'name': f"Email-Beratung: {partner.name}",
+            'partner_id': partner.id,
+            'contact_name': f"{contact.vorname} {contact.nachname}".strip(),
+            'email_from': contact.email,
+            'phone': contact.mobil or '',
+            'description': description,
+            'tag_ids': [(6, 0, tag_ids)],
+            'user_id': exec_user_id,
+            'type': 'lead',
+            'is_consulting_inquiry': True,
+            'consulting_domain_code': domain_code,
+        })
+        
+        _logger.info(
+            "CreateEmailInquiry: created lead %s for partner %s, domain %s, exec %s",
+            lead.id, partner.id, domain_code, exec_user_id
+        )
+        
+        # Log to partner chatter
+        chatter_body = f"""<p><strong>📧 Email-Beratungsanfrage</strong></p>
+<ul>
+<li>Domain: {domain_code}</li>
+<li>Kategorien: {', '.join(category_labels.get(s.category, s.category) for s in (consultation.selections or []))}</li>
+</ul>
+<p><a href="/web#model=crm.lead&amp;id={lead.id}">→ Zur Anfrage</a></p>
+"""
+        partner.message_post(
+            body=chatter_body,
+            subtype_xmlid='mail.mt_note',
+        )
+        
+        return EmailInquiryResult(success=True, lead_id=lead.id)
+
+
 class ConsultingMutation(graphene.ObjectType):
     """Consulting mutations."""
     book_consulting_slot = BookConsultingSlot.Field()
+    create_email_inquiry = CreateEmailInquiry.Field()  # S2L: Email-only lane

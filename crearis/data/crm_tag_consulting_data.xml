@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    S2L Consulting Category Tags
+    
+    These crm.tag records are used for:
+    - crm.lead.tag_ids (email-only inquiries)
+    - calendar.event categorization (future: Direction 5)
+    
+    Color reference (Odoo 16):
+    1=red, 2=orange, 3=yellow, 4=cyan, 5=purple,
+    6=pink, 7=teal, 8=blue, 9=magenta, 10=green, 11=gray
+-->
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Consulting Category Tags -->
+        <record id="crm_tag_consulting_prerequisites" model="crm.tag">
+            <field name="name">Consulting: Voraussetzungen</field>
+            <field name="color">8</field><!-- Blue -->
+        </record>
+        
+        <record id="crm_tag_consulting_terms" model="crm.tag">
+            <field name="name">Consulting: Zahlungsbedingungen</field>
+            <field name="color">10</field><!-- Green -->
+        </record>
+        
+        <record id="crm_tag_consulting_topics" model="crm.tag">
+            <field name="name">Consulting: Profile</field>
+            <field name="color">2</field><!-- Orange -->
+        </record>
+        
+        <record id="crm_tag_consulting_schedules" model="crm.tag">
+            <field name="name">Consulting: Verläufe</field>
+            <field name="color">5</field><!-- Purple -->
+        </record>
+        
+        <record id="crm_tag_consulting_custom" model="crm.tag">
+            <field name="name">Consulting: Individuell</field>
+            <field name="color">11</field><!-- Gray -->
+        </record>
+        
+    </data>
+</odoo>

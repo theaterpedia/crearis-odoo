@@ -18,6 +18,7 @@ from . import agenda_line  # Renamed from event_session_line (2026-02-02)
 from . import event
 from . import event_registration
 from . import calendar_event
+from . import crm_lead  # S2L: email-only consulting inquiries
 from . import config_template
 # from . import event_workflow
 from . import res_config_settings

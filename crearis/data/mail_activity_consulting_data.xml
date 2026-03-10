@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    S2L Consulting Activity Types
+    
+    Activity types for consulting workflows:
+    - Email reply (1 day deadline for email-only inquiries)
+    - Follow-up (3 days after consultation)
+-->
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Email Inquiry Reply Activity -->
+        <record id="mail_activity_consulting_reply" model="mail.activity.type">
+            <field name="name">Email Consulting Reply</field>
+            <field name="summary">Answer email consulting inquiry</field>
+            <field name="res_model">crm.lead</field>
+            <field name="icon">fa-envelope</field>
+            <field name="delay_count">1</field>
+            <field name="delay_unit">days</field>
+        </record>
+        
+        <!-- Consultation Follow-up Activity -->
+        <record id="mail_activity_consulting_followup" model="mail.activity.type">
+            <field name="name">Consulting Follow-up</field>
+            <field name="summary">Follow up after consultation call</field>
+            <field name="res_model">crm.lead</field>
+            <field name="icon">fa-phone</field>
+            <field name="delay_count">3</field>
+            <field name="delay_unit">days</field>
+        </record>
+        
+    </data>
+</odoo>

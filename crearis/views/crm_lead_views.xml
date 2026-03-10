@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    S2L CRM Lead Views for Consulting Inquiries
+    
+    Provides:
+    - Tree view with consulting fields
+    - Form view extension with S2L fields
+    - Menu action filtered to is_consulting_inquiry=True
+-->
+<odoo>
+    
+    <!-- Tree View for Consulting Inquiries -->
+    <record id="view_crm_lead_consulting_tree" model="ir.ui.view">
+        <field name="name">crm.lead.consulting.tree</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <tree string="Email-Beratungen">
+                <field name="create_date" string="Eingang"/>
+                <field name="partner_id"/>
+                <field name="contact_name" optional="hide"/>
+                <field name="consulting_domain_code" string="Domain"/>
+                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="user_id" string="Exec" widget="many2one_avatar_user"/>
+                <field name="activity_ids" widget="list_activity"/>
+                <field name="stage_id" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Form View Extension -->
+    <record id="view_crm_lead_consulting_form" model="ir.ui.view">
+        <field name="name">crm.lead.consulting.form</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add consulting fields after internal notes -->
+            <xpath expr="//field[@name='description']" position="after">
+                <group string="S2L Consulting" attrs="{'invisible': [('is_consulting_inquiry', '=', False)]}">
+                    <field name="is_consulting_inquiry" invisible="1"/>
+                    <field name="consulting_domain_code"/>
+                </group>
+            </xpath>
+            <!-- Add smart button for checkout URL -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_generate_checkout_url" type="object"
+                        class="oe_stat_button" icon="fa-external-link"
+                        attrs="{'invisible': [('is_consulting_inquiry', '=', False)]}"
+                        string="Checkout URL"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Action for Consulting Inquiries Menu -->
+    <record id="action_consulting_inquiries" model="ir.actions.act_window">
+        <field name="name">Email-Beratungen</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('is_consulting_inquiry', '=', True)]</field>
+        <field name="context">{
+            'default_is_consulting_inquiry': True,
+            'default_type': 'lead'
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Keine Email-Beratungsanfragen
+            </p>
+            <p>
+                Email-Beratungen werden über die externe Website oder 
+                direkt hier erstellt (ohne Terminbuchung).
+            </p>
+        </field>
+    </record>
+    
+    <!-- Use specific tree view for the action -->
+    <record id="action_consulting_inquiries_view_tree" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_crm_lead_consulting_tree"/>
+        <field name="act_window_id" ref="action_consulting_inquiries"/>
+    </record>
+    
+</odoo>

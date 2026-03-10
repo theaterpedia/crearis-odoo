@@ -5,6 +5,13 @@
   <!-- Crearis App Menu -->
   <menuitem id="menu_crearis" name="Crearis" />
 
+  <!-- S2L: Consulting Inquiries (email-only lane) -->
+  <menuitem id="menu_crearis_consulting" 
+            name="Email-Beratungen" 
+            parent="menu_crearis" 
+            action="action_consulting_inquiries"
+            sequence="5"/>
+
   <!-- Menu item to open the Domain User Config  list -->
   <menuitem id="menu_crearis_settings" name="Settings" parent="menu_crearis" />    
 

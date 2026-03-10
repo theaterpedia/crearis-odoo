@@ -49,6 +49,8 @@ Features:
         'data/event_stage_data.xml',
         'data/event_type_data.xml',
         'data/calendar_event_type_data.xml',  # SCS: Consulting slot category
+        'data/crm_tag_consulting_data.xml',  # S2L: Consulting category tags
+        'data/mail_activity_consulting_data.xml',  # S2L: Consulting activity types
         'data/mail_template_consulting_data.xml',  # SCS: Consulting booking emails
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
@@ -65,6 +67,7 @@ Features:
         'views/event_event_views.xml',
         'views/event_schedule_views.xml',
         'views/agenda_line_views.xml',
+        'views/crm_lead_views.xml',  # S2L: Consulting inquiries
         'views/event_type_views.xml',
         'views/consulting_templates.xml',
     ],

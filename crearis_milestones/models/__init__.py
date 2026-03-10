@@ -5,3 +5,4 @@
 from . import event_registration
 from . import agenda_line_blocker
 from . import agenda_line
+from . import controlling  # S2L: Unified controlling dashboard
