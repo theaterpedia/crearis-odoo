@@ -100,13 +100,51 @@ class DomainUser(models.Model):
 
     # SCL: MS Teams meeting data (D3, R5)
     # Only relevant for exec role users
-    # Keys: videocall_url, videocall_id, phonecall_id, passkey, login_info_html
+    # Keys: videocall_url, videocall_id, phonecall_id, phonecall_conference_id, passkey
+    # NOTE: login_info_html is computed, not stored - use get_teams_login_html()
     teams_meeting_data = fields.Json(
         string='Teams Meeting Data',
         help='MS Teams meeting credentials for consulting calls. '
-             'Keys: videocall_url, videocall_id, phonecall_id, passkey, login_info_html',
+             'Keys: videocall_url, videocall_id, phonecall_id, phonecall_conference_id, passkey',
         default={}
     )
+
+    def get_teams_login_html(self):
+        """Compute HTML from teams_meeting_data fields (no manual duplication)."""
+        self.ensure_one()
+        data = self.teams_meeting_data or {}
+        if isinstance(data, str):
+            import json
+            try:
+                data = json.loads(data.replace('\n', '\\n').replace('\r', ''))
+            except (json.JSONDecodeError, TypeError):
+                data = {}
+        
+        if not data:
+            return ''
+        
+        parts = []
+        videocall_url = data.get('videocall_url', '')
+        videocall_id = data.get('videocall_id', '')
+        passkey = data.get('passkey', '')
+        phonecall_id = data.get('phonecall_id', '')
+        phonecall_conference_id = data.get('phonecall_conference_id', '')
+        
+        if videocall_url:
+            parts.append(f'<a href="{videocall_url}">Zum Meeting beitreten</a>')
+        if videocall_id:
+            parts.append(f'Besprechungs-ID: {videocall_id}')
+        if passkey:
+            parts.append(f'Passcode: {passkey}')
+        
+        if phonecall_id:
+            parts.append('<hr style="margin: 10px 0;"/>')
+            parts.append('Oder per Telefon einwählen:')
+            parts.append(f'<a href="tel:{phonecall_id.replace(" ", "").replace(",", ",")}">{phonecall_id}</a>')
+            if phonecall_conference_id:
+                parts.append(f'Telefonkonferenz-ID: {phonecall_conference_id}')
+        
+        return '<br/>'.join(parts)
 
     version = fields.Integer(default=1)
 

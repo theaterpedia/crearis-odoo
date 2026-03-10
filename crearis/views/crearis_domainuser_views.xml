@@ -64,14 +64,29 @@
                     <div attrs="{'invisible': [('role', '!=', 'exec')]}">
                         <separator string="MS Teams Consulting"/>
                         <group>
+                            <group string="Profile">
+                                <label string="Photo URL" for="cimg"/>
+                                <div class="o_row">
+                                    <field name="cimg" class="oe_inline" nolabel="1" placeholder="https://example.com/photo.jpg"/>
+                                </div>
+                            </group>
                             <group string="Video Call">
-                                <field name="teams_meeting_data" widget="json" 
-                                       placeholder='{"videocall_url": "https://...", "videocall_id": "123 456 789", "phonecall_id": "+49 ...", "passkey": "...", "login_info_html": "..."}'/>
+                                <!-- widget="json" is Odoo 17+; using text for Odoo 16 -->
+                                <field name="teams_meeting_data" widget="text"/>
                             </group>
                         </group>
-                        <p class="text-muted">
-                            Enter Teams meeting data as JSON. Keys: videocall_url, videocall_id, phonecall_id, passkey, login_info_html
-                        </p>
+                        <div colspan="2">
+                            <p class="text-muted">
+                                <b>Format:</b> JSON object with Teams meeting credentials.<br/>
+                                <code>{"videocall_url": "https://teams.microsoft.com/meet/...", "videocall_id": "346 085 853", "phonecall_id": "+49 69 677765514,,526798953#", "phonecall_conference_id": "526 798 953#", "passkey": "7UT9cE2B"}</code><br/>
+                                - videocall_url: Full Teams meeting URL (for "Zum Meeting beitreten" link)<br/>
+                                - videocall_id: Meeting ID for manual entry<br/>
+                                - passkey: Meeting passcode<br/>
+                                - phonecall_id: Dial-in phone number (optional)<br/>
+                                - phonecall_conference_id: Phone conference ID (optional)<br/>
+                                <em>Note: HTML is computed automatically from these fields.</em>
+                            </p>
+                        </div>
                     </div>
 
                     
