@@ -849,8 +849,13 @@ class BookConsultingSlot(graphene.Mutation):
             # Extract flag for city_exclude logic
             shortcode_flag = parsed.get('flag', '')
             
-            # T8-I1: Blockkurs (flag 'x') held in non-home city → exclude home city
-            if shortcode_flag == 'x':
+            # T8-I1: Blockkurs (flag 'x') → show events NOT in the OTHER city
+            # m18x (München program) → exclude Nürnberg → show München events
+            # n18x (Nürnberg program) → exclude München → show Nürnberg events
+            if shortcode_flag == 'x' and schedule_city:
+                # Swap to the OTHER city and exclude it
+                city_swap = {'München': 'Nürnberg', 'Nürnberg': 'München'}
+                schedule_city = city_swap.get(schedule_city, schedule_city)
                 schedule_city_exclude = True
             
             # Get default_code from parsed shortcode
