@@ -90,6 +90,91 @@ class CalendarEvent(models.Model):
             return value.get(key, default)
         return value
 
+    def get_product_info(self):
+        """Helper for QWeb - returns product info dict for email templates.
+        
+        Falls back through: product_slug → consulting_data.schedule.product_slugs[0]
+        Parses shortcode (z15e) → flag (e) → default_code (MOD-E) for product lookup.
+        
+        Returns:
+            {
+                'shortcode': 'z15e',
+                'is_course': True,  # True for m**, n**, z** patterns
+                'type_label': 'Kurs' or 'Veranstaltung',
+                'product_name': 'Full product name',
+                'headline': 'Extracted headline' or 'Full product name'
+            }
+        """
+        import re
+        self.ensure_one()
+        
+        # Try product_slug field first, then consulting_data.schedule.product_slugs
+        shortcode = self.product_slug or ''
+        if not shortcode:
+            schedule = self.get_consulting_option('schedule', default={}) or {}
+            slugs = schedule.get('product_slugs', []) if isinstance(schedule, dict) else []
+            shortcode = slugs[0] if slugs else ''
+        
+        if not shortcode:
+            return {}
+        
+        # Determine if course (m**, n**, z**) or event
+        is_course = bool(re.match(r'^[mnz]\d', shortcode.lower())) if shortcode else False
+        type_label = 'Kurs' if is_course else 'Veranstaltung'
+        
+        # Parse shortcode to get product default_code
+        # Shortcode format: {location}{id}{flag} e.g. z15e → flag=e → MOD-E
+        product_name = ''
+        headline = ''
+        ProductProduct = self.env['product.product'].sudo()
+        
+        # First try direct lookup (for MOD-A style codes)
+        product = ProductProduct.search([('default_code', '=ilike', shortcode)], limit=1)
+        
+        if not product and len(shortcode) >= 3:
+            # Parse shortcode: extract flag (last char) and map to default_code
+            flag = shortcode[-1].lower()
+            flag_to_code = {
+                'w': 'MOD-A', 'x': 'MOD-B', 'a': 'MOD-A', 'b': 'MOD-B',
+                'c': 'MOD-C', 'd': 'MOD-D', 'e': 'MOD-E',
+                't': 'MOD-AUFBAU-T', 'r': 'MOD-AUFBAU-R', 'p': 'MOD-AUFBAU-P',
+            }
+            mapped_code = flag_to_code.get(flag, '')
+            if mapped_code:
+                product = ProductProduct.search([('default_code', '=ilike', mapped_code)], limit=1)
+        
+        if product:
+            product_name = product.name or ''
+            # Extract headline from "xyz **headline**" format
+            match = re.search(r'\*\*(.+?)\*\*', product_name)
+            headline = match.group(1) if match else product_name
+        
+        # Fallback: use flag title mapping if no product found
+        if not headline and len(shortcode) >= 3:
+            flag = shortcode[-1].lower()
+            flag_to_title = {
+                'w': 'Grundlagenbildung Theaterpädagogik (Tageskurs)',
+                'x': 'Grundlagenbildung Theaterpädagogik (Blockkurs)',
+                'a': 'Modul A: Einstiege ins Theaterspiel',
+                'b': 'Modul B: Eine Bühne voll Erfahrung',
+                'c': 'Modul C: Szenische Welten',
+                'd': 'Modul D: Präsentation',
+                'e': 'Aufbaustufe Teil 1: Modul E – Vertiefung',
+                't': 'Aufbaustufe Profil: Theatrales Lernen',
+                'r': 'Aufbaustufe Profil: Performance & Interkulturell',
+                'p': 'Aufbaustufe Abschluss: Berufsabschluss (BuT)',
+                'v': 'Beratung: Aufbaustufe / Beraten & Ausprobieren',
+            }
+            headline = flag_to_title.get(flag, shortcode)
+        
+        return {
+            'shortcode': shortcode,
+            'is_course': is_course,
+            'type_label': type_label,
+            'product_name': product_name,
+            'headline': headline,
+        }
+
     def get_confirm_url(self):
         """Get the reconfirmation URL."""
         self.ensure_one()

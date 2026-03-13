@@ -382,7 +382,9 @@ def _send_booking_emails(env, meeting, partner, notes=None, selections=None, cal
             for sel in selections:
                 cat_html = f'<li><strong>{sel["label"]}</strong>'
                 if sel['options']:
-                    options_str = ', '.join(sel['options'])
+                    # Options are now dicts {label, url?} - extract labels
+                    labels = [opt['label'] if isinstance(opt, dict) else opt for opt in sel['options']]
+                    options_str = ', '.join(labels)
                     cat_html += f': <span style="color: #1565c0;">{options_str}</span>'
                 if sel['text']:
                     cat_html += f'<br/><em style="color: #666;">→ {sel["text"]}</em>'
@@ -725,7 +727,7 @@ class BookConsultingSlot(graphene.Mutation):
                 'schedules': 'crearis.calendar_event_type_cat_schedules',
                 'custom': 'crearis.calendar_event_type_cat_custom',
             }
-            # Human-readable labels for description
+            # Human-readable labels for description (default)
             category_labels = {
                 'prerequisites': 'Voraussetzungen',
                 'terms_and_options': 'Zahlungsbedingungen',
@@ -733,6 +735,25 @@ class BookConsultingSlot(graphene.Mutation):
                 'schedules': 'Verläufe',
                 'custom': 'Individuell',
             }
+            # 2026-03-13: Domain-specific label overrides (per terminology.md §4.2)
+            domain_label_overrides = {
+                'dasei1': {
+                    'prerequisites': 'Teilnehmer:innen-Struktur',
+                    'terms_and_options': 'Fördermöglichkeiten',
+                    'topics': 'Inhalte',
+                    'schedules': 'Termine & Ablauf',
+                },
+                'dasei3': {
+                    'prerequisites': 'Zulassung, Anerkennung',
+                    'terms_and_options': 'Frühbucher, Paketrabatt',
+                    'topics': 'Profil T vs R',
+                    'schedules': 'Semesterplanung',
+                },
+            }
+            # Apply domain overrides if applicable
+            if domain_code and domain_code in domain_label_overrides:
+                category_labels.update(domain_label_overrides[domain_code])
+            
             for sel in consultation.selections:
                 cat_key = sel.category
                 text = sel.text or ''
@@ -840,7 +861,9 @@ class BookConsultingSlot(graphene.Mutation):
             for sel in parsed_selections:
                 cat_line = f"\n{sel['label']}:"
                 if sel['options']:
-                    cat_line += f" {', '.join(sel['options'])}"
+                    # Options are now dicts {label, url?} - extract labels for plain text
+                    labels = [opt['label'] if isinstance(opt, dict) else opt for opt in sel['options']]
+                    cat_line += f" {', '.join(labels)}"
                 if sel['text']:
                     cat_line += f"\n  → {sel['text']}"
                 description_parts.append(cat_line)
@@ -1077,6 +1100,24 @@ class CreateEmailInquiry(graphene.Mutation):
             'schedules': 'Verläufe',
             'custom': 'Individuell',
         }
+        # 2026-03-13: Domain-specific label overrides (per terminology.md §4.2)
+        domain_label_overrides = {
+            'dasei1': {
+                'prerequisites': 'Teilnehmer:innen-Struktur',
+                'terms_and_options': 'Fördermöglichkeiten',
+                'topics': 'Inhalte',
+                'schedules': 'Termine & Ablauf',
+            },
+            'dasei3': {
+                'prerequisites': 'Zulassung, Anerkennung',
+                'terms_and_options': 'Frühbucher, Paketrabatt',
+                'topics': 'Profil T vs R',
+                'schedules': 'Semesterplanung',
+            },
+        }
+        # Apply domain overrides if applicable
+        if domain_code and domain_code in domain_label_overrides:
+            category_labels.update(domain_label_overrides[domain_code])
         
         tag_ids = []
         description_parts = []

@@ -15,10 +15,18 @@
     
     <p>schön, dass du dich gemeldet hast! Hier sind die Details zu unserem Gespräch:</p>
     
+    <!-- Product/Course header -->
+    <t t-set="product_info" t-value="object.get_product_info()"/>
+    <t t-if="product_info and product_info.get('shortcode')">
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0 7px 0;">
+        <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><t t-out="product_info.get('type_label')"/> <t t-out="product_info.get('shortcode')"/></div>
+        <div style="font-size: 20px; font-weight: bold; margin: 5px 0 0 0;"><t t-out="product_info.get('headline')"/></div>
+    </div>
+    </t>
+    
     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fragen &amp; Antworten mit</div>
-        <div style="font-size: 20px; font-weight: bold; margin: 5px 0 15px 0;"><t t-out="object.user_id.name"/></div>
-        <div style="font-size: 16px; font-weight: bold;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM', lang_code='de_DE')"/> um <t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/> Uhr</div>
+        <div style="font-size: 16px; font-weight: bold; margin: 5px 0 0 0;"><t t-out="object.user_id.name"/>: <t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EE', lang_code='de_DE').upper()"/>, <t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='d. MMMM', lang_code='de_DE')"/> um <t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='HH:mm', lang_code='de_DE')"/></div>
         
         <!-- Video call info directly in header -->
         <t t-if="object.videocall_location">
@@ -184,9 +192,10 @@
         </tr>
     </table>
     
+    <t t-set="exec_product_info" t-value="object.get_product_info()"/>
     <t t-if="object.description">
     <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-        <strong>Beratung zu:</strong><br/>
+        <strong>Beratung zu:<t t-if="exec_product_info and exec_product_info.get('shortcode')"> <t t-out="exec_product_info.get('shortcode')"/></t></strong><br/>
         <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;"><t t-out="object.description"/></pre>
     </div>
     </t>
