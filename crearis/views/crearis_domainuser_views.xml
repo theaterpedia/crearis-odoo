@@ -71,8 +71,8 @@
                                 </div>
                             </group>
                             <group string="Video Call">
-                                <!-- widget="json" is Odoo 17+; using text for Odoo 16 -->
-                                <field name="teams_meeting_data" widget="text"/>
+                                <!-- Text proxy for Json field (Odoo 16 pattern) -->
+                                <field name="teams_meeting_data_text" widget="text"/>
                             </group>
                         </group>
                         <div colspan="2">

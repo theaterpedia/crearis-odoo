@@ -4,6 +4,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+import json
 
 
 class DomainUser(models.Model):
@@ -108,6 +109,30 @@ class DomainUser(models.Model):
              'Keys: videocall_url, videocall_id, phonecall_id, phonecall_conference_id, passkey',
         default={}
     )
+    
+    # Text proxy for editing Json field in form view (Odoo 16 workaround)
+    teams_meeting_data_text = fields.Text(
+        string='Teams Data (JSON)',
+        compute='_compute_teams_meeting_data_text',
+        inverse='_inverse_teams_meeting_data_text',
+    )
+    
+    @api.depends('teams_meeting_data')
+    def _compute_teams_meeting_data_text(self):
+        for rec in self:
+            data = rec.teams_meeting_data or {}
+            rec.teams_meeting_data_text = json.dumps(data, indent=2) if data else '{}'
+    
+    def _inverse_teams_meeting_data_text(self):
+        for rec in self:
+            text = (rec.teams_meeting_data_text or '').strip()
+            if not text or text == '{}':
+                rec.teams_meeting_data = {}
+            else:
+                try:
+                    rec.teams_meeting_data = json.loads(text)
+                except json.JSONDecodeError:
+                    rec.teams_meeting_data = {}
 
     def get_teams_login_html(self):
         """Compute HTML from teams_meeting_data fields (no manual duplication)."""

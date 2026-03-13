@@ -60,14 +60,14 @@ Features:
         'views/event_track_location_views.xml',
         'views/res_partner_views.xml',
         'views/res_partner.xml',
-        'views/crearis_menu.xml',
         'views/crearis_domainuser_views.xml',
         'views/crearis_version_views.xml',
         'views/website_pages_views.xml',
         'views/event_event_views.xml',
         'views/event_schedule_views.xml',
         'views/agenda_line_views.xml',
-        'views/crm_lead_views.xml',  # S2L: Consulting inquiries
+        'views/crm_lead_views.xml',  # S2L: Consulting inquiries (before menu)
+        'views/crearis_menu.xml',  # Menu items (load after actions)
         'views/event_type_views.xml',
         'views/consulting_templates.xml',
     ],
