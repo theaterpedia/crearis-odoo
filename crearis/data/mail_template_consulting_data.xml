@@ -50,7 +50,25 @@
         <div style="color: #555;"><strong>Schwerpunkte:</strong></div>
         <t t-foreach="selections" t-as="sel">
         <t t-if="sel.get('options') or sel.get('text')">
-        <div style="color: #555; margin: 4px 0;">- <t t-out="sel.get('label', sel.get('key', ''))"/>: <t t-if="sel.get('options')"><t t-out="', '.join(sel.get('options', []))"/></t><t t-if="sel.get('text')"> [<t t-out="sel.get('text')"/>]</t></div>
+        <div style="color: #555; margin: 4px 0;">
+            - <t t-out="sel.get('label', sel.get('key', ''))"/>: 
+            <t t-if="sel.get('options')">
+                <t t-foreach="sel.get('options', [])" t-as="opt">
+                    <t t-if="opt_index > 0">, </t>
+                    <!-- 2026-03-13: Support URL-enabled options from CN -->
+                    <t t-if="isinstance(opt, dict) and opt.get('url')">
+                        <a t-att-href="'https://dasei.eu' + opt.get('url')" style="color: #0066cc;"><t t-out="opt.get('label', opt)"/></a>
+                    </t>
+                    <t t-elif="isinstance(opt, dict)">
+                        <t t-out="opt.get('label', str(opt))"/>
+                    </t>
+                    <t t-else="">
+                        <t t-out="opt"/>
+                    </t>
+                </t>
+            </t>
+            <t t-if="sel.get('text')"> [<t t-out="sel.get('text')"/>]</t>
+        </div>
         </t>
         </t>
     </div>

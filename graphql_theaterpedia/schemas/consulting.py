@@ -85,10 +85,26 @@ class ConsultingContactInput(graphene.InputObjectType):
     mobil = graphene.String()
 
 
+class OptionLinkInput(graphene.InputObjectType):
+    """URL-enabled option for consulting categories (2026-03-13).
+    
+    Used when an option has an associated info page URL.
+    CN forwards URLs from YAML, CO renders as clickable links in emails.
+    """
+    label = graphene.String(
+        required=True,
+        description="Option display label (e.g., 'KOMPASS-Förderung')"
+    )
+    url = graphene.String(
+        description="Relative URL path (e.g., '/blog/aktuelles/foerdermoeglichkeiten-29')"
+    )
+
+
 class CategorySelectionInput(graphene.InputObjectType):
     """SCL: A single category with its selected options and optional freeform text.
     
     Part of the per-category options schema (D17, R6).
+    Extended 2026-03-13: optionLinks for URL-enabled options.
     """
     category = graphene.String(
         required=True,
@@ -96,7 +112,11 @@ class CategorySelectionInput(graphene.InputObjectType):
     )
     options = graphene.List(
         graphene.String,
-        description="Selected option keys within this category"
+        description="Selected option labels without URL (backward compat)"
+    )
+    option_links = graphene.List(
+        OptionLinkInput,
+        description="URL-enabled options [{label, url}] - CN forwards from YAML"
     )
     text = graphene.String(
         description="Optional freeform text for this category (max 240 chars)"
@@ -715,14 +735,30 @@ class BookConsultingSlot(graphene.Mutation):
             }
             for sel in consultation.selections:
                 cat_key = sel.category
-                options = sel.options or []
                 text = sel.text or ''
+                
+                # 2026-03-13: Merge options + option_links into unified structure
+                # Each option becomes {label, url?} for consistent QWeb rendering
+                merged_options = []
+                
+                # Plain string options (no URL)
+                if sel.options:
+                    for opt in sel.options:
+                        merged_options.append({'label': opt})
+                
+                # URL-enabled options from CN
+                if sel.option_links:
+                    for link in sel.option_links:
+                        merged_options.append({
+                            'label': link.label,
+                            'url': link.url or None,
+                        })
                 
                 # Store for later use
                 parsed_selections.append({
                     'key': cat_key,
                     'label': category_labels.get(cat_key, cat_key),
-                    'options': options,
+                    'options': merged_options,  # Now [{label, url?}]
                     'text': text,
                 })
                 
@@ -1048,13 +1084,24 @@ class CreateEmailInquiry(graphene.Mutation):
         if consultation and consultation.selections:
             for sel in consultation.selections:
                 cat_key = sel.category
-                options = sel.options or []
                 text = sel.text or ''
+                
+                # 2026-03-13: Merge options + option_links for consistent handling
+                option_labels = []
+                if sel.options:
+                    option_labels.extend(sel.options)
+                if sel.option_links:
+                    for link in sel.option_links:
+                        # For CRM lead description, include URL in parens
+                        if link.url:
+                            option_labels.append(f"{link.label} (https://dasei.eu{link.url})")
+                        else:
+                            option_labels.append(link.label)
                 
                 # Build description
                 part = f"**{category_labels.get(cat_key, cat_key)}**"
-                if options:
-                    part += f": {', '.join(options)}"
+                if option_labels:
+                    part += f": {', '.join(option_labels)}"
                 if text:
                     part += f"\n→ {text}"
                 description_parts.append(part)
