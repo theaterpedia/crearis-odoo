@@ -1067,6 +1067,36 @@ class CreateEmailInquiry(graphene.Mutation):
                 _send_rate_limit_alert(env)
             return EmailInquiryResult(success=False, error=rate_error)
         
+        # === D80.4: Input Validation ===
+        if not contact or not contact.email:
+            return EmailInquiryResult(
+                success=False,
+                error="E-Mail-Adresse ist erforderlich."
+            )
+        
+        # Basic email format validation
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, contact.email):
+            return EmailInquiryResult(
+                success=False,
+                error="Bitte gib eine gültige E-Mail-Adresse ein."
+            )
+        
+        if not contact.vorname or not contact.nachname:
+            return EmailInquiryResult(
+                success=False,
+                error="Vor- und Nachname sind erforderlich."
+            )
+        
+        valid_domains = ['dasei1', 'dasei2', 'dasei3', 'dasei', 'external']
+        if domain_code not in valid_domains:
+            _logger.warning("CreateEmailInquiry: invalid domain_code %s", domain_code)
+            return EmailInquiryResult(
+                success=False,
+                error="Ungültige Domain-Konfiguration. Bitte kontaktiere support@dasei.eu."
+            )
+        
         # Find or create partner
         Partner = env['res.partner'].sudo()
         partner = Partner.search([('email', '=ilike', contact.email)], limit=1)
@@ -1178,24 +1208,42 @@ class CreateEmailInquiry(graphene.Mutation):
         
         # Create CRM lead
         CrmLead = env['crm.lead'].sudo()
-        lead = CrmLead.create({
-            'name': f"Email-Beratung: {partner.name}",
-            'partner_id': partner.id,
-            'contact_name': f"{contact.vorname} {contact.nachname}".strip(),
-            'email_from': contact.email,
-            'phone': contact.mobil or '',
-            'description': description,
-            'tag_ids': [(6, 0, tag_ids)],
-            'user_id': exec_user_id,
-            'type': 'lead',
-            'is_consulting_inquiry': True,
-            'consulting_domain_code': domain_code,
-        })
+        try:
+            lead = CrmLead.create({
+                'name': f"Email-Beratung: {partner.name}",
+                'partner_id': partner.id,
+                'contact_name': f"{contact.vorname} {contact.nachname}".strip(),
+                'email_from': contact.email,
+                'phone': contact.mobil or '',
+                'description': description,
+                'tag_ids': [(6, 0, tag_ids)],
+                'user_id': exec_user_id,
+                'type': 'lead',
+                'is_consulting_inquiry': True,
+                'consulting_domain_code': domain_code,
+            })
+        except Exception as e:
+            _logger.error("CreateEmailInquiry: failed to create lead: %s", e)
+            return EmailInquiryResult(
+                success=False,
+                error="Anfrage konnte nicht gespeichert werden. Bitte versuche es später erneut."
+            )
         
         _logger.info(
             "CreateEmailInquiry: created lead %s for partner %s, domain %s, exec %s",
             lead.id, partner.id, domain_code, exec_user_id
         )
+        
+        # D80.5: Send two-stage confirmation emails
+        try:
+            email_results = lead.send_email_inquiry_confirmation()
+            _logger.info(
+                "CreateEmailInquiry: email results for lead %s: customer=%s, exec=%s",
+                lead.id, email_results.get('customer'), email_results.get('exec')
+            )
+        except Exception as e:
+            # Don't fail the mutation if emails fail - lead is already created
+            _logger.warning("CreateEmailInquiry: email send failed for lead %s: %s", lead.id, e)
         
         # Log to partner chatter
         chatter_body = f"""<p><strong>📧 Email-Beratungsanfrage</strong></p>

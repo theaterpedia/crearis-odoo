@@ -360,5 +360,145 @@
 ]]></field>
             <field name="auto_delete" eval="False"/>
         </record>
+
+        <!-- ═══════════════════════════════════════════════════════════════════════ -->
+        <!-- S2L Email Inquiry Templates (D80.5)                                     -->
+        <!-- Two-stage flow: Immediate confirmation + Exec draft for reply           -->
+        <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+        <!-- Stage 1: Immediate customer confirmation (auto-sent on crm.lead creation) -->
+        <record id="mail_template_email_inquiry_customer" model="mail.template">
+            <field name="name">Email Inquiry: Customer Confirmation</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">Deine Anfrage ist eingegangen</field>
+            <field name="email_from">{{ (object.user_id.email_formatted if object.user_id else object.company_id.email_formatted) or 'service@dasei.eu' }}</field>
+            <field name="email_to">{{ object.email_from }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    
+    <t t-set="contact_name" t-value="object.contact_name or object.partner_id.name or ''"/>
+    <t t-set="firstname" t-value="contact_name.split()[0] if contact_name else 'du'"/>
+    
+    <p>Hallo <strong><t t-out="firstname"/></strong>,</p>
+    
+    <p>schön, dass du dich gemeldet hast! Deine Anfrage ist erfasst.</p>
+    
+    <!-- Ctype-specific header -->
+    <t t-set="ctype" t-value="object.get_consulting_ctype() if hasattr(object, 'get_consulting_ctype') else 'general_inquiry'"/>
+    <t t-set="header_config" t-value="{
+        'event_inquiry': {'overline': 'Anfrage zu', 'headline': 'Eingegangen!'},
+        'contact_inquiry': {'overline': 'Nachricht an', 'headline': 'Erhalten!'},
+        'purchase_consultation': {'overline': 'Beratung zu', 'headline': 'Wir melden uns!'},
+        'general_inquiry': {'overline': 'Anfrage', 'headline': 'Eingegangen!'},
+    }"/>
+    <t t-set="header" t-value="header_config.get(ctype, header_config['general_inquiry'])"/>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+            <t t-out="header['overline']"/>
+            <t t-if="object.name and object.name != 'Email-Beratung: ' + (contact_name or '')"> <t t-out="object.name.replace('Email-Beratung: ', '').replace(contact_name, '').strip() or ''"/></t>
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin: 5px 0 0 0;"><t t-out="header['headline']"/></div>
+    </div>
+    
+    <!-- Original inquiry summary -->
+    <t t-if="object.description">
+    <div style="background: #fff; padding: 15px; border-left: 4px solid #0066cc; margin: 20px 0;">
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">Deine Anfrage</div>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 0; color: #333;"><t t-out="object.description"/></pre>
+    </div>
+    </t>
+    
+    <p>Wir melden uns innerhalb von <strong>2 Werktagen</strong> bei dir.</p>
+    
+    <p style="margin-top: 20px;"><strong>Bis bald!</strong></p>
+    
+    <p style="color: #666; font-size: 14px;">PS: Du darfst gerne einfach auf diese Email antworten 😊</p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px; text-align: center;">
+        powered by <a href="https://theaterpedia.org" style="color: #888;">Theaterpedia</a>
+    </p>
+</div>
+]]></field>
+            <field name="lang">{{ object.partner_id.lang if object.partner_id else 'de_DE' }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- Stage 2: Exec notification + draft preparation -->
+        <record id="mail_template_email_inquiry_exec" model="mail.template">
+            <field name="name">Email Inquiry: Exec Notification</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">📧 Neue Email-Anfrage: {{ object.contact_name or object.partner_id.name or 'Unbekannt' }}</field>
+            <field name="email_from">{{ object.company_id.email_formatted or 'noreply@dasei.eu' }}</field>
+            <field name="email_to">{{ object.user_id.email if object.user_id else 'service@dasei.eu' }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    
+    <t t-set="partner" t-value="object.partner_id"/>
+    <t t-set="exec_firstname" t-value="object.user_id.partner_id.firstname if object.user_id and hasattr(object.user_id.partner_id, 'firstname') and object.user_id.partner_id.firstname else (object.user_id.name.split()[0] if object.user_id and object.user_id.name else 'Team')"/>
+    
+    <p>Hallo <strong><t t-out="exec_firstname"/></strong>,</p>
+    
+    <p>du hast eine neue Email-Anfrage von: <strong><t t-out="object.contact_name or partner.name or 'Unbekannt'"/></strong></p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>E-Mail:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="object.email_from or partner.email"/></td>
+        </tr>
+        <t t-if="object.phone or (partner and (partner.phone or partner.mobile))">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Telefon:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="object.phone or partner.phone or partner.mobile"/></td>
+        </tr>
+        </t>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Domain:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="object.consulting_domain_code or 'N/A'"/></td>
+        </tr>
+    </table>
+    
+    <t t-if="object.description">
+    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
+        <strong>Anfrage-Details:</strong>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 8px 0 0 0;"><t t-out="object.description"/></pre>
+    </div>
+    </t>
+    
+    <p style="margin-top: 20px;">
+        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=crm.lead&amp;view_type=form'" 
+           style="display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+            Anfrage öffnen
+        </a>
+        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=crm.lead&amp;view_type=form&amp;action=email_response'" 
+           style="display: inline-block; background: #27ae60; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            ✉️ Antworten
+        </a>
+    </p>
+    
+    <!-- Draft response suggestion -->
+    <div style="background: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #17a2b8;">
+        <strong>💡 Antwort-Vorlage:</strong>
+        <p style="font-style: italic; color: #666; margin: 8px 0 0 0;">
+            "Hallo <t t-out="(object.contact_name or '').split()[0] if object.contact_name else 'du'"/>,
+            <br/><br/>
+            vielen Dank für deine Anfrage!
+            <br/><br/>
+            [Hier deine Antwort einfügen]
+            <br/><br/>
+            Beste Grüße,<br/>
+            <t t-out="exec_firstname"/>"
+        </p>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+    <p style="color: #888; font-size: 12px;">
+        Diese Benachrichtigung wurde automatisch vom Beratungsanfrage-System generiert.
+    </p>
+</div>
+]]></field>
+            <field name="auto_delete" eval="False"/>
+        </record>
     </data>
 </odoo>

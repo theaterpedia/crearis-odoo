@@ -115,3 +115,69 @@ class CrmLead(models.Model):
         ], limit=1)
         if won_stage:
             self.stage_id = won_stage
+
+    # ─── D80.5: Email Inquiry Helpers ────────────────────────────────────────
+    def get_consulting_ctype(self):
+        """Return consulting type for template selection.
+        
+        Used in D80.5 email templates to customize headers.
+        Returns: event_inquiry | contact_inquiry | purchase_consultation | general_inquiry
+        """
+        self.ensure_one()
+        
+        # Parse from name pattern or tags
+        name_lower = (self.name or '').lower()
+        
+        if 'event' in name_lower or 'veranstaltung' in name_lower:
+            return 'event_inquiry'
+        elif 'kontakt' in name_lower or 'contact' in name_lower:
+            return 'contact_inquiry'
+        elif 'beratung' in name_lower or 'consultation' in name_lower:
+            return 'purchase_consultation'
+        
+        # Fallback based on domain
+        domain_ctype_map = {
+            'dasei1': 'purchase_consultation',  # Einstiege - typically course questions
+            'dasei2': 'purchase_consultation',  # Grundlagen - typically course questions
+            'dasei3': 'purchase_consultation',  # Aufbaustufe - typically course questions
+        }
+        return domain_ctype_map.get(self.consulting_domain_code, 'general_inquiry')
+
+    def send_email_inquiry_confirmation(self):
+        """Send D80.5 two-stage emails: customer confirmation + exec notification.
+        
+        Called from CreateEmailInquiry mutation after lead creation.
+        Returns dict with send results for logging.
+        """
+        self.ensure_one()
+        results = {'customer': False, 'exec': False}
+        
+        try:
+            # Stage 1: Customer confirmation (auto-send)
+            customer_template = self.env.ref(
+                'crearis.mail_template_email_inquiry_customer',
+                raise_if_not_found=False
+            )
+            if customer_template:
+                customer_template.send_mail(self.id, force_send=True)
+                results['customer'] = True
+        except Exception as e:
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.warning("D80.5: Failed to send customer confirmation: %s", e)
+        
+        try:
+            # Stage 2: Exec notification (auto-send, they reply manually)
+            exec_template = self.env.ref(
+                'crearis.mail_template_email_inquiry_exec',
+                raise_if_not_found=False
+            )
+            if exec_template and self.user_id:
+                exec_template.send_mail(self.id, force_send=True)
+                results['exec'] = True
+        except Exception as e:
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.warning("D80.5: Failed to send exec notification: %s", e)
+        
+        return results
