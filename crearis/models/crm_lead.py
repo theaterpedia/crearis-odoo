@@ -139,9 +139,11 @@ class CrmLead(models.Model):
         
         # Fallback based on domain
         domain_ctype_map = {
-            'dasei1': 'purchase_consultation',  # Einstiege - typically course questions
-            'dasei2': 'purchase_consultation',  # Grundlagen - typically course questions
-            'dasei3': 'purchase_consultation',  # Aufbaustufe - typically course questions
+            'dasei0': 'event_inquiry',        # Offenes Programm - single events
+            'dasei1': 'purchase_consultation',  # Einstiege - course questions
+            'dasei2': 'purchase_consultation',  # Grundlagen - course questions
+            'dasei3': 'purchase_consultation',  # Aufbaustufe - course questions
+            'dasei': 'contact_inquiry',        # Verein - membership questions
         }
         return domain_ctype_map.get(self.consulting_domain_code, 'general_inquiry')
 
