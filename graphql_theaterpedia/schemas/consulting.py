@@ -1210,9 +1210,13 @@ class CreateEmailInquiry(graphene.Mutation):
                 exec_user_id = exec_du.user_id.id
         
         # Create CRM lead
-        # mail_create_nosubscribe: Suppress Odoo's default "Sie wurden zugewiesen" notification
+        # mail_create_nosubscribe: Don't auto-subscribe creator
+        # tracking_disable: Suppress Odoo's default "Sie wurden zugewiesen" notification
         # We send our own richer exec notification via D80.5 templates
-        CrmLead = env['crm.lead'].sudo().with_context(mail_create_nosubscribe=True)
+        CrmLead = env['crm.lead'].sudo().with_context(
+            mail_create_nosubscribe=True,
+            tracking_disable=True,
+        )
         try:
             lead = CrmLead.create({
                 'name': f"Email-Beratung: {partner.name}",
