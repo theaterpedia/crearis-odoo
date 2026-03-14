@@ -30,9 +30,11 @@ class CrmLead(models.Model):
 
     consulting_domain_code = fields.Selection(
         selection=[
+            ('dasei0', 'Newsletter / Offenes Programm'),
             ('dasei1', 'Einstiege'),
             ('dasei2', 'Grundlagen'),
             ('dasei3', 'Aufbaustufe'),
+            ('dasei', 'Verein (Umbrella)'),
             ('external', 'External'),
         ],
         string='Consulting Domain',
