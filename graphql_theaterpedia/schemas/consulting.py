@@ -110,6 +110,9 @@ class CategorySelectionInput(graphene.InputObjectType):
         required=True,
         description="Category key: prerequisites, terms_and_options, topics, schedules, custom"
     )
+    label = graphene.String(
+        description="Category display label (CN forwards, ignored by backend)"
+    )
     options = graphene.List(
         graphene.String,
         description="Selected option labels without URL (backward compat)"
