@@ -1089,7 +1089,7 @@ class CreateEmailInquiry(graphene.Mutation):
                 error="Vor- und Nachname sind erforderlich."
             )
         
-        valid_domains = ['dasei1', 'dasei2', 'dasei3', 'dasei', 'external']
+        valid_domains = ['dasei0', 'dasei1', 'dasei2', 'dasei3', 'dasei', 'external']
         if domain_code not in valid_domains:
             _logger.warning("CreateEmailInquiry: invalid domain_code %s", domain_code)
             return EmailInquiryResult(
