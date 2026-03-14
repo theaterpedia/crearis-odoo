@@ -127,6 +127,7 @@ class ConsultingCategoryInput(graphene.InputObjectType):
     """SCL: Consultation preferences with per-category options (D17, R6).
     
     New schema (2026-03-08): selections[] + callType replaces flat categories[].
+    call_type: Required for BookConsultingSlot, optional for CreateEmailInquiry.
     """
     selections = graphene.List(
         CategorySelectionInput,
@@ -134,8 +135,7 @@ class ConsultingCategoryInput(graphene.InputObjectType):
         description="Per-category selections with options and text"
     )
     call_type = graphene.String(
-        required=True,
-        description="'video' or 'phone' - D17"
+        description="'video' or 'phone' - D17. Required for slot booking, optional for email inquiries."
     )
 
 
@@ -1050,8 +1050,8 @@ class CreateEmailInquiry(graphene.Mutation):
     
     class Arguments:
         contact = ConsultingContactInput(required=True, description="Customer contact info")
-        consultation = ConsultingCategoryInput(required=True, description="Category selections")
-        domain_code = graphene.String(required=True, description="Source domain (dasei1/dasei2/dasei3)")
+        consultation = ConsultingCategoryInput(description="Category selections (optional for simple event inquiries)")
+        domain_code = graphene.String(required=True, description="Source domain (dasei0/dasei1/dasei2/dasei3/dasei/external)")
         product_slug = graphene.String(description="Product context (for routing)")
     
     Output = EmailInquiryResult
