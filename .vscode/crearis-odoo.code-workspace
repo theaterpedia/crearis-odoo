@@ -46,7 +46,8 @@
         "terminal.integrated.cwd": "${workspaceFolder:project}",
         "liveServer.settings.multiRootWorkspaceName": "project",
         "chat.tools.terminal.autoApprove": {
-            "git push": true
+            "git push": true,
+            "psql": true
         },
     },
     "tasks": {
