@@ -108,16 +108,16 @@ raise UserError(message)
         <field name="state">code</field>
         <field name="code"><![CDATA[
 # Apply DASEi config preset and routing overrides
-# Inline config - cannot use imports in server actions
+# Uses write() - direct attribute assignment is forbidden in safe_eval
 
-DASEI_ROUTING_CONFIG = {
+routing_config = {
     'flag_to_domain': {'w': 'dasei1', 'x': 'dasei1', 'e': 'dasei3'},
     'product_to_domain': {'MOD-A': 'dasei1', 'MOD-E': 'dasei3', 'MOD-PE': 'dasei3'},
     'template_code_to_domain': {'A': 'dasei1', 'B': 'dasei2', 'C': 'dasei2', 'D': 'dasei2', 'E': 'dasei3'},
     'default': 'dasei1',
 }
 
-DASEI_EMAIL_CONFIG = {
+email_config = {
     'from': 'service@dasei.eu',
     'reply_to': 'beratung@dasei.eu',
 }
@@ -129,37 +129,29 @@ if not dasei_websites:
     raise UserError("No DASEi websites found.")
 
 # Set preset for all
-preset_count = 0
-for ws in dasei_websites:
-    if ws.config_preset != 'academy':
-        ws.config_preset = 'academy'
-        preset_count += 1
+dasei_websites.write({'config_preset': 'academy'})
 
 # Hub routing overrides
 hub = dasei_websites.filtered(lambda w: w.domain_code == 'dasei0')
-routing_applied = False
-if hub and hub.routing_config != DASEI_ROUTING_CONFIG:
-    hub.routing_config = DASEI_ROUTING_CONFIG
-    routing_applied = True
+if hub:
+    hub.write({'routing_config': routing_config})
 
 # Email config for notification domains
-email_count = 0
-for ws in dasei_websites.filtered(lambda w: w.domain_code in ('dasei1', 'dasei2', 'dasei3')):
-    if ws.email_config != DASEI_EMAIL_CONFIG:
-        ws.email_config = DASEI_EMAIL_CONFIG
-        email_count += 1
+notification_sites = dasei_websites.filtered(lambda w: w.domain_code in ('dasei1', 'dasei2', 'dasei3'))
+if notification_sites:
+    notification_sites.write({'email_config': email_config})
 
 # Build status message
-message = "DASEi configuration applied:\n\n"
+lines = ["DASEi configuration applied:", ""]
 for ws in dasei_websites.sorted(key=lambda w: w.domain_code):
-    preset = ws.config_preset or 'none'
-    has_routing = 'Y' if ws.routing_has_config else '-'
-    has_email = 'Y' if ws.email_has_config else '-'
-    message += "* %s: preset=%s, routing=%s, email=%s\n" % (ws.domain_code, preset, has_routing, has_email)
+    lines.append("* %s: preset=%s, routing=%s, email=%s" % (
+        ws.domain_code,
+        ws.config_preset or 'none',
+        'Y' if ws.routing_has_config else '-',
+        'Y' if ws.email_has_config else '-'
+    ))
 
-message += "\nChanges: %d presets, routing=%s, %d emails" % (preset_count, 'Y' if routing_applied else 'N', email_count)
-
-raise UserError(message)
+raise UserError("\n".join(lines))
 ]]></field>
     </record>
     
