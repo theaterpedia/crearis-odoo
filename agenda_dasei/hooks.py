@@ -31,15 +31,92 @@ DASEI_DOMAIN_CODES = {
     },
 }
 
+# DASEi-specific routing configuration (hub overrides)
+# These are explicit domain codes, NOT placeholders
+DASEI_ROUTING_CONFIG = {
+    'flag_to_domain': {
+        'w': 'dasei1',  # Workshop → Einstiege
+        'x': 'dasei1',  # Experience → Einstiege
+        'e': 'dasei3',  # Ensemble → Aufbaustufe
+    },
+    'product_to_domain': {
+        'MOD-A': 'dasei1',
+        'MOD-E': 'dasei3',
+        'MOD-PE': 'dasei3',
+    },
+    'template_code_to_domain': {
+        'A': 'dasei1',   # Modul A → Einstiege
+        'B': 'dasei2',   # Modul B → Grundstufe
+        'C': 'dasei2',   # Modul C → Grundstufe
+        'D': 'dasei2',   # Modul D → Grundstufe
+        'E': 'dasei3',   # Modul E → Aufbaustufe
+    },
+    'default': 'dasei1',
+}
+
+# DASEi email configuration
+DASEI_EMAIL_CONFIG = {
+    'from': 'service@dasei.eu',
+    'reply_to': 'beratung@dasei.eu',
+}
+
 
 def post_init_hook(cr, registry):
     """
     After module installation, check for required DASEi websites.
-    Creates them if they don't exist, then links products to websites.
+    Creates them if they don't exist, applies config, then links products.
     """
     env = api.Environment(cr, SUPERUSER_ID, {})
     _check_and_create_dasei_websites(env)
+    _apply_dasei_config(env)
     _link_products_to_websites(env)
+
+
+def _apply_dasei_config(env):
+    """
+    Apply DASEi-specific domain configuration to all dasei* websites.
+    
+    - Sets config_preset = 'academy' for all DASEi websites
+    - Applies routing overrides on hub (dasei0)
+    - Applies email config on notification domains (dasei1-3)
+    
+    Idempotent: safe to run multiple times.
+    """
+    Website = env['website']
+    
+    dasei_websites = Website.search([('domain_code', 'like', 'dasei%')])
+    if not dasei_websites:
+        _logger.warning("agenda_dasei: No DASEi websites found, skipping config")
+        return
+    
+    # Set preset for all DASEi websites
+    preset_count = 0
+    for ws in dasei_websites:
+        if ws.config_preset != 'academy':
+            ws.config_preset = 'academy'
+            preset_count += 1
+    
+    if preset_count:
+        _logger.info("agenda_dasei: Set config_preset='academy' on %d websites", preset_count)
+    
+    # Hub routing overrides (dasei0)
+    hub = dasei_websites.filtered(lambda w: w.domain_code == 'dasei0')
+    if hub and hub.routing_config != DASEI_ROUTING_CONFIG:
+        hub.routing_config = DASEI_ROUTING_CONFIG
+        _logger.info("agenda_dasei: Applied routing config to hub (dasei0)")
+    
+    # Email config for notification domains
+    notification_domains = dasei_websites.filtered(
+        lambda w: w.domain_code in ('dasei1', 'dasei2', 'dasei3')
+    )
+    email_count = 0
+    for ws in notification_domains:
+        if ws.email_config != DASEI_EMAIL_CONFIG:
+            ws.email_config = DASEI_EMAIL_CONFIG
+            email_count += 1
+    
+    if email_count:
+        _logger.info("agenda_dasei: Applied email config to %d notification domains", email_count)
 
 
 def _check_and_create_dasei_websites(env):

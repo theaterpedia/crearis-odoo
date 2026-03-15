@@ -99,4 +99,35 @@ raise UserError(message)
 ]]></field>
     </record>
     
+    <!-- Server Action: Apply DASEi Configuration -->
+    <record id="action_apply_dasei_config" model="ir.actions.server">
+        <field name="name">Apply DASEi Configuration</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="binding_model_id" ref="website.model_website"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+# Apply DASEi config preset and routing overrides
+from odoo.addons.agenda_dasei.hooks import _apply_dasei_config
+
+_apply_dasei_config(env)
+
+# Build status message
+Website = env['website']
+dasei_websites = Website.search([('domain_code', 'like', 'dasei%')])
+
+if not dasei_websites:
+    raise UserError("No DASEi websites found.")
+
+message = "✅ DASEi configuration applied:\n\n"
+for ws in dasei_websites.sorted(key=lambda w: w.domain_code):
+    preset = ws.config_preset or 'none'
+    has_routing = '✓' if ws.routing_has_config else '—'
+    has_email = '✓' if ws.email_has_config else '—'
+    message += f"• {ws.domain_code}: preset={preset}, routing={has_routing}, email={has_email}\n"
+
+raise UserError(message)
+]]></field>
+    </record>
+    
 </odoo>
