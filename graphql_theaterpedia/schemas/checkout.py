@@ -120,29 +120,20 @@ _DEFAULT_LOCATION_TO_CITY = {
     'z': None,  # zentral (Aufbaustufe) - no city filter
 }
 
-# Location → website domain_code (for API calls without website context)
-_LOCATION_TO_DOMAIN = {
-    'm': 'dasei1',  # München → Einstiege
-    'n': 'dasei1',  # Nürnberg → Einstiege
-    'z': 'dasei3',  # zentral → Aufbaustufe
-}
-
 # Auto tier: only Module A format variants (w/x) in real locations (m/n)
 _DEFAULT_AUTO_FLAGS = {'w', 'x'}
 _DEFAULT_AUTO_LOCATIONS = {'m', 'n'}
 
 
-def _get_shortcode_config(env, product_ref=None):
+def _get_shortcode_config(env, domain_code=None):
     """Get shortcode config from website or return defaults.
     
     I2: Per-domain shortcode configuration stored in website.shortcode_config.
-    
-    For API calls (GraphQL), we derive the target website from the shortcode
-    location prefix since get_current_website() doesn't work without HTTP context.
+    SaaS-ready: Nuxt passes domain_code to select which website's config to use.
     
     Args:
         env: Odoo environment
-        product_ref: Optional shortcode to derive target website from (e.g., 'm18w' → dasei1)
+        domain_code: Optional domain code from Nuxt (e.g., 'dasei1', 'dasei3')
     
     Falls back to hardcoded defaults if no config exists.
     
@@ -150,24 +141,18 @@ def _get_shortcode_config(env, product_ref=None):
     """
     website = None
     
-    # Try get_current_website() first (works in HTTP context)
-    try:
-        website = env['website'].get_current_website()
-    except Exception:
-        pass  # Not in website context
+    # If domain_code provided (SaaS-ready path), look up that website
+    if domain_code:
+        website = env['website'].sudo().search(
+            [('domain_code', '=', domain_code)], limit=1
+        )
     
-    # If no website context or no shortcode_config, derive from product_ref
-    if (not website or not website.shortcode_config) and product_ref:
-        ref = (product_ref or '').strip().lower()
-        # Extract location prefix from shortcode (m18w → m)
-        match = re.match(r'^([mnz])\d{2}[a-z]$', ref)
-        if match:
-            location = match.group(1)
-            domain_code = _LOCATION_TO_DOMAIN.get(location)
-            if domain_code:
-                website = env['website'].sudo().search(
-                    [('domain_code', '=', domain_code)], limit=1
-                )
+    # Fallback: try get_current_website() (works in HTTP context)
+    if not website:
+        try:
+            website = env['website'].get_current_website()
+        except Exception:
+            pass  # Not in website context
     
     if website and website.shortcode_config:
         cfg = website.shortcode_config
@@ -371,6 +356,9 @@ class CheckoutInput(graphene.InputObjectType):
         required=True,
         description="Shortcode (m18w, z15e, ra_1373) or default_code (MOD-A)"
     )
+    domain_code = graphene.String(
+        description="Source domain code (dasei1, dasei2, dasei3). SaaS-ready: determines which shortcode_config to use."
+    )
     contact = graphene.Field(CheckoutContactInput, required=True)
     notes = graphene.String(description="Optional booking notes")
     accept_terms = graphene.Boolean(required=True)
@@ -440,8 +428,8 @@ class Checkout(graphene.Mutation):
                 error=_('All terms must be accepted'),
             )
 
-        # Parse product reference (I2: config from website derived from shortcode)
-        shortcode_config = _get_shortcode_config(env, checkout.product_ref)
+        # Parse product reference (SaaS-ready: config from domain_code sent by Nuxt)
+        shortcode_config = _get_shortcode_config(env, checkout.domain_code)
         parsed = _parse_product_ref(checkout.product_ref, config=shortcode_config)
         
         # I2: Blocking validation - fail early if shortcode is unknown
