@@ -558,13 +558,16 @@ def _checkout_auto(env, website, checkout, parsed, partner):
             env, order, product, partner, parsed.get('city_filter'),
         )
 
-    # Send auto-checkout confirmation email (T2)
-    try:
-        tpl = env.ref('agenda_dasei.mail_template_checkout_confirmation', raise_if_not_found=False)
-        if tpl:
-            tpl.sudo().send_mail(order.id, force_send=False)
-    except Exception as e:
-        _logger.warning("Auto checkout email failed for order %s: %s", order.name, e)
+    # NOTE: Auto-checkout confirmation email DISABLED (2026-03-15)
+    # SaaS info-leakage: emails log to partner chatter, leaking data between tenants.
+    # Template preserved in agenda_dasei.mail_template_checkout_confirmation
+    # TODO S1n: Reuse template content for a tenant-safe email solution
+    # try:
+    #     tpl = env.ref('agenda_dasei.mail_template_checkout_confirmation', raise_if_not_found=False)
+    #     if tpl:
+    #         tpl.sudo().send_mail(order.id, force_send=False)
+    # except Exception as e:
+    #     _logger.warning("Auto checkout email failed for order %s: %s", order.name, e)
 
     return CheckoutResult(
         success=True,
@@ -651,20 +654,22 @@ def _checkout_manual_review(env, checkout, parsed, partner):
     if company_phone.startswith("'"):
         company_phone = company_phone[1:]
 
-    # --- Customer email: "We received your registration" ---
-    try:
-        tpl = env.ref('agenda_dasei.mail_template_checkout_review_customer', raise_if_not_found=False)
-        if tpl:
-            # Pass event/product info and company phone as context for template rendering
-            ctx = {
-                **event_info,
-                **product_info,
-                'company_phone': company_phone,
-                'product_ref': ref,
-            }
-            tpl.sudo().with_context(ctx).send_mail(partner.id, force_send=False)
-    except Exception as e:
-        _logger.warning("Manual review customer email failed for partner %s: %s", partner.id, e)
+    # NOTE: Manual review customer email DISABLED (2026-03-15)
+    # SaaS info-leakage: emails log to partner chatter, leaking data between tenants.
+    # Template preserved in agenda_dasei.mail_template_checkout_review_customer
+    # TODO S1n: Reuse template content for a tenant-safe email solution
+    # try:
+    #     tpl = env.ref('agenda_dasei.mail_template_checkout_review_customer', raise_if_not_found=False)
+    #     if tpl:
+    #         ctx = {
+    #             **event_info,
+    #             **product_info,
+    #             'company_phone': company_phone,
+    #             'product_ref': ref,
+    #         }
+    #         tpl.sudo().with_context(ctx).send_mail(partner.id, force_send=False)
+    # except Exception as e:
+    #     _logger.warning("Manual review customer email failed for partner %s: %s", partner.id, e)
 
     # --- Manager notification email ---
     try:

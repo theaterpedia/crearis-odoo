@@ -406,49 +406,51 @@ def _send_booking_emails(env, meeting, partner, notes=None, selections=None, cal
             call_label = '📹 Video-Call' if call_type == 'video' else '📞 Telefon'
             call_type_html = f'<li><strong>Format:</strong> {call_label}</li>'
         
-        chatter_body = f"""<p><strong>🗓️ Beratungstermin gebucht</strong></p>
-<ul>
-    <li><strong>Datum:</strong> {start_str} Uhr</li>
-    <li><strong>Berater:</strong> {host_name}</li>
-    {call_type_html}
-</ul>
-<p><strong>Themen:</strong></p>
-{categories_html}"""
-        
-        partner.message_post(
-            body=chatter_body,
-            message_type='notification',
-            subtype_xmlid='mail.mt_note',
-        )
-        _logger.info("Chatter note posted for partner %s", partner.id)
+        # NOTE: Chatter post disabled for SaaS info-leakage prevention
+        # chatter_body = f"""<p><strong>🗓️ Beratungstermin gebucht</strong></p>
+        # <ul>
+        #     <li><strong>Datum:</strong> {start_str} Uhr</li>
+        #     <li><strong>Berater:</strong> {host_name}</li>
+        #     {call_type_html}
+        # </ul>
+        # <p><strong>Themen:</strong></p>
+        # {categories_html}"""
+        # 
+        # partner.message_post(
+        #     body=chatter_body,
+        #     message_type='notification',
+        #     subtype_xmlid='mail.mt_note',
+        # )
+        # _logger.info("Chatter note posted for partner %s", partner.id)
     except Exception as e:
         _logger.error("Failed to post chatter note: %s", e)
     
     # SCL R2b: Log booking confirmation to consultant's partner chatter
     try:
         consultant_partner = meeting.user_id.partner_id if meeting.user_id else None
-        if consultant_partner:
-            customer_name = partner.name if partner else 'Kunde'
-            customer_email = partner.email if partner else ''
-            customer_phone = partner.phone or partner.mobile or '' if partner else ''
-            
-            exec_chatter_body = f"""<p><strong>🗓️ Neuer Beratungstermin</strong></p>
-<ul>
-    <li><strong>Kunde:</strong> {customer_name}</li>
-    <li><strong>E-Mail:</strong> {customer_email}</li>
-    {'<li><strong>Telefon:</strong> ' + customer_phone + '</li>' if customer_phone else ''}
-    <li><strong>Datum:</strong> {start_str} Uhr</li>
-    {call_type_html}
-</ul>
-<p><strong>Themen:</strong></p>
-{categories_html}"""
-            
-            consultant_partner.message_post(
-                body=exec_chatter_body,
-                message_type='notification',
-                subtype_xmlid='mail.mt_note',
-            )
-            _logger.info("Chatter note posted for consultant %s", consultant_partner.id)
+        # NOTE: Chatter post disabled for SaaS info-leakage prevention
+        # if consultant_partner:
+        #     customer_name = partner.name if partner else 'Kunde'
+        #     customer_email = partner.email if partner else ''
+        #     customer_phone = partner.phone or partner.mobile or '' if partner else ''
+        #     
+        #     exec_chatter_body = f"""<p><strong>🗓️ Neuer Beratungstermin</strong></p>
+        # <ul>
+        #     <li><strong>Kunde:</strong> {customer_name}</li>
+        #     <li><strong>E-Mail:</strong> {customer_email}</li>
+        #     {'<li><strong>Telefon:</strong> ' + customer_phone + '</li>' if customer_phone else ''}
+        #     <li><strong>Datum:</strong> {start_str} Uhr</li>
+        #     {call_type_html}
+        # </ul>
+        # <p><strong>Themen:</strong></p>
+        # {categories_html}"""
+        #     
+        #     consultant_partner.message_post(
+        #         body=exec_chatter_body,
+        #         message_type='notification',
+        #         subtype_xmlid='mail.mt_note',
+        #     )
+        #     _logger.info("Chatter note posted for consultant %s", consultant_partner.id)
     except Exception as e:
         _logger.error("Failed to post consultant chatter note: %s", e)
 
@@ -1233,18 +1235,18 @@ class CreateEmailInquiry(graphene.Mutation):
             # Don't fail the mutation if emails fail - lead is already created
             _logger.warning("CreateEmailInquiry: email send failed for lead %s: %s", lead.id, e)
         
-        # Log to partner chatter
-        chatter_body = f"""<p><strong>📧 Email-Beratungsanfrage</strong></p>
-<ul>
-<li>Domain: {domain_code}</li>
-<li>Kategorien: {', '.join(category_labels.get(s.category, s.category) for s in (consultation.selections or []))}</li>
-</ul>
-<p><a href="/web#model=crm.lead&amp;id={lead.id}">→ Zur Anfrage</a></p>
-"""
-        partner.message_post(
-            body=chatter_body,
-            subtype_xmlid='mail.mt_note',
-        )
+        # NOTE: Chatter post disabled for SaaS info-leakage prevention
+        # chatter_body = f"""<p><strong>📧 Email-Beratungsanfrage</strong></p>
+        # <ul>
+        # <li>Domain: {domain_code}</li>
+        # <li>Kategorien: {', '.join(category_labels.get(s.category, s.category) for s in (consultation.selections or []))}</li>
+        # </ul>
+        # <p><a href="/web#model=crm.lead&amp;id={lead.id}">→ Zur Anfrage</a></p>
+        # """
+        # partner.message_post(
+        #     body=chatter_body,
+        #     subtype_xmlid='mail.mt_note',
+        # )
         
         return EmailInquiryResult(success=True, lead_id=lead.id)
 
