@@ -891,7 +891,7 @@ class BookConsultingSlot(graphene.Mutation):
         
         if product_slug:
             # Try parsing as shortcode (e.g., m18w)
-            shortcode_config = _get_shortcode_config(env)
+            shortcode_config = _get_shortcode_config(env, product_slug)
             parsed = _parse_product_ref(product_slug, config=shortcode_config)
             
             # Extract city filter from shortcode location
