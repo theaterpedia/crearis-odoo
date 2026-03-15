@@ -637,6 +637,10 @@ class BookConsultingSlot(graphene.Mutation):
                 error=rate_error,
             )
         
+        # Lookup website for domain config (SaaS-ready)
+        Website = env['website'].sudo()
+        website = Website.search([('domain_code', '=', domain_code)], limit=1) if domain_code else None
+        
         # Parse start time
         try:
             slot_start = datetime.fromisoformat(start)
@@ -738,24 +742,10 @@ class BookConsultingSlot(graphene.Mutation):
                 'schedules': 'Verläufe',
                 'custom': 'Individuell',
             }
-            # 2026-03-13: Domain-specific label overrides (per terminology.md §4.2)
-            domain_label_overrides = {
-                'dasei1': {
-                    'prerequisites': 'Teilnehmer:innen-Struktur',
-                    'terms_and_options': 'Fördermöglichkeiten',
-                    'topics': 'Inhalte',
-                    'schedules': 'Termine & Ablauf',
-                },
-                'dasei3': {
-                    'prerequisites': 'Zulassung, Anerkennung',
-                    'terms_and_options': 'Frühbucher, Paketrabatt',
-                    'topics': 'Profil T vs R',
-                    'schedules': 'Semesterplanung',
-                },
-            }
-            # Apply domain overrides if applicable
-            if domain_code and domain_code in domain_label_overrides:
-                category_labels.update(domain_label_overrides[domain_code])
+            # Apply domain-specific label overrides from website.consulting_config (SaaS-ready)
+            if website:
+                config_labels = website.get_effective_config('consulting').get('category_labels', {})
+                category_labels.update(config_labels)
             
             for sel in consultation.selections:
                 cat_key = sel.category
@@ -1092,8 +1082,10 @@ class CreateEmailInquiry(graphene.Mutation):
                 error="Vor- und Nachname sind erforderlich."
             )
         
-        valid_domains = ['dasei0', 'dasei1', 'dasei2', 'dasei3', 'dasei', 'external']
-        if domain_code not in valid_domains:
+        # Validate domain_code against website records (SaaS-ready)
+        Website = env['website'].sudo()
+        website = Website.search([('domain_code', '=', domain_code)], limit=1) if domain_code else None
+        if not website:
             _logger.warning("CreateEmailInquiry: invalid domain_code %s", domain_code)
             return EmailInquiryResult(
                 success=False,
@@ -1133,24 +1125,10 @@ class CreateEmailInquiry(graphene.Mutation):
             'schedules': 'Verläufe',
             'custom': 'Individuell',
         }
-        # 2026-03-13: Domain-specific label overrides (per terminology.md §4.2)
-        domain_label_overrides = {
-            'dasei1': {
-                'prerequisites': 'Teilnehmer:innen-Struktur',
-                'terms_and_options': 'Fördermöglichkeiten',
-                'topics': 'Inhalte',
-                'schedules': 'Termine & Ablauf',
-            },
-            'dasei3': {
-                'prerequisites': 'Zulassung, Anerkennung',
-                'terms_and_options': 'Frühbucher, Paketrabatt',
-                'topics': 'Profil T vs R',
-                'schedules': 'Semesterplanung',
-            },
-        }
-        # Apply domain overrides if applicable
-        if domain_code and domain_code in domain_label_overrides:
-            category_labels.update(domain_label_overrides[domain_code])
+        # Apply domain-specific label overrides from website.consulting_config (SaaS-ready)
+        if website:
+            config_labels = website.get_effective_config('consulting').get('category_labels', {})
+            category_labels.update(config_labels)
         
         tag_ids = []
         description_parts = []

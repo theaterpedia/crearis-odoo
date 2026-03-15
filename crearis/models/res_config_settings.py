@@ -63,3 +63,32 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
         help='Per-domain shortcode→product mapping. Format: {"products": {...}, "bundles": {...}}'
     )
+
+    # SaaS Domain Configuration (weboptions pattern)
+    # Use *_config_text fields for UI editing - they have inverse for proper JSON R/W
+    crearis_config_preset = fields.Selection(
+        related='website_id.config_preset',
+        readonly=False,
+        string='Configuration Preset',
+    )
+
+    crearis_consulting_config = fields.Text(
+        string='Consulting Configuration',
+        related='website_id.consulting_config_text',
+        readonly=False,
+        help='Local overrides for consulting settings (JSON)'
+    )
+
+    crearis_routing_config = fields.Text(
+        string='Routing Configuration',
+        related='website_id.routing_config_text',
+        readonly=False,
+        help='Local overrides for checkout routing (JSON)'
+    )
+
+    crearis_email_config = fields.Text(
+        string='Email Configuration',
+        related='website_id.email_config_text',
+        readonly=False,
+        help='Local overrides for email settings (JSON)'
+    )

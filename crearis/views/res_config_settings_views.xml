@@ -183,6 +183,44 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- SaaS Domain Configuration -->
+                    <div class="col-12 o_setting_box" id="crearis_domain_config_settings">
+                        <div class="o_setting_right_pane">
+                            <div class="content-group">
+                                <h3>Domain Configuration</h3>
+                                <div class="text-muted mb8">
+                                    SaaS-ready configuration. Presets provide defaults, local overrides are merged on top.
+                                    Uses placeholder resolution (@homedomain, @domain1, etc.)
+                                </div>
+                                <div class="row mt8">
+                                    <label class="col-lg-3" for="crearis_config_preset" string="Preset"/>
+                                    <field name="crearis_config_preset"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="crearis_consulting_config" string="Consulting Overrides (JSON)"/>
+                                    <div class="text-muted mb4">
+                                        <code>{"default_ctype": "...", "category_labels": {...}, "tone": "formal"}</code>
+                                    </div>
+                                    <field name="crearis_consulting_config" widget="text"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="crearis_routing_config" string="Routing Overrides (JSON)"/>
+                                    <div class="text-muted mb4">
+                                        <code>{"flag_to_domain": {...}, "product_to_domain": {...}, "default": "..."}</code>
+                                    </div>
+                                    <field name="crearis_routing_config" widget="text"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="crearis_email_config" string="Email Overrides (JSON)"/>
+                                    <div class="text-muted mb4">
+                                        <code>{"from": "...", "reply_to": "...", "tone": "formal"}</code>
+                                    </div>
+                                    <field name="crearis_email_config" widget="text"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>

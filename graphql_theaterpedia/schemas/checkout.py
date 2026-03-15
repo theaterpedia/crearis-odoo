@@ -659,11 +659,12 @@ def _send_manager_notification(env, partner, parsed, contact, notes, full_course
 
     Uses agenda_dasei.resolve_checkout_domain_code() to find the target
     domain_code, then queries crearis.domainuser for exec-role users.
+    SaaS-ready: reads routing from website.routing_config when available.
     """
     from odoo.addons.agenda_dasei.models.event import resolve_checkout_domain_code
 
     event_info = event_info or {}
-    domain_code = resolve_checkout_domain_code(parsed)
+    domain_code = resolve_checkout_domain_code(parsed, env=env)
 
     DomainUser = env['crearis.domainuser'].sudo()
     exec_users = DomainUser.search([
@@ -742,10 +743,17 @@ def _send_manager_notification(env, partner, parsed, contact, notes, full_course
 
     body_html = '\n'.join(lines)
 
+    # Get email_from from website config (SaaS-ready)
+    Website = env['website'].sudo()
+    website = Website.search([('domain_code', '=', domain_code)], limit=1)
+    email_from = 'service@dasei.eu'  # fallback
+    if website and hasattr(website, 'get_config_value'):
+        email_from = website.get_config_value('email', 'from', email_from)
+
     MailMail = env['mail.mail'].sudo()
     MailMail.create({
         'subject': f'[Checkout] Neue Anmeldung: {ref} — {contact.vorname} {contact.nachname}',
-        'email_from': 'service@dasei.eu',
+        'email_from': email_from,
         'email_to': ', '.join(manager_emails),
         'body_html': body_html,
         'auto_delete': False,

@@ -28,17 +28,10 @@ class CrmLead(models.Model):
         help='True if created via S2L email-only consulting flow',
     )
 
-    consulting_domain_code = fields.Selection(
-        selection=[
-            ('dasei0', 'Newsletter / Offenes Programm'),
-            ('dasei1', 'Einstiege'),
-            ('dasei2', 'Grundlagen'),
-            ('dasei3', 'Aufbaustufe'),
-            ('dasei', 'Verein (Umbrella)'),
-            ('external', 'External'),
-        ],
+    consulting_domain_code = fields.Char(
         string='Consulting Domain',
-        help='Source domain for exec assignment via domainuser',
+        index=True,
+        help='Domain code from website (e.g., dasei1, dasei2). SaaS-ready: any domain_code is valid.',
     )
 
     # ─── Auto-assign exec on create ──────────────────────────────────────────
@@ -137,15 +130,14 @@ class CrmLead(models.Model):
         elif 'beratung' in name_lower or 'consultation' in name_lower:
             return 'purchase_consultation'
         
-        # Fallback based on domain
-        domain_ctype_map = {
-            'dasei0': 'event_inquiry',        # Offenes Programm - single events
-            'dasei1': 'purchase_consultation',  # Einstiege - course questions
-            'dasei2': 'purchase_consultation',  # Grundlagen - course questions
-            'dasei3': 'purchase_consultation',  # Aufbaustufe - course questions
-            'dasei': 'contact_inquiry',        # Verein - membership questions
-        }
-        return domain_ctype_map.get(self.consulting_domain_code, 'general_inquiry')
+        # Fallback based on domain config (SaaS-ready)
+        if self.consulting_domain_code:
+            Website = self.env['website'].sudo()
+            website = Website.search([('domain_code', '=', self.consulting_domain_code)], limit=1)
+            if website:
+                return website.get_config_value('consulting', 'default_ctype', 'general_inquiry')
+        
+        return 'general_inquiry'
 
     def send_email_inquiry_confirmation(self):
         """Send D80.5 two-stage emails: customer confirmation + exec notification.

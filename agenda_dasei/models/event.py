@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 
 # Template code first-letter → website domain_code mapping
 # DASEi progression:  dasei1=Einstiege, dasei2=Grundstufe, dasei3=Aufbaustufe
+# NOTE: Still used as fallback; SaaS-ready config should use website.routing_config
 TEMPLATE_WEBSITE_MAP = {
     'A': 'dasei1',
     'B': 'dasei2',
@@ -17,16 +18,7 @@ TEMPLATE_WEBSITE_MAP = {
 }
 
 # Checkout shortcode → domain_code routing for exec notifications
-# Used by CheckoutMutation to find the right domainuser execs.
-#
-# Rules (from product owner):
-#   - m18w, m18x, n18w, n18x → dasei1 (Einstiege, Module A format variants)
-#   - m17c, n17c             → dasei2 (Grundstufe, Module C)
-#   - z*                     → dasei3 (Aufbaustufe)
-#   - single events starting with 'a' (aa_, a0_, etc.) → dasei1
-#   - all other single events → dasei1  (fallback, simplest exec path)
-#   - MOD-A, MOD-B           → dasei1
-#   - MOD-C, MOD-D           → dasei2
+# NOTE: Fallback maps; SaaS-ready config should use website.routing_config
 CHECKOUT_DOMAIN_MAP_FLAG = {
     'w': 'dasei1',  # Tageskurs → Einstiege
     'x': 'dasei1',  # Block → Einstiege
@@ -50,35 +42,62 @@ CHECKOUT_DOMAIN_MAP_PRODUCT = {
 CHECKOUT_DOMAIN_DEFAULT = 'dasei1'
 
 
-def resolve_checkout_domain_code(parsed_ref):
+def resolve_checkout_domain_code(parsed_ref, env=None, source_website=None):
     """Resolve domain_code for checkout notification routing.
+
+    SaaS-ready: reads from website.routing_config if available,
+    falls back to CHECKOUT_DOMAIN_MAP constants for backward compatibility.
 
     Args:
         parsed_ref: dict from _parse_product_ref() with keys:
             location, flag, default_code, is_single_event, original_ref
+        env: Odoo environment (optional, for config lookup)
+        source_website: website record to read config from (optional)
 
     Returns:
         str: domain_code (e.g. 'dasei1', 'dasei2', 'dasei3')
     """
-    # z-locations always go to dasei3 (Aufbaustufe)
+    # Get routing config from website if available
+    routing = {}
+    website = source_website
+    if not website and env:
+        Website = env['website'].sudo()
+        website = Website.get_current_website() if hasattr(Website, 'get_current_website') else None
+    
+    if website and hasattr(website, 'get_effective_config'):
+        routing = website.get_effective_config('routing')
+    
+    # z-locations always go to dasei3 (Aufbaustufe) - hardcoded rule
     if parsed_ref.get('location') == 'z':
         return 'dasei3'
 
-    # Single events → dasei1 (all of them, including 'a*' prefix)
+    # Single events → fallback default (all of them, including 'a*' prefix)
     if parsed_ref.get('is_single_event'):
-        return 'dasei1'
+        return routing.get('default') or CHECKOUT_DOMAIN_DEFAULT
 
     # Course shortcodes: route by flag
     flag = parsed_ref.get('flag')
-    if flag and flag in CHECKOUT_DOMAIN_MAP_FLAG:
-        return CHECKOUT_DOMAIN_MAP_FLAG[flag]
+    if flag:
+        # Try website config first
+        flag_to_domain = routing.get('flag_to_domain', {})
+        if flag in flag_to_domain:
+            return flag_to_domain[flag]
+        # Fall back to hardcoded map
+        if flag in CHECKOUT_DOMAIN_MAP_FLAG:
+            return CHECKOUT_DOMAIN_MAP_FLAG[flag]
 
     # Direct default_code (MOD-A etc.)
     default_code = parsed_ref.get('default_code')
-    if default_code and default_code in CHECKOUT_DOMAIN_MAP_PRODUCT:
-        return CHECKOUT_DOMAIN_MAP_PRODUCT[default_code]
+    if default_code:
+        # Try website config first
+        product_to_domain = routing.get('product_to_domain', {})
+        if default_code in product_to_domain:
+            return product_to_domain[default_code]
+        # Fall back to hardcoded map
+        if default_code in CHECKOUT_DOMAIN_MAP_PRODUCT:
+            return CHECKOUT_DOMAIN_MAP_PRODUCT[default_code]
 
-    return CHECKOUT_DOMAIN_DEFAULT
+    return routing.get('default') or CHECKOUT_DOMAIN_DEFAULT
 
 
 class EventEvent(models.Model):
