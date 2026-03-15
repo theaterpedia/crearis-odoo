@@ -398,7 +398,20 @@ class Checkout(graphene.Mutation):
     @staticmethod
     def mutate(self, info, checkout):
         env = info.context['env']
-        website = env['website'].get_current_website()
+        
+        # SaaS-ready: use domain_code from Nuxt to determine website
+        # Falls back to get_current_website() if no domain_code provided
+        if checkout.domain_code:
+            website = env['website'].sudo().search(
+                [('domain_code', '=', checkout.domain_code)], limit=1
+            )
+            if not website:
+                return CheckoutResult(
+                    success=False,
+                    error=f"Unknown domain_code: {checkout.domain_code}",
+                )
+        else:
+            website = env['website'].get_current_website()
         request.website = website
 
         # --- IP lock check ---
