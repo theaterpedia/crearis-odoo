@@ -108,23 +108,56 @@ raise UserError(message)
         <field name="state">code</field>
         <field name="code"><![CDATA[
 # Apply DASEi config preset and routing overrides
-from odoo.addons.agenda_dasei.hooks import _apply_dasei_config
+# Inline config - cannot use imports in server actions
 
-_apply_dasei_config(env)
+DASEI_ROUTING_CONFIG = {
+    'flag_to_domain': {'w': 'dasei1', 'x': 'dasei1', 'e': 'dasei3'},
+    'product_to_domain': {'MOD-A': 'dasei1', 'MOD-E': 'dasei3', 'MOD-PE': 'dasei3'},
+    'template_code_to_domain': {'A': 'dasei1', 'B': 'dasei2', 'C': 'dasei2', 'D': 'dasei2', 'E': 'dasei3'},
+    'default': 'dasei1',
+}
 
-# Build status message
+DASEI_EMAIL_CONFIG = {
+    'from': 'service@dasei.eu',
+    'reply_to': 'beratung@dasei.eu',
+}
+
 Website = env['website']
 dasei_websites = Website.search([('domain_code', 'like', 'dasei%')])
 
 if not dasei_websites:
     raise UserError("No DASEi websites found.")
 
-message = "✅ DASEi configuration applied:\n\n"
+# Set preset for all
+preset_count = 0
+for ws in dasei_websites:
+    if ws.config_preset != 'academy':
+        ws.config_preset = 'academy'
+        preset_count += 1
+
+# Hub routing overrides
+hub = dasei_websites.filtered(lambda w: w.domain_code == 'dasei0')
+routing_applied = False
+if hub and hub.routing_config != DASEI_ROUTING_CONFIG:
+    hub.routing_config = DASEI_ROUTING_CONFIG
+    routing_applied = True
+
+# Email config for notification domains
+email_count = 0
+for ws in dasei_websites.filtered(lambda w: w.domain_code in ('dasei1', 'dasei2', 'dasei3')):
+    if ws.email_config != DASEI_EMAIL_CONFIG:
+        ws.email_config = DASEI_EMAIL_CONFIG
+        email_count += 1
+
+# Build status message
+message = "DASEi configuration applied:\n\n"
 for ws in dasei_websites.sorted(key=lambda w: w.domain_code):
     preset = ws.config_preset or 'none'
-    has_routing = '✓' if ws.routing_has_config else '—'
-    has_email = '✓' if ws.email_has_config else '—'
-    message += f"• {ws.domain_code}: preset={preset}, routing={has_routing}, email={has_email}\n"
+    has_routing = 'Y' if ws.routing_has_config else '-'
+    has_email = 'Y' if ws.email_has_config else '-'
+    message += "* %s: preset=%s, routing=%s, email=%s\n" % (ws.domain_code, preset, has_routing, has_email)
+
+message += "\nChanges: %d presets, routing=%s, %d emails" % (preset_count, 'Y' if routing_applied else 'N', email_count)
 
 raise UserError(message)
 ]]></field>
