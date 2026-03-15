@@ -107,14 +107,45 @@ raise UserError(message)
         <field name="binding_view_types">list</field>
         <field name="state">code</field>
         <field name="code"><![CDATA[
-# Apply DASEi config preset and routing overrides
+# Apply DASEi config preset and overrides
 # Uses write() - direct attribute assignment is forbidden in safe_eval
 
+# dasei0 (Hub): routing config for exec notifications
 routing_config = {
     'flag_to_domain': {'w': 'dasei1', 'x': 'dasei1', 'e': 'dasei3'},
     'product_to_domain': {'MOD-A': 'dasei1', 'MOD-E': 'dasei3', 'MOD-PE': 'dasei3'},
     'template_code_to_domain': {'A': 'dasei1', 'B': 'dasei2', 'C': 'dasei2', 'D': 'dasei2', 'E': 'dasei3'},
     'default': 'dasei1',
+}
+
+# dasei1 (Einstiege): Module A checkout - w=Tageskurs, x=Blockkurs
+shortcode_dasei1 = {
+    'products': {'w': 'MOD-A', 'x': 'MOD-B', 'a': 'MOD-A', 'b': 'MOD-B'},
+    'bundles': {},
+    'contact_only': [],
+    'auto_flags': ['w', 'x'],
+    'auto_locations': ['m', 'n'],
+}
+
+# dasei2 (Grundstufe): Module C checkout
+shortcode_dasei2 = {
+    'products': {'c': 'MOD-C', 'w': 'MOD-A', 'x': 'MOD-B'},
+    'bundles': {},
+    'contact_only': [],
+    'auto_flags': ['w', 'x'],
+    'auto_locations': ['m', 'n'],
+}
+
+# dasei3 (Aufbaustufe): Module E + profiles + bundles
+shortcode_dasei3 = {
+    'products': {'e': 'MOD-E', 't': 'MOD-AUFBAU-T', 'r': 'MOD-AUFBAU-R', 'p': 'MOD-AUFBAU-P'},
+    'bundles': {
+        'y': ['MOD-E', 'MOD-AUFBAU-T', 'MOD-AUFBAU-P'],
+        'z': ['MOD-E', 'MOD-AUFBAU-R', 'MOD-AUFBAU-P'],
+    },
+    'contact_only': ['v'],
+    'auto_flags': [],
+    'auto_locations': [],
 }
 
 email_config = {
@@ -131,24 +162,33 @@ if not dasei_websites:
 # Set preset for all
 dasei_websites.write({'config_preset': 'academy'})
 
-# Hub routing overrides
+# Hub routing config
 hub = dasei_websites.filtered(lambda w: w.domain_code == 'dasei0')
 if hub:
     hub.write({'routing_config': routing_config})
 
-# Email config for notification domains
-notification_sites = dasei_websites.filtered(lambda w: w.domain_code in ('dasei1', 'dasei2', 'dasei3'))
-if notification_sites:
-    notification_sites.write({'email_config': email_config})
+# Domain-specific shortcode configs
+dasei1 = dasei_websites.filtered(lambda w: w.domain_code == 'dasei1')
+if dasei1:
+    dasei1.write({'shortcode_config': shortcode_dasei1, 'email_config': email_config})
+
+dasei2 = dasei_websites.filtered(lambda w: w.domain_code == 'dasei2')
+if dasei2:
+    dasei2.write({'shortcode_config': shortcode_dasei2, 'email_config': email_config})
+
+dasei3 = dasei_websites.filtered(lambda w: w.domain_code == 'dasei3')
+if dasei3:
+    dasei3.write({'shortcode_config': shortcode_dasei3, 'email_config': email_config})
 
 # Build status message
 lines = ["DASEi configuration applied:", ""]
 for ws in dasei_websites.sorted(key=lambda w: w.domain_code):
-    lines.append("* %s: preset=%s, routing=%s, email=%s" % (
+    lines.append("* %s: preset=%s, routing=%s, email=%s, shortcode=%s" % (
         ws.domain_code,
         ws.config_preset or 'none',
         'Y' if ws.routing_has_config else '-',
-        'Y' if ws.email_has_config else '-'
+        'Y' if ws.email_has_config else '-',
+        'Y' if ws.shortcode_config else '-'
     ))
 
 raise UserError("\n".join(lines))
