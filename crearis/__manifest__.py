@@ -70,6 +70,7 @@ Features:
         'views/crm_lead_views.xml',  # S2L: Consulting inquiries (before menu)
         'views/mail_snippet_views.xml',  # D90: Layer-2 email snippets
         'views/crearis_menu.xml',  # Menu items (load after actions)
+        'views/email_center_views.xml',  # D90.2: Email-Center hub
         'views/event_type_views.xml',
         'views/consulting_templates.xml',
     ],

@@ -165,13 +165,6 @@
         </field>
     </record>
 
-    <!-- ========================================= -->
-    <!-- Mail Snippet: Menu Entry                  -->
-    <!-- ========================================= -->
-    <menuitem id="menu_mail_snippet" 
-              name="Email Snippets" 
-              parent="menu_crearis_settings" 
-              action="action_mail_snippet"
-              sequence="20"/>
+    <!-- Menu entry moved to email_center_views.xml -->
 
 </odoo>
