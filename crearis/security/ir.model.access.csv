@@ -7,3 +7,5 @@ access_crearis_config_template_user,DomainUser,model_crearis_config_template,cre
 access_crearis_config_template_manager,DomainManager,model_crearis_config_template,crearis_manage_domain,1,1,1,1
 access_agenda_line_user,AgendaLineUser,model_agenda_line,base.group_user,1,0,0,0
 access_agenda_line_manager,AgendaLineManager,model_agenda_line,event.group_event_manager,1,1,1,1
+access_mail_snippet_user,MailSnippetUser,model_crearis_mail_snippet,crearis.crearis_use_domain,1,0,0,0
+access_mail_snippet_manager,MailSnippetManager,model_crearis_mail_snippet,crearis.crearis_manage_domain,1,1,1,1

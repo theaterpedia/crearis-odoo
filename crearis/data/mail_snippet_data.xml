@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Copyright 2026 theaterpedia.org -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<!--  D90: Seed data for Layer-2 email snippets -->
+<odoo>
+    <data noupdate="1">
+
+        <!-- ========================================= -->
+        <!-- General Snippets (all domains)           -->
+        <!-- ========================================= -->
+
+        <record id="mail_snippet_footer_signature" model="crearis.mail.snippet">
+            <field name="name">Footer Signature</field>
+            <field name="code">footer_signature</field>
+            <field name="scope">general</field>
+            <field name="required_vars"></field>
+            <field name="description">Standard email footer with powered-by and unsubscribe links.</field>
+            <field name="qweb"><![CDATA[
+<!-- Footer Signature Snippet -->
+<hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+<p style="color: #888; font-size: 12px; text-align: center;">
+    powered by <a href="https://theaterpedia.org" style="color: #888;">Theaterpedia</a>
+</p>
+]]></field>
+        </record>
+
+        <record id="mail_snippet_ps_line" model="crearis.mail.snippet">
+            <field name="name">PS Line with Emoji</field>
+            <field name="code">ps_line</field>
+            <field name="scope">general</field>
+            <field name="required_vars"></field>
+            <field name="description">Friendly PS line encouraging email replies.</field>
+            <field name="qweb"><![CDATA[
+<!-- PS Line Snippet -->
+<p style="color: #666; font-size: 14px;">PS: Du darfst gerne einfach auf diese Email antworten 😊</p>
+]]></field>
+        </record>
+
+        <!-- ========================================= -->
+        <!-- dasei.eu Specific Snippets               -->
+        <!-- ========================================= -->
+
+        <record id="mail_snippet_product_header" model="crearis.mail.snippet">
+            <field name="name">Product Header</field>
+            <field name="code">product_header</field>
+            <field name="scope">dasei</field>
+            <field name="required_vars">object (calendar.event with get_product_info method)</field>
+            <field name="description">Displays product/course header with type label, shortcode and headline.
+Used in consulting confirmation emails to show what product/course the meeting is about.
+
+Usage: Call object.get_product_info() which returns dict with:
+- type_label: e.g. "Kurs"
+- shortcode: e.g. "TH24-1"
+- headline: e.g. "Einführung in Theaterpädagogik"</field>
+            <field name="qweb"><![CDATA[
+<!-- Product Header Snippet -->
+<t t-set="product_info" t-value="object.get_product_info()"/>
+<t t-if="product_info and product_info.get('shortcode')">
+<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0 7px 0;">
+    <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+        <t t-out="product_info.get('type_label')"/> <t t-out="product_info.get('shortcode')"/>
+    </div>
+    <div style="font-size: 20px; font-weight: bold; margin: 5px 0 0 0;">
+        <t t-out="product_info.get('headline')"/>
+    </div>
+</div>
+</t>
+]]></field>
+        </record>
+
+        <record id="mail_snippet_meeting_details" model="crearis.mail.snippet">
+            <field name="name">Meeting Details (Teams)</field>
+            <field name="code">meeting_details</field>
+            <field name="scope">dasei</field>
+            <field name="required_vars">object (calendar.event with videocall_location, get_consulting_option)</field>
+            <field name="description">Displays video call meeting details including:
+- Meeting link
+- Meeting-ID
+- Phone dial-in (fallback)
+- Conference ID
+
+Reads from object.get_consulting_option('teams_meeting_data').</field>
+            <field name="qweb"><![CDATA[
+<!-- Meeting Details Snippet -->
+<t t-if="object.videocall_location">
+<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+    <div style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Video-Call</div>
+    <div style="margin-top: 5px;">
+        <a t-att-href="object.videocall_location" style="color: #0066cc; text-decoration: none;">
+            🎥 Zum Meeting beitreten
+        </a>
+    </div>
+    <t t-set="teams_data" t-value="object.get_consulting_option('teams_meeting_data', default={}) or {}"/>
+    <t t-if="teams_data.get('videocall_id')">
+        <div style="color: #666; font-size: 13px; margin-top: 5px;">
+            Besprechungs-ID: <t t-out="teams_data.get('videocall_id')"/>
+        </div>
+    </t>
+    <t t-if="teams_data.get('phonecall_id')">
+        <div style="color: #666; font-size: 13px; margin-top: 8px;">
+            falls Video nicht klappt einfach per Telefon einwählen:<br/>
+            tel:<t t-out="teams_data.get('phonecall_id')"/>
+        </div>
+        <t t-if="teams_data.get('phonecall_conference_id')">
+            <div style="color: #666; font-size: 13px;">
+                Telefonkonferenz-ID: <t t-out="teams_data.get('phonecall_conference_id')"/>
+            </div>
+        </t>
+    </t>
+</div>
+</t>
+]]></field>
+        </record>
+
+        <record id="mail_snippet_selections_list" model="crearis.mail.snippet">
+            <field name="name">Selections List (Schwerpunkte)</field>
+            <field name="code">selections_list</field>
+            <field name="scope">dasei</field>
+            <field name="required_vars">object (with get_consulting_option returning 'selections' list)</field>
+            <field name="description">Displays selected options/Schwerpunkte from consulting form.
+Reads from object.get_consulting_option('selections').
+
+Each selection item has:
+- label: Display name
+- options: List of selected values (can be strings or {label, url} dicts)
+- text: Optional freetext
+
+Supports URL-enabled options from CN (Nuxt frontend).</field>
+            <field name="qweb"><![CDATA[
+<!-- Selections List Snippet -->
+<t t-set="selections" t-value="object.get_consulting_option('selections', default=[]) or []"/>
+<t t-if="selections">
+<div style="margin: 20px 0;">
+    <div style="color: #555;"><strong>Schwerpunkte:</strong></div>
+    <t t-foreach="selections" t-as="sel">
+    <t t-if="sel.get('options') or sel.get('text')">
+    <div style="color: #555; margin: 4px 0;">
+        - <t t-out="sel.get('label', sel.get('key', ''))"/>: 
+        <t t-if="sel.get('options')">
+            <t t-foreach="sel.get('options', [])" t-as="opt">
+                <t t-if="opt_index > 0">, </t>
+                <!-- Support URL-enabled options from CN -->
+                <t t-if="isinstance(opt, dict) and opt.get('url')">
+                    <a t-att-href="'https://dasei.eu' + opt.get('url')" style="color: #0066cc;">
+                        <t t-out="opt.get('label', opt)"/>
+                    </a>
+                </t>
+                <t t-elif="isinstance(opt, dict)">
+                    <t t-out="opt.get('label', str(opt))"/>
+                </t>
+                <t t-else="">
+                    <t t-out="opt"/>
+                </t>
+            </t>
+        </t>
+        <t t-if="sel.get('text')"> [<t t-out="sel.get('text')"/>]</t>
+    </div>
+    </t>
+    </t>
+</div>
+</t>
+]]></field>
+        </record>
+
+        <record id="mail_snippet_upcoming_events" model="crearis.mail.snippet">
+            <field name="name">Upcoming Events Table</field>
+            <field name="code">upcoming_events</field>
+            <field name="scope">dasei</field>
+            <field name="required_vars">object (with get_consulting_option, search_upcoming_events), env</field>
+            <field name="description">Displays upcoming events in a table format.
+
+Reads configuration from object.get_consulting_option('schedule'):
+- product_slugs: List of product codes to resolve to event types
+- city: Filter by city (optional)
+- city_exclude: If true, exclude that city instead of filtering for it
+
+Uses object.search_upcoming_events(type_ids, city, city_exclude, limit) helper.
+
+Parses event names for "Overline **Headline**" pattern.
+Shows is_template_code prefix if event_type has it enabled.</field>
+            <field name="qweb"><![CDATA[
+<!-- Upcoming Events Table Snippet -->
+<!-- Step 1: Read JSONB config -->
+<t t-set="schedule" t-value="object.get_consulting_option('schedule', default={}) or {}"/>
+<t t-set="slugs" t-value="schedule.get('product_slugs', []) if schedule else []"/>
+<t t-set="city" t-value="schedule.get('city', '') if schedule else ''"/>
+<t t-set="city_exclude" t-value="schedule.get('city_exclude', False) if schedule else False"/>
+
+<!-- Step 2: Product → Event Type resolution -->
+<t t-set="products" t-value="env['product.product'].sudo().search([('default_code', 'in', slugs)])"/>
+<t t-set="type_ids" t-value="sum([p.product_tmpl_id.get_linked_event_type_ids() for p in products if hasattr(p.product_tmpl_id, 'get_linked_event_type_ids')], [])"/>
+
+<!-- Step 3: Search events -->
+<t t-set="events" t-value="object.search_upcoming_events(type_ids, city, city_exclude, 5)"/>
+
+<t t-if="events">
+<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+<div style="margin: 20px 0;">
+    <!-- Category header -->
+    <div style="color: #c17a00; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">
+        Termine &amp; Zeitplanung
+    </div>
+    <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">Verläufe</div>
+    
+    <table style="width: 100%; border-collapse: collapse;">
+        <t t-foreach="events" t-as="ev">
+        <!-- Parse event name -->
+        <t t-set="ev_name" t-value="(ev.name.get('de_DE') or ev.name.get('en_US') or str(ev.name)) if isinstance(ev.name, dict) else str(ev.name)"/>
+        <t t-set="has_headline" t-value="'**' in ev_name"/>
+        <t t-set="overline_part" t-value="ev_name.split('**')[0].strip() if has_headline else ''"/>
+        <t t-set="headline_part" t-value="ev_name.split('**')[1].strip() if has_headline and len(ev_name.split('**')) > 1 else ev_name.replace('**', '')"/>
+        
+        <!-- Get template code -->
+        <t t-set="type_name_raw" t-value="ev.event_type_id.name if ev.event_type_id else {}"/>
+        <t t-set="type_code" t-value="(type_name_raw.get('en_US') or type_name_raw.get('de_DE') or '') if isinstance(type_name_raw, dict) else str(type_name_raw or '')"/>
+        <t t-set="show_code" t-value="ev.event_type_id and ev.event_type_id.is_template_code and type_code"/>
+        
+        <!-- Date formatting -->
+        <t t-set="start_date" t-value="ev.date_begin"/>
+        <t t-set="end_date" t-value="ev.date_end"/>
+        <t t-set="same_day" t-value="start_date.date() == end_date.date() if start_date and end_date else True"/>
+        <t t-set="weekdays" t-value="['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO']"/>
+        
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; vertical-align: top; width: 65%;">
+                <t t-if="show_code">
+                    <span style="color: #888; font-size: 11px; text-transform: uppercase;">
+                        <t t-out="type_code"/>
+                    </span> 
+                </t>
+                <t t-if="overline_part">
+                    <span style="color: #555; font-size: 13px;"><t t-out="overline_part"/></span><br/>
+                </t>
+                <strong><t t-out="headline_part"/></strong>
+            </td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; vertical-align: top; text-align: right;">
+                <t t-if="same_day">
+                    <t t-out="start_date.strftime('%d.%m.%Y') if start_date else ''"/> 
+                    <t t-out="start_date.strftime('%H:%M') if start_date and start_date.hour != 7 else '09:00'"/><br/>
+                </t>
+                <t t-if="not same_day">
+                    <t t-out="start_date.strftime('%d.')"/>-<t t-out="end_date.strftime('%d.%m.%Y')"/><br/>
+                    <span style="font-size: 12px;">
+                        (<t t-out="weekdays[start_date.weekday()]"/> 
+                        <t t-out="start_date.strftime('%H:%M') if start_date.hour != 7 else '18:00'"/> - 
+                        <t t-out="weekdays[end_date.weekday()]"/> 
+                        <t t-out="end_date.strftime('%H:%M') if end_date.hour != 7 else '15:00'"/>)
+                    </span><br/>
+                </t>
+                <t t-if="ev.address_id and ev.address_id.city">
+                    <span style="color: #666;"><t t-out="ev.address_id.city"/></span>
+                </t>
+            </td>
+        </tr>
+        </t>
+    </table>
+</div>
+</t>
+]]></field>
+        </record>
+
+    </data>
+</odoo>

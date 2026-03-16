@@ -21,5 +21,6 @@ from . import calendar_event
 from . import crm_lead  # S2L: email-only consulting inquiries
 from . import config_template
 # from . import event_workflow
+from . import mail_snippet  # D90: Layer-2 email snippets
 from . import res_config_settings
 

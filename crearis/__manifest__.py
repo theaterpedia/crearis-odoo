@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis',
-    'version': '16.0.1.8.0',
+    'version': '16.0.1.9.0',
     'summary': 'Episodes and Event-Management with Agenda Lines',
     'description': """Episodes and Event-Management on theaterpedia.org
 
@@ -52,6 +52,7 @@ Features:
         'data/crm_tag_consulting_data.xml',  # S2L: Consulting category tags
         'data/mail_activity_consulting_data.xml',  # S2L: Consulting activity types
         'data/mail_template_consulting_data.xml',  # SCS: Consulting booking emails
+        'data/mail_snippet_data.xml',  # D90: Layer-2 email snippet templates
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',
@@ -67,6 +68,7 @@ Features:
         'views/event_schedule_views.xml',
         'views/agenda_line_views.xml',
         'views/crm_lead_views.xml',  # S2L: Consulting inquiries (before menu)
+        'views/mail_snippet_views.xml',  # D90: Layer-2 email snippets
         'views/crearis_menu.xml',  # Menu items (load after actions)
         'views/event_type_views.xml',
         'views/consulting_templates.xml',

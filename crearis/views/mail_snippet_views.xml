@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Copyright 2026 theaterpedia.org -->
+<!--  License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+<odoo>
+
+    <!-- ========================================= -->
+    <!-- Mail Snippet: Tree View                   -->
+    <!-- ========================================= -->
+    <record id="mail_snippet_view_tree" model="ir.ui.view">
+        <field name="name">crearis.mail.snippet.tree</field>
+        <field name="model">crearis.mail.snippet</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="not active">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="scope" decoration-info="scope == 'general'" 
+                       decoration-success="scope == 'dasei'"/>
+                <field name="required_vars"/>
+                <field name="template_ids" widget="many2many_tags"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Mail Snippet: Form View                   -->
+    <!-- ========================================= -->
+    <record id="mail_snippet_view_form" model="ir.ui.view">
+        <field name="name">crearis.mail.snippet.form</field>
+        <field name="model">crearis.mail.snippet</field>
+        <field name="arch" type="xml">
+            <form string="Email Snippet">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" 
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" 
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Snippet name..."/>
+                        </h1>
+                        <div class="o_row">
+                            <label for="code" string="Code:"/>
+                            <field name="code" class="oe_inline" placeholder="e.g. upcoming_events"/>
+                            <span class="text-muted">→ t-call="crearis.mail_snippet_[code]"</span>
+                        </div>
+                    </div>
+                    
+                    <group>
+                        <group string="Configuration">
+                            <field name="scope"/>
+                            <field name="required_vars" placeholder="type_ids, city, limit"/>
+                        </group>
+                        <group string="Usage">
+                            <field name="template_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="QWeb Template" name="qweb">
+                            <div class="alert alert-info" role="alert">
+                                <strong>QWeb Syntax:</strong>
+                                Use <code>t-set</code> for variables, 
+                                <code>t-out</code> for rendering, 
+                                <code>t-foreach</code> for loops.
+                            </div>
+                            <field name="qweb" widget="code" 
+                                   options="{'mode': 'xml'}"
+                                   placeholder="&lt;t t-name='snippet'&gt;&#10;  &lt;!-- Your QWeb template here --&gt;&#10;&lt;/t&gt;"/>
+                        </page>
+                        <page string="Documentation" name="docs">
+                            <field name="description" 
+                                   placeholder="Describe how to use this snippet, what variables it expects, and what it renders..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Mail Snippet: Search View                 -->
+    <!-- ========================================= -->
+    <record id="mail_snippet_view_search" model="ir.ui.view">
+        <field name="name">crearis.mail.snippet.search</field>
+        <field name="model">crearis.mail.snippet</field>
+        <field name="arch" type="xml">
+            <search string="Search Snippets">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="scope"/>
+                <separator/>
+                <filter name="filter_general" string="General" 
+                        domain="[('scope', '=', 'general')]"/>
+                <filter name="filter_dasei" string="dasei.eu" 
+                        domain="[('scope', '=', 'dasei')]"/>
+                <filter name="filter_theaterpedia" string="theaterpedia.org" 
+                        domain="[('scope', '=', 'theaterpedia')]"/>
+                <separator/>
+                <filter name="filter_inactive" string="Archived" 
+                        domain="[('active', '=', False)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_scope" string="Scope" 
+                            context="{'group_by': 'scope'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Mail Snippet: Kanban View                 -->
+    <!-- ========================================= -->
+    <record id="mail_snippet_view_kanban" model="ir.ui.view">
+        <field name="name">crearis.mail.snippet.kanban</field>
+        <field name="model">crearis.mail.snippet</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="scope" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="scope"/>
+                <field name="description"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top mb-2">
+                                    <span class="badge bg-secondary me-1" t-esc="record.code.raw_value"/>
+                                </div>
+                                <strong class="o_kanban_record_title">
+                                    <field name="name"/>
+                                </strong>
+                                <div class="text-muted text-truncate" t-if="record.description.raw_value">
+                                    <field name="description"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Mail Snippet: Action                      -->
+    <!-- ========================================= -->
+    <record id="action_mail_snippet" model="ir.actions.act_window">
+        <field name="name">Email Snippets</field>
+        <field name="res_model">crearis.mail.snippet</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="context">{'search_default_filter_general': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first email snippet
+            </p>
+            <p>
+                Snippets are reusable QWeb blocks for email templates.
+                Use <code>t-call="crearis.mail_snippet_CODE"</code> to include them.
+            </p>
+        </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Mail Snippet: Menu Entry                  -->
+    <!-- ========================================= -->
+    <menuitem id="menu_mail_snippet" 
+              name="Email Snippets" 
+              parent="menu_crearis_settings" 
+              action="action_mail_snippet"
+              sequence="20"/>
+
+</odoo>
