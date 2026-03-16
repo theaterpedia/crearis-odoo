@@ -101,3 +101,144 @@ class EventRegistration(models.Model):
     def action_set_partial(self):
         """Set registration to 'partial' attendance state."""
         self.write({'state': 'partial'})
+
+    # =========================
+    # Email Template Helpers
+    # =========================
+
+    def get_event_title_parts(self):
+        """
+        Parse event name into overline/headline structure.
+        
+        Pattern: "Prefix text **Headline**" or "Prefix text"
+        
+        Returns dict with:
+            - overline: Event type name (e.g., "DAS Ei - Intensivkurs")
+            - headline: Main title wrapped in ** (e.g., "Das Theaterpädagogische Dreieck")
+            - subline: Text before ** (e.g., "Repetitorium zu den Modulen A-C")
+            - full_name: Original name
+        """
+        self.ensure_one()
+        event = self.event_id
+        name = event.name or ''
+        
+        result = {
+            'overline': '',
+            'headline': name,
+            'subline': '',
+            'full_name': name,
+        }
+        
+        # Event type as overline
+        if event.event_type_id:
+            result['overline'] = event.event_type_id.name or ''
+        
+        # Parse **headline** from name
+        import re
+        match = re.search(r'\*\*(.+?)\*\*', name)
+        if match:
+            result['headline'] = match.group(1)
+            result['subline'] = name[:match.start()].strip()
+        
+        return result
+
+    def get_session_schedule_html(self):
+        """
+        Generate HTML table for session schedule from agenda_line_ids.
+        
+        Shows session-type lines with:
+        - Date (formatted German)
+        - Weekday
+        - Start-End times
+        - Mode icon (🌐 online, 📍 venue)
+        
+        Returns: HTML string or empty string if no sessions
+        """
+        self.ensure_one()
+        event = self.event_id
+        
+        # Get session lines only (not milestones, info, etc.)
+        sessions = event.agenda_line_ids.filtered(
+            lambda l: l.type == 'session' and l.date
+        ).sorted(key=lambda l: (l.date, l.start or ''))
+        
+        if not sessions:
+            return ''
+        
+        # German month names
+        months_de = {
+            1: 'Januar', 2: 'Februar', 3: 'März', 4: 'April',
+            5: 'Mai', 6: 'Juni', 7: 'Juli', 8: 'August',
+            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Dezember'
+        }
+        weekdays_de = {
+            0: 'Mo', 1: 'Di', 2: 'Mi', 3: 'Do', 4: 'Fr', 5: 'Sa', 6: 'So'
+        }
+        
+        rows = []
+        for sess in sessions:
+            date_obj = sess.date
+            weekday = weekdays_de.get(date_obj.weekday(), '')
+            date_str = f"{weekday}, {date_obj.day}. {months_de.get(date_obj.month, '')}"
+            
+            # Time range
+            time_str = ''
+            if sess.start:
+                time_str = sess.start
+                if sess.end:
+                    time_str += f' – {sess.end}'
+            
+            # Mode icon
+            mode_icon = '🌐' if sess.mode == 'online' else '📍'
+            
+            rows.append(f'''
+                <tr>
+                    <td style="padding: 4px 8px; vertical-align: top;">{mode_icon}</td>
+                    <td style="padding: 4px 8px; vertical-align: top; white-space: nowrap;">{date_str}</td>
+                    <td style="padding: 4px 8px; vertical-align: top; white-space: nowrap;">{time_str}</td>
+                </tr>
+            ''')
+        
+        return f'''
+            <table style="border-collapse: collapse; font-size: 14px;">
+                {''.join(rows)}
+            </table>
+        '''
+
+    def get_session_schedule_text(self):
+        """
+        Generate plain text schedule summary.
+        Format: "Do, 19. März 09:00 – 17:00 | Fr, 20. März 09:00 – 17:00"
+        """
+        self.ensure_one()
+        event = self.event_id
+        
+        sessions = event.agenda_line_ids.filtered(
+            lambda l: l.type == 'session' and l.date
+        ).sorted(key=lambda l: (l.date, l.start or ''))
+        
+        if not sessions:
+            return ''
+        
+        months_de = {
+            1: 'Jan', 2: 'Feb', 3: 'Mär', 4: 'Apr', 5: 'Mai', 6: 'Jun',
+            7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Okt', 11: 'Nov', 12: 'Dez'
+        }
+        weekdays_de = {
+            0: 'Mo', 1: 'Di', 2: 'Mi', 3: 'Do', 4: 'Fr', 5: 'Sa', 6: 'So'
+        }
+        
+        parts = []
+        for sess in sessions:
+            date_obj = sess.date
+            weekday = weekdays_de.get(date_obj.weekday(), '')
+            date_str = f"{weekday}, {date_obj.day}. {months_de.get(date_obj.month, '')}"
+            
+            if sess.start:
+                date_str += f' {sess.start}'
+                if sess.end:
+                    date_str += f'–{sess.end}'
+            
+            parts.append(date_str)
+        
+        return ' | '.join(parts)

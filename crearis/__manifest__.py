@@ -52,6 +52,7 @@ Features:
         'data/crm_tag_consulting_data.xml',  # S2L: Consulting category tags
         'data/mail_activity_consulting_data.xml',  # S2L: Consulting activity types
         'data/mail_template_consulting_data.xml',  # SCS: Consulting booking emails
+        'data/mail_template_event_data.xml',  # Event reminder template (German, agenda-based)
         'data/mail_snippet_data.xml',  # D90: Layer-2 email snippet templates
         'security/theaterpedia_security.xml',
         'security/ir.model.access.csv',
