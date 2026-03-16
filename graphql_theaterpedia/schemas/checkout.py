@@ -463,7 +463,8 @@ class Checkout(graphene.Mutation):
         )
 
         # Get or create partner (both tiers need this)
-        partner = _get_or_create_partner(env, checkout.contact)
+        # Layer 1+2: Pass website for origin_domain_code + domainuser creation
+        partner = _get_or_create_partner(env, checkout.contact, website=website)
 
         # Store requestFullCourse flag on partner if applicable
         if checkout.request_full_course and parsed.get('flag') == 'e':
@@ -482,8 +483,12 @@ class Checkout(graphene.Mutation):
             return _checkout_manual_review(env, checkout, parsed, partner)
 
 
-def _get_or_create_partner(env, contact):
-    """Find existing partner by email or create new one."""
+def _get_or_create_partner(env, contact, website=None):
+    """Find existing partner by email or create new one.
+    
+    Layer 1+2: If website is provided, set origin_domain_code and create
+    domainuser(role='contact') for new partners (SaaS tenant isolation).
+    """
     Partner = env['res.partner'].sudo()
     partner = Partner.search([('email', '=ilike', contact.email)], limit=1)
 
@@ -492,6 +497,10 @@ def _get_or_create_partner(env, contact):
             'name': f"{contact.vorname} {contact.nachname}".strip(),
             'email': contact.email,
         }
+        # Layer 1 (DA): Set origin_domain_code for SaaS isolation
+        if website and hasattr(website, 'domain_code') and website.domain_code:
+            partner_vals['origin_domain_code'] = website.domain_code
+            
         # Add partner_firstname fields if available
         if hasattr(Partner, 'firstname'):
             partner_vals['firstname'] = contact.vorname
@@ -507,6 +516,17 @@ def _get_or_create_partner(env, contact):
             partner_vals['city'] = contact.ort
 
         partner = Partner.create(partner_vals)
+        
+        # Layer 2 (DB): Create domainuser(role='contact') for domain access
+        if website:
+            DomainUser = env['crearis.domainuser'].sudo()
+            DomainUser.create({
+                'domain_id': website.id,
+                'partner_id': partner.id,
+                'role': 'contact',
+                'name': 'Kontakt',
+            })
+            
     return partner
 
 

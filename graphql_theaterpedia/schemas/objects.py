@@ -282,6 +282,12 @@ class Partner(OdooObjectType):
     public_pricelist = graphene.Field(lambda: Pricelist)
     current_pricelist = graphene.Field(lambda: Pricelist)
     
+    # Layer 1 (P3): Domain isolation
+    origin_domain_code = graphene.String()
+    
+    # Layer 2 (P7): Domain memberships
+    domainusers = graphene.List(lambda: DomainUser)
+    
     # Header configuration (partner-specific, not in options)
     header_type = graphene.String()
     header_size = graphene.String()
@@ -316,6 +322,16 @@ class Partner(OdooObjectType):
 
     def resolve_md(self, info):
         return self.md or None
+
+    # P3: Layer 1 origin domain code
+    def resolve_origin_domain_code(self, info):
+        return self.origin_domain_code or None
+
+    # P7: Layer 2 domain memberships
+    def resolve_domainusers(self, info):
+        env = info.context["env"]
+        DomainUser = env['crearis.domainuser'].sudo()
+        return DomainUser.search([('partner_id', '=', self.id)])
 
     def resolve_address_type(self, info):
         return self.type or None
@@ -426,7 +442,8 @@ class DomainUser(OdooObjectType):
     cid = graphene.String()
     version = graphene.Int()
     
-    # User and domain info
+    # Layer 2: Partner-centric identity
+    partner = graphene.Field(lambda: Partner)
     user = graphene.Field(lambda: User)
     domain_code = graphene.String(required=True)
     email = graphene.String(required=True)
@@ -464,13 +481,26 @@ class DomainUser(OdooObjectType):
     def resolve_cid(self, info):
         return self.cid or None
 
+    # P2: Fix email resolution for contacts (no user_id)
     def resolve_email(self, info):
-        return self.user_id.login or None
+        # Layer 2: contacts have partner but may not have user
+        if self.user_id and self.user_id.login:
+            return self.user_id.login
+        if self.partner_id and self.partner_id.email:
+            return self.partner_id.email
+        return None
 
     def resolve_slug(self, info):
-        if self.user_id.name:
+        # Layer 2: use partner name if no user
+        if self.user_id and self.user_id.name:
             return slugify(self.user_id.name)
+        if self.partner_id and self.partner_id.name:
+            return slugify(self.partner_id.name)
         return None
+
+    # P1: Resolve partner for Layer 2 access
+    def resolve_partner(self, info):
+        return self.partner_id or None
 
     def resolve_user(self, info):
         return self.user_id or None

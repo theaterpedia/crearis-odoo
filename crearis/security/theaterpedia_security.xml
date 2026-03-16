@@ -32,5 +32,22 @@
       <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
       <field name="groups" eval="[(4, ref('base.group_user'))]"/>
     </record>
+
+    <!-- Layer 1 (DA): Domain isolation for partners - Manager rule (full access) -->
+    <record id="partner_domain_origin_manager_rule" model="ir.rule">
+      <field name="name">Partner: Domain Origin (Manager)</field>
+      <field name="model_id" ref="base.model_res_partner"/>
+      <field name="domain_force">[(1, '=', 1)]</field>
+      <field name="groups" eval="[(4, ref('crearis_manage_domain'))]"/>
+    </record>
+
+    <!-- Layer 1 (DA): Domain isolation for partners - User rule (own domain only) -->
+    <!-- Note: For now allows legacy (NULL) only. Full domainuser-based check requires compute field -->
+    <record id="partner_domain_origin_user_rule" model="ir.rule">
+      <field name="name">Partner: Domain Origin (User)</field>
+      <field name="model_id" ref="base.model_res_partner"/>
+      <field name="domain_force">[('origin_domain_code', '=', False)]</field>
+      <field name="groups" eval="[(4, ref('crearis_use_domain'))]"/>
+    </record>
   </data>
 </odoo>

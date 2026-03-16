@@ -707,6 +707,10 @@ class BookConsultingSlot(graphene.Mutation):
                 'name': f"{contact.vorname} {contact.nachname}".strip(),
                 'email': contact.email,
             }
+            # Layer 1 (DA): Set origin_domain_code for SaaS isolation
+            if website and hasattr(website, 'domain_code') and website.domain_code:
+                partner_vals['origin_domain_code'] = website.domain_code
+                
             if hasattr(Partner, 'firstname'):
                 partner_vals['firstname'] = contact.vorname
                 partner_vals['lastname'] = contact.nachname
@@ -714,6 +718,16 @@ class BookConsultingSlot(graphene.Mutation):
                 partner_vals['phone'] = contact.mobil
             partner = Partner.create(partner_vals)
             _logger.info("BookConsultingSlot: created partner %s", partner.id)
+            
+            # Layer 2 (DB): Create domainuser(role='contact') for domain access
+            if website:
+                DomainUser = env['crearis.domainuser'].sudo()
+                DomainUser.create({
+                    'domain_id': website.id,
+                    'partner_id': partner.id,
+                    'role': 'contact',
+                    'name': 'Kontakt',
+                })
         
         # Find meeting category (reuse CalendarEventType from above)
         meeting_type = CalendarEventType.search([('name', '=ilike', MEETING_CATEGORY)], limit=1)
@@ -1104,6 +1118,10 @@ class CreateEmailInquiry(graphene.Mutation):
                 'name': f"{contact.vorname} {contact.nachname}".strip(),
                 'email': contact.email,
             }
+            # Layer 1 (DA): Set origin_domain_code for SaaS isolation
+            if website and hasattr(website, 'domain_code') and website.domain_code:
+                partner_vals['origin_domain_code'] = website.domain_code
+                
             if hasattr(Partner, 'firstname'):
                 partner_vals['firstname'] = contact.vorname
                 partner_vals['lastname'] = contact.nachname
@@ -1111,6 +1129,16 @@ class CreateEmailInquiry(graphene.Mutation):
                 partner_vals['phone'] = contact.mobil
             partner = Partner.create(partner_vals)
             _logger.info("CreateEmailInquiry: created partner %s", partner.id)
+            
+            # Layer 2 (DB): Create domainuser(role='contact') for domain access
+            if website:
+                DomainUser = env['crearis.domainuser'].sudo()
+                DomainUser.create({
+                    'domain_id': website.id,
+                    'partner_id': partner.id,
+                    'role': 'contact',
+                    'name': 'Kontakt',
+                })
         
         # Map category keys to crm.tag IDs
         CrmTag = env['crm.tag'].sudo()

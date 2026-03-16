@@ -22,6 +22,16 @@ class PartnerQuery(graphene.ObjectType):
         graphene.NonNull(Partner),
         filter=graphene.Argument(PartnerFilterInput, required=True)
     )
+    
+    # P8: ir.rule-aware Partner query - respects origin_domain_code isolation
+    partners_for_domain = graphene.List(
+        graphene.NonNull(Partner),
+        domain_code=graphene.String(required=True, description="Domain code to filter partners"),
+        include_legacy=graphene.Boolean(
+            default_value=True, 
+            description="Include legacy partners (origin_domain_code = NULL)"
+        ),
+    )
 
     @staticmethod
     def resolve_partners(self, info, filter):
@@ -70,3 +80,23 @@ class PartnerQuery(graphene.ObjectType):
                 raise GraphQLError(_('No non-demo partners found with the provided IDs.'))
         
         return partners
+
+    # P8: Resolve partners for domain - respects origin_domain_code isolation
+    @staticmethod
+    def resolve_partners_for_domain(self, info, domain_code, include_legacy=True):
+        env = info.context["env"]
+        ResPartner = env['res.partner'].sudo()
+        
+        # Build domain filter
+        if include_legacy:
+            # Include partners from this domain OR legacy (NULL origin)
+            domain = [
+                '|',
+                ('origin_domain_code', '=', False),
+                ('origin_domain_code', '=', domain_code),
+            ]
+        else:
+            # Only partners from this specific domain
+            domain = [('origin_domain_code', '=', domain_code)]
+        
+        return ResPartner.search(domain)

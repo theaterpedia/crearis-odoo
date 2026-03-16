@@ -11,6 +11,18 @@ class ResPartner(models.Model):
     _inherit = ["res.partner", "web.options.abstract", "demo.data.mixin"]
     _name = "res.partner"
 
+    # Layer 1 (DA): Domain isolation for SaaS contacts
+    # Partners created via checkout/inquiry inherit the domain where they were created
+    # Used by ir.rule to scope visibility to staff of that domain
+    origin_domain_code = fields.Char(
+        string='Origin Domain',
+        index=True,
+        readonly=True,
+        help='Domain code where this contact was created. '
+             'Set automatically during checkout/inquiry. '
+             'NULL = legacy data visible everywhere.'
+    )
+
     # HERO-TYPE, FORMAT, CIMG > are developed and tested in model event
     header_type = fields.Selection(
         string='Header',

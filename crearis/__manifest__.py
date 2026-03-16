@@ -4,7 +4,7 @@
 
 {
     'name': 'Crearis',
-    'version': '16.0.1.7.0',
+    'version': '16.0.1.8.0',
     'summary': 'Episodes and Event-Management with Agenda Lines',
     'description': """Episodes and Event-Management on theaterpedia.org
 

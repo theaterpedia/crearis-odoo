@@ -31,17 +31,30 @@ class DomainUser(models.Model):
         store=False,
         help='Domain code from the website'
     )
+
+    # Layer 2 (DB): Partner-centric domainuser
+    # Every domainuser now links to a partner (required).
+    # user_id is optional - contacts from checkout/inquiry have no Odoo user.
+    partner_id = fields.Many2one(
+        "res.partner",
+        required=True,
+        string="Partner",
+        ondelete="cascade",
+        help="The partner this domain access belongs to.",
+        index=True,
+    )
     
     user_id = fields.Many2one(
         "res.users",
-        required=True, 
+        required=False, 
         string="User",
         ondelete="cascade",
-        help="User that access to the chosen domain/website.",
+        help="Odoo user (if any). NULL for contacts created via checkout/inquiry.",
         index=True,
     )
     role = fields.Selection(
         selection=[
+         ("contact", "Kontakt"),
          ("user","Teilnehmer:in"),
          ("team","Team"),
          ("exec","Manager:in"),

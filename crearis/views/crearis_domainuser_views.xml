@@ -19,13 +19,25 @@
                     
                     <!-- Header Section with Title as Headline -->
                     <div class="oe_title">
-                        <!-- Overline: CID, Domain Code, User, Role, Active -->
+                        <!-- U3: Layer 2 - Partner-centric identity section -->
                         <div class="o_row" style="margin-bottom: 8px;">
                             <field name="cid" readonly="1" class="oe_inline" style="margin-right: 16px;"/>
                             <field name="domain_code" readonly="1" class="oe_inline" style="margin-right: 16px;"/>
-                            <field name="user_id" class="oe_inline" style="margin-right: 16px;"/>
                             <field name="role" class="oe_inline" style="margin-right: 16px;"/>
                             <field name="active" class="oe_inline"/>
+                        </div>
+                        
+                        <!-- Partner (required) - primary identifier for Layer 2 -->
+                        <div class="o_row mb-2">
+                            <label for="partner_id" string="Contact:"/>
+                            <field name="partner_id" class="oe_inline" required="1" 
+                                   options="{'no_create': False, 'no_quick_create': False}"/>
+                        </div>
+                        
+                        <!-- User (optional) - only shown when role != contact -->
+                        <div class="o_row mb-2" attrs="{'invisible': [('role', '=', 'contact')]}">
+                            <label for="user_id" string="Odoo User:"/>
+                            <field name="user_id" class="oe_inline"/>
                         </div>
                         
                         <!-- Headline: Title (Name) -->
@@ -289,21 +301,23 @@
         <field name="name">Domain User List</field>
         <field name="model">crearis.domainuser</field>
         <field name="arch" type="xml">
-            <tree>
+            <!-- U4: Layer 2 - Partner-centric tree with role highlighting -->
+            <tree decoration-muted="role == 'contact'">
                 <field name="cid"/>
                 <field name="domain_code"/>
-                <field name="role"/>
+                <field name="role" decoration-info="role == 'contact'" decoration-success="role == 'exec'"/>
+                <field name="partner_id"/>
                 <field name="name"/>
-                <field name="user_id"/>
-                <field name="description"/>
-                <field name="is_demo"/>
-                <field name="page_has_content"/>
-                <field name="aside_has_content"/>
-                <field name="header_has_content"/>
-                <field name="footer_has_content"/>
-                <field name="custom_md"/>
+                <field name="user_id" optional="show"/>
+                <field name="description" optional="hide"/>
+                <field name="is_demo" optional="hide"/>
+                <field name="page_has_content" optional="hide"/>
+                <field name="aside_has_content" optional="hide"/>
+                <field name="header_has_content" optional="hide"/>
+                <field name="footer_has_content" optional="hide"/>
+                <field name="custom_md" optional="hide"/>
                 <field name="active"/>
-                <field name="version"/>
+                <field name="version" optional="hide"/>
             </tree>
         </field>
     </record>
@@ -312,13 +326,26 @@
         <field name="name">Domain User Filters</field>
         <field name="model">crearis.domainuser</field>
         <field name="arch" type="xml">
+            <!-- N3: Extended search with Layer 2 filters -->
             <search>
                 <field name="domain_id"/>
                 <field name="domain_code"/>
                 <field name="role"/>
+                <field name="partner_id"/>
                 <field name="user_id"/>
                 <field name="name"/>
                 <field name="cid"/>
+                <separator/>
+                <!-- Layer 2: Role-based filters -->
+                <filter name="filter_contacts" string="Contacts Only" 
+                        domain="[('role', '=', 'contact')]"/>
+                <filter name="filter_registered" string="Registered Users" 
+                        domain="[('user_id', '!=', False)]"/>
+                <filter name="filter_exec" string="Executives" 
+                        domain="[('role', '=', 'exec')]"/>
+                <filter name="filter_team" string="Team" 
+                        domain="[('role', '=', 'team')]"/>
+                <separator/>
                 <filter name="filter_inactive"
                         string="Inactive"
                         domain="[('active','=',False)]"/>
@@ -334,6 +361,7 @@
                 <group expand="0" string="Group By">
                     <filter name="group_domain" string="Domain" context="{'group_by':'domain_id'}"/>
                     <filter name="group_role" string="Role" context="{'group_by':'role'}"/>
+                    <filter name="group_partner" string="Partner" context="{'group_by':'partner_id'}"/>
                     <filter name="group_user" string="User" context="{'group_by':'user_id'}"/>
                 </group>
             </search>

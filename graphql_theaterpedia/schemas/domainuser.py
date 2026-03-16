@@ -8,7 +8,7 @@ from graphql import GraphQLError
 from odoo import _
 from odoo.http import request
 
-from odoo.addons.graphql_theaterpedia.schemas.objects import DomainUser
+from odoo.addons.graphql_theaterpedia.schemas.objects import DomainUser, Partner
 
 
 def get_search_order(sort):
@@ -36,7 +36,9 @@ class DomainUserList(graphene.ObjectType):
 
 class AddDomainUserInput(graphene.InputObjectType):
     domain_id = graphene.Int(required=True)
-    user_id = graphene.Int(required=True)
+    # P4: Layer 2 - partner_id required, user_id optional
+    partner_id = graphene.Int(required=True, description="Partner ID (required for Layer 2)")
+    user_id = graphene.Int(description="User ID (optional - contacts may not have Odoo user)")
     role = graphene.String(required=True)
     title = graphene.String()
     description = graphene.String()
@@ -102,11 +104,16 @@ class AddDomainUser(graphene.Mutation):
         env = info.context["env"]
         DomainUserModel = env['crearis.domainuser'].sudo()
         
+        # P4: Layer 2 - partner_id required, user_id optional
         values = {
             'domain_id': domain_user['domain_id'],
-            'user_id': domain_user['user_id'],
+            'partner_id': domain_user['partner_id'],
             'role': domain_user['role'],
         }
+        
+        # user_id is now optional (contacts may not have Odoo user)
+        if domain_user.get('user_id'):
+            values['user_id'] = domain_user['user_id']
         
         # Optional basic fields
         if domain_user.get('title'):
@@ -271,6 +278,19 @@ class DomainUserQuery(graphene.ObjectType):
             description="Include demo data records. If not specified, uses system config parameter."
         ),
     )
+    
+    # P5: Domain contacts query - list partners by domain (for domain-owner view)
+    domain_contacts = graphene.List(
+        graphene.NonNull(lambda: Partner),
+        domain_code=graphene.String(required=True, description="Domain code to filter contacts"),
+        role=graphene.String(default_value='contact', description="Role filter (default: contact)"),
+    )
+    
+    # P6: Partner domain memberships - find all domains a partner belongs to
+    partner_domain_memberships = graphene.List(
+        graphene.NonNull(DomainUser),
+        partner_id=graphene.Int(required=True, description="Partner ID to find memberships for"),
+    )
 
     @staticmethod
     def resolve_domainuser(self, info, id=None, cid=None):
@@ -344,6 +364,30 @@ class DomainUserQuery(graphene.ObjectType):
         total_count = len(domainusers)
 
         return DomainUserList(domainusers=domainusers, total_count=total_count)
+
+    # P5: Resolve domain contacts - list partners by domain
+    @staticmethod
+    def resolve_domain_contacts(self, info, domain_code, role='contact'):
+        env = info.context["env"]
+        DomainUserModel = env['crearis.domainuser'].sudo()
+        
+        domain = [
+            ('domain_code', '=', domain_code),
+            ('role', '=', role),
+            ('partner_id', '!=', False),
+        ]
+        
+        domainusers = DomainUserModel.search(domain)
+        # Return unique partners (a partner might have multiple domainuser records)
+        return domainusers.mapped('partner_id')
+
+    # P6: Resolve partner domain memberships
+    @staticmethod
+    def resolve_partner_domain_memberships(self, info, partner_id):
+        env = info.context["env"]
+        DomainUserModel = env['crearis.domainuser'].sudo()
+        
+        return DomainUserModel.search([('partner_id', '=', partner_id)])
 
 
 class DomainUserMutation(graphene.ObjectType):

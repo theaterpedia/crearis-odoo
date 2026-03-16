@@ -1,5 +1,62 @@
 <?xml version="1.0"?>
 <odoo>
+    <!-- U1: Add origin_domain_code to partner form (Layer 1 visibility) -->
+    <record id="view_partner_form_origin_domain" model="ir.ui.view">
+        <field name="name">res.partner.form.origin_domain</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <!-- Add origin badge near title when set -->
+            <xpath expr="//div[hasclass('oe_title')]//h1" position="after">
+                <div attrs="{'invisible': [('origin_domain_code', '=', False)]}" 
+                     class="badge bg-info text-white mb-2"
+                     style="font-size: 12px;">
+                    <i class="fa fa-globe me-1"/>
+                    <field name="origin_domain_code" readonly="1" nolabel="1" class="oe_inline"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- U2: Add origin_domain_code to partner tree + search filters -->
+    <record id="view_partner_tree_origin_domain" model="ir.ui.view">
+        <field name="name">res.partner.tree.origin_domain</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email']" position="after">
+                <field name="origin_domain_code" optional="hide" 
+                       groups="crearis.crearis_manage_domain"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_search_origin_domain" model="ir.ui.view">
+        <field name="name">res.partner.search.origin_domain</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="filter_saas_contacts" string="SaaS Contacts" 
+                        domain="[('origin_domain_code', '!=', False)]"
+                        groups="crearis.crearis_manage_domain"/>
+                <filter name="filter_legacy_contacts" string="Legacy Contacts" 
+                        domain="[('origin_domain_code', '=', False)]"
+                        groups="crearis.crearis_manage_domain"/>
+                <filter name="group_by_origin" string="Origin Domain" 
+                        context="{'group_by': 'origin_domain_code'}"
+                        groups="crearis.crearis_manage_domain"/>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="origin_domain_code" groups="crearis.crearis_manage_domain"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_partner_form_locations" model="ir.ui.view">
         <field name="name">res.partner.form.locations</field>
         <field name="model">res.partner</field>
@@ -17,5 +74,33 @@
 
         </field>
     </record>
+
+    <!-- N1: Domain Contacts Action + Menu (Layer 1 management) -->
+    <record id="action_domain_contacts" model="ir.actions.act_window">
+        <field name="name">Domain Contacts</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('origin_domain_code', '!=', False)]</field>
+        <field name="context">{
+            'search_default_group_by_origin': 1,
+            'default_customer_rank': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No SaaS contacts yet
+            </p>
+            <p>
+                Contacts created via checkout or inquiry mutations appear here,
+                grouped by their origin domain.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_domain_contacts"
+              name="Domain Contacts"
+              parent="contacts.menu_contacts"
+              action="action_domain_contacts"
+              groups="crearis.crearis_manage_domain"
+              sequence="15"/>
 
 </odoo>
