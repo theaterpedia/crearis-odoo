@@ -24,7 +24,7 @@
         "python.analysis.extraPaths": [
             "../../versions/16.0/odoo",
         ],
-        "python.defaultInterpreterPath": "../../venv/16.0/bin/python",
+        "python.defaultInterpreterPath": "/home/persona/crearis/odoo/venv/16.0/bin/python",
         "python.analysis.packageIndexDepths": [
             {
                 "name": "odoo",
@@ -42,6 +42,9 @@
             "**/*.po*": true,
             "**/LICENSE": true,
             "**/README.md": true,
+        },
+        "terminal.integrated.env.linux": {
+            "PATH": "/home/persona/crearis/odoo/venv/16.0/bin:${env:PATH}"
         },
         "terminal.integrated.cwd": "${workspaceFolder:project}",
         "liveServer.settings.multiRootWorkspaceName": "project",
