@@ -50,11 +50,11 @@ class ScheduleParser:
     - Shortcodes (_online_, _TANZEREI_, _VENUE:ROOM_)
     - Date specifications (DD.MM or DD.MM.YY)
     - Section headers (online:, München:)
-    - Special shortcodes: _anfrage_, _individuell_, _reihe_
+    - Special shortcodes: _info_, _anfrage_, _individuell_, _reihe_
     """
     
     # Special shortcodes with custom behavior
-    SPECIAL_SHORTCODES = {'_anfrage_', '_individuell_', '_reihe_'}
+    SPECIAL_SHORTCODES = {'_info_', '_anfrage_', '_individuell_', '_reihe_'}
     
     def __init__(self, locale='de', shortcodes=None):
         self.locale = locale
@@ -323,6 +323,39 @@ class ScheduleParser:
             dict: Complete result if special shortcode handled, None otherwise
         """
         text_lower = text.lower()
+        
+        # =========================
+        # _info_ - Text-only schedule hint (no dated agenda lines)
+        # Use when dates are unknown but you want to convey a pattern.
+        # Example: "_info_ alle 6 Wochen jeweils Dienstag 18:00-19:30"
+        # =========================
+        if '_info_' in text_lower:
+            result['source'] = 'shortcode:info'
+            
+            # Extract text after _info_ as the description
+            info_text = re.sub(r'_info_\s*', '', text, flags=re.IGNORECASE).strip()
+            if not info_text:
+                info_text = text.strip()
+            
+            # Anchor to event start date if available
+            info_date = None
+            if date_begin:
+                db = date_begin.date() if isinstance(date_begin, datetime) else date_begin
+                info_date = db.isoformat()
+            
+            result['sessions'].append({
+                'day': None,
+                'date': info_date,
+                'start': None,
+                'end': None,
+                'duration_h': 0,
+                'type': 'info',
+                'location_hint': None,
+                'notes': info_text,
+            })
+            
+            result['summary'] = self._calculate_summary(result['sessions'])
+            return result
         
         # =========================
         # _anfrage_ - Times on request

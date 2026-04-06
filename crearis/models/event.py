@@ -551,10 +551,21 @@ class EventEvent(models.Model):
                         event.id, idx
                     )
                 
+                # Map JSONB 'type' → model 'type' and 'mode' fields
+                AGENDA_TYPES = {'session', 'meeting', 'milestone', 'info', 'action'}
+                AGENDA_MODES = {'online', 'venue', 'individual', 'tbd'}
+                sess_type_val = sess.get('type', 'venue')
+                if sess_type_val in AGENDA_TYPES:
+                    line_type = sess_type_val
+                    line_mode = 'venue'
+                else:
+                    line_type = 'session'
+                    line_mode = sess_type_val if sess_type_val in AGENDA_MODES else 'venue'
+
                 vals = {
                     'event_id': event.id,
                     'sequence': idx * 10,
-                    'type': 'session',
+                    'type': line_type,
                     'source': 'json',
                     'locked_edits': True,
                     'day': sess_day,
@@ -562,7 +573,7 @@ class EventEvent(models.Model):
                     'start': sess.get('start'),
                     'end': sess.get('end'),
                     'duration_h': sess.get('duration_h', 0),
-                    'mode': sess.get('type', 'venue'),  # Note: JSONB 'type' → model 'mode'
+                    'mode': line_mode,
                     'location_hint': sess.get('location_hint'),
                     'room': sess.get('room'),
                     'notes': sess.get('notes'),
