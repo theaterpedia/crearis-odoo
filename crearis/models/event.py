@@ -464,11 +464,12 @@ class EventEvent(models.Model):
         if schedule_changed and not self.env.context.get('skip_version_increment'):
             for rec in self:
                 if rec.schedule:
-                    rec.parse_schedule_text(
+                    sd = rec.parse_schedule_text(
                         rec.schedule,
                         date_begin=rec.date_begin,
                         date_end=rec.date_end,
                     )
+                    rec.schedule_data = sd
                     rec._sync_agenda_lines()
 
         return res

@@ -284,19 +284,27 @@ class ScheduleParser:
         search_start = date_begin - timedelta(days=3)
         search_end = (date_end or date_begin) + timedelta(days=4)
         
-        # Collect all matching dates, pick closest to date_begin
+        # Collect all matching dates.
+        # Prefer dates within [date_begin, date_end]; among those pick closest
+        # to date_begin. Only fall back to out-of-range dates if none are in range.
+        end = date_end or date_begin
         current = search_start
-        best = None
-        best_dist = None
+        in_range = []   # (dist, date) within event span
+        out_range = []  # (dist, date) outside event span
         while current <= search_end:
             if current.weekday() == target_weekday:
                 dist = abs((current - date_begin).days)
-                if best_dist is None or dist < best_dist:
-                    best = current
-                    best_dist = dist
+                if date_begin <= current <= end:
+                    in_range.append((dist, current))
+                else:
+                    out_range.append((dist, current))
             current += timedelta(days=1)
         
-        return best.isoformat() if best else None
+        candidates = in_range or out_range
+        if candidates:
+            candidates.sort()
+            return candidates[0][1].isoformat()
+        return None
     
     def _calculate_summary(self, sessions):
         """Calculate summary statistics from sessions."""
