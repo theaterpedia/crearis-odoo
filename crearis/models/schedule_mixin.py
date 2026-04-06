@@ -185,9 +185,9 @@ class ScheduleParser:
                 location_hint = context.title()
         
         # Parse weekday and time
-        # Simplified pattern for more flexibility
+        # Supports: "FR 18:00-20:00", "MI: 14:00-20:00", "09:00-12:00" (no weekday)
         weekday_match = re.search(
-            rf'({"|".join(WEEKDAYS.keys())})\s*'
+            rf'(?:({"|".join(WEEKDAYS.keys())})\s*:?\s*)?'
             rf'(?:(\d{{1,2}})\.(\d{{1,2}})(?:\.(\d{{2,4}}))?\s*)?'
             rf'(\d{{1,2}}):(\d{{2}})\s*[-–]\s*(\d{{1,2}}):(\d{{2}})',
             line,
@@ -197,7 +197,7 @@ class ScheduleParser:
         if not weekday_match:
             return None
         
-        day_code = weekday_match.group(1).upper()
+        day_code = (weekday_match.group(1) or '').upper() or None
         date_day = weekday_match.group(2)
         date_month = weekday_match.group(3)
         date_year = weekday_match.group(4)
@@ -225,13 +225,27 @@ class ScheduleParser:
                 resolved_date = f'{year}-{int(date_month):02d}-{int(date_day):02d}'
             except ValueError:
                 pass
-        elif date_begin:
+        elif day_code and date_begin:
             # Resolve from event date range
             resolved_date = self._resolve_weekday_date(day_code, date_begin, date_end)
+        elif not day_code and date_begin:
+            # No weekday given (e.g. "09:00-12:00") — use date_begin as-is
+            db = date_begin.date() if isinstance(date_begin, datetime) else date_begin
+            resolved_date = db.isoformat()
         
-        # Normalize day code to English
-        day_index = WEEKDAYS.get(day_code, WEEKDAYS.get(day_code[:3]))
-        normalized_day = WEEKDAY_NAMES[day_index] if day_index is not None else day_code
+        # Normalize day code to English (or derive from resolved date)
+        normalized_day = None
+        if day_code:
+            day_index = WEEKDAYS.get(day_code, WEEKDAYS.get(day_code[:3]) if len(day_code) >= 3 else None)
+            normalized_day = WEEKDAY_NAMES[day_index] if day_index is not None else day_code
+        elif resolved_date:
+            # Derive weekday from resolved date
+            from datetime import date as date_type
+            try:
+                rd = date_type.fromisoformat(resolved_date)
+                normalized_day = WEEKDAY_NAMES[rd.weekday()]
+            except (ValueError, TypeError):
+                pass
         
         return {
             'day': normalized_day,
@@ -246,7 +260,13 @@ class ScheduleParser:
         }
     
     def _resolve_weekday_date(self, day_code, date_begin, date_end):
-        """Resolve a weekday code to a specific date within event range."""
+        """Resolve a weekday code to a specific date within event range.
+        
+        Searches date_begin-3 .. date_end+4 to catch pre-event sessions
+        (e.g. FRI before a SAT main day) and post-event follow-ups
+        (e.g. TUE after a SUN main day).  When multiple candidates exist
+        the one closest to date_begin is returned.
+        """
         if not date_begin:
             return None
         
@@ -260,16 +280,23 @@ class ScheduleParser:
         if isinstance(date_end, datetime):
             date_end = date_end.date()
         
-        # Find first matching weekday in range
-        current = date_begin
-        end = date_end or (date_begin + timedelta(days=7))
+        # Expand search window to catch pre/post sessions (FRI-SAT-SUN-TUE pattern)
+        search_start = date_begin - timedelta(days=3)
+        search_end = (date_end or date_begin) + timedelta(days=4)
         
-        while current <= end:
+        # Collect all matching dates, pick closest to date_begin
+        current = search_start
+        best = None
+        best_dist = None
+        while current <= search_end:
             if current.weekday() == target_weekday:
-                return current.isoformat()
+                dist = abs((current - date_begin).days)
+                if best_dist is None or dist < best_dist:
+                    best = current
+                    best_dist = dist
             current += timedelta(days=1)
         
-        return None
+        return best.isoformat() if best else None
     
     def _calculate_summary(self, sessions):
         """Calculate summary statistics from sessions."""
@@ -333,6 +360,58 @@ class ScheduleParser:
                     'type': 'venue',
                     'location_hint': None,
                     'notes': 'Zeiten auf Anfrage',
+                })
+                current += timedelta(days=1)
+            
+            result['summary'] = self._calculate_summary(result['sessions'])
+            return result
+        
+        # =========================
+        # täglich - Daily sessions with specified times
+        # Matches: "täglich 9:00-19:00 ...", "täglich 09:00-18:00 Uhr mit Pause"
+        # =========================
+        taeglich_match = re.search(
+            r'täglich\s+(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})',
+            text, re.IGNORECASE
+        )
+        if taeglich_match:
+            result['source'] = 'keyword:taeglich'
+            
+            start_h = int(taeglich_match.group(1))
+            start_m = int(taeglich_match.group(2))
+            end_h = int(taeglich_match.group(3))
+            end_m = int(taeglich_match.group(4))
+            duration_h = ((end_h * 60 + end_m) - (start_h * 60 + start_m)) / 60
+            
+            # Preserve any extra text as notes
+            notes = text[taeglich_match.end():].strip()
+            notes = re.sub(r'^(Uhr\s*)', '', notes).strip() or None
+            
+            if not date_begin or not date_end:
+                result['unparsed_notes'].append('täglich: Missing event dates')
+                return result
+            
+            if isinstance(date_begin, datetime):
+                date_begin = date_begin.date()
+            if isinstance(date_end, datetime):
+                date_end = date_end.date()
+            
+            day_span = (date_end - date_begin).days + 1
+            if day_span > 14:
+                result['unparsed_notes'].append(f'täglich: Date range too long ({day_span} days)')
+                return result
+            
+            current = date_begin
+            while current <= date_end:
+                result['sessions'].append({
+                    'day': WEEKDAY_NAMES[current.weekday()],
+                    'date': current.isoformat(),
+                    'start': f'{start_h:02d}:{start_m:02d}',
+                    'end': f'{end_h:02d}:{end_m:02d}',
+                    'duration_h': round(duration_h, 2),
+                    'type': 'venue',
+                    'location_hint': None,
+                    'notes': notes,
                 })
                 current += timedelta(days=1)
             

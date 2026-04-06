@@ -1,4 +1,6 @@
 import logging
+import re
+from datetime import timedelta
 from odoo import models, fields, api # type: ignore
 
 _logger = logging.getLogger(__name__)
@@ -449,11 +451,25 @@ class EventEvent(models.Model):
             for rec in self:
                 vals['version'] = rec.version + 1
 
+        # Track whether schedule text changed (for re-parse after write)
+        schedule_changed = 'schedule' in vals
+
         # Perform the write operation
         res = super(EventEvent, self).write(vals)
 
         # Invalidate cache to ensure fresh reads after write
         self.invalidate_recordset()
+
+        # Re-parse schedule → schedule_data → agenda_lines when schedule text changes
+        if schedule_changed and not self.env.context.get('skip_version_increment'):
+            for rec in self:
+                if rec.schedule:
+                    rec.parse_schedule_text(
+                        rec.schedule,
+                        date_begin=rec.date_begin,
+                        date_end=rec.date_end,
+                    )
+                    rec._sync_agenda_lines()
 
         return res
 
@@ -468,8 +484,14 @@ class EventEvent(models.Model):
         Called after parsing schedule_raw → schedule_data.
         Clears and recreates session-type lines (no incremental update).
         Preserves milestone and other non-session lines.
+        
+        Fallback: when parsed session has no date but has a weekday,
+        resolve the date from event date_begin ± 3 days (same logic
+        as ScheduleParser._resolve_weekday_date).
         """
         AgendaLine = self.env['agenda.line']
+        WEEKDAYS = {'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6}
+        WEEKDAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
         
         for event in self:
             # Clear existing SESSION lines only (preserve milestones, etc.)
@@ -485,16 +507,58 @@ class EventEvent(models.Model):
             # Get default provider from company
             default_provider = event.company_id.online_provider or 'msteams'
             
+            # Prepare anchor date for fallback resolution
+            anchor = None
+            anchor_end = None
+            if event.date_begin:
+                anchor = event.date_begin.date() if hasattr(event.date_begin, 'date') else event.date_begin
+            if event.date_end:
+                anchor_end = event.date_end.date() if hasattr(event.date_end, 'date') else event.date_end
+            
             # Create agenda lines for sessions
             for idx, sess in enumerate(sessions):
+                sess_date = sess.get('date')
+                sess_day = sess.get('day')
+                
+                # Fallback: resolve NULL date from weekday + event anchor
+                if not sess_date and sess_day and anchor:
+                    target_wd = WEEKDAYS.get(sess_day)
+                    if target_wd is not None:
+                        search_start = anchor - timedelta(days=3)
+                        search_end = (anchor_end or anchor) + timedelta(days=4)
+                        best, best_dist = None, None
+                        cur = search_start
+                        while cur <= search_end:
+                            if cur.weekday() == target_wd:
+                                dist = abs((cur - anchor).days)
+                                if best_dist is None or dist < best_dist:
+                                    best, best_dist = cur, dist
+                            cur += timedelta(days=1)
+                        if best:
+                            sess_date = best.isoformat()
+                            _logger.info(
+                                "Resolved NULL date for event %s session %s %s → %s",
+                                event.id, sess_day, sess.get('start', ''), sess_date
+                            )
+                        else:
+                            _logger.warning(
+                                "Cannot resolve date for event %s session %s %s (anchor=%s)",
+                                event.id, sess_day, sess.get('start', ''), anchor
+                            )
+                elif not sess_date and not sess_day:
+                    _logger.warning(
+                        "Agenda line for event %s has neither date nor weekday (idx=%d)",
+                        event.id, idx
+                    )
+                
                 vals = {
                     'event_id': event.id,
                     'sequence': idx * 10,
                     'type': 'session',
                     'source': 'json',
                     'locked_edits': True,
-                    'day': sess.get('day'),
-                    'date': sess.get('date'),
+                    'day': sess_day,
+                    'date': sess_date,
                     'start': sess.get('start'),
                     'end': sess.get('end'),
                     'duration_h': sess.get('duration_h', 0),
