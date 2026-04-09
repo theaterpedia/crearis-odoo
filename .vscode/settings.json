@@ -3,12 +3,12 @@
   "git.enabled": true,
   "git.autoRepositoryDetection": "subFolders",
   "git.scanRepositories": [
-    "/home/persona/crearis/odoo/dev/crearis-odoo"
+    "/opt/odoo16/odoo-custom-addons/crearis-odoo"
   ],
   "git.ignoredRepositories": [
-    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/rest-framework",
-    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/vuestorefront-extra",
-    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/partner-contact",
-    "/home/persona/crearis/odoo/dev/crearis-odoo/.external/theaterpedia-data"
+    "/opt/odoo16/odoo-custom-addons/crearis-odoo/.external/rest-framework",
+    "/opt/odoo16/odoo-custom-addons/crearis-odoo/.external/vuestorefront-extra",
+    "/opt/odoo16/odoo-custom-addons/crearis-odoo/.external/partner-contact",
+    "/opt/odoo16/odoo-custom-addons/crearis-odoo/.external/theaterpedia-data"
   ]
 }
