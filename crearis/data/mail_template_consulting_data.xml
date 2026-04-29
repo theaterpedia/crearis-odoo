@@ -142,7 +142,14 @@
         </table>
     </div>
     </t>
-    
+
+    <!-- v0.7: DTA ticket-id footer (only when set) -->
+    <t t-set="ticket_id" t-value="object.get_consulting_option('ticket_id', default='') or ''"/>
+    <t t-if="ticket_id">
+    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+    <p style="color: #888; font-size: 12px;">Ticket: <t t-out="ticket_id"/></p>
+    </t>
+
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px; text-align: center;">
         powered by <a href="https://theaterpedia.org" style="color: #888;">Theaterpedia</a>
@@ -201,12 +208,19 @@
     </t>
     
     <p>
-        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=calendar.event&amp;view_type=form'" 
+        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=calendar.event&amp;view_type=form'"
            style="display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Termin in Odoo öffnen
         </a>
     </p>
-    
+
+    <!-- v0.7: DTA ticket-id footer (only when set) -->
+    <t t-set="ticket_id" t-value="object.get_consulting_option('ticket_id', default='') or ''"/>
+    <t t-if="ticket_id">
+    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+    <p style="color: #888; font-size: 12px;">Ticket: <t t-out="ticket_id"/></p>
+    </t>
+
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px;">
         Diese Benachrichtigung wurde automatisch vom Beratungsbuchungssystem generiert.
@@ -292,7 +306,14 @@
         Bis bald,<br/>
         <strong><t t-out="object.user_id.name"/></strong>
     </p>
-    
+
+    <!-- v0.7: DTA ticket-id footer (only when set) -->
+    <t t-set="ticket_id" t-value="object.get_consulting_option('ticket_id', default='') or ''"/>
+    <t t-if="ticket_id">
+    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+    <p style="color: #888; font-size: 12px;">Ticket: <t t-out="ticket_id"/></p>
+    </t>
+
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px;">
         Bei Fragen erreichst du mich unter <t t-out="object.user_id.email or 'info@dasei.eu'"/>.
