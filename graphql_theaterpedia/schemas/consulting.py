@@ -611,11 +611,14 @@ class BookConsultingSlot(graphene.Mutation):
             default_value=False,
             description="SCL: If True, customer can cancel via link (bypass 6h rule)"
         )
-    
+        ticket_id = graphene.String(
+            description="v0.7: Optional DTA ticket-id (e.g., MU-12345) for consulting-loop traceability"
+        )
+
     Output = ConsultingBookingResult
-    
+
     @staticmethod
-    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None, domain_code=None, allow_cancellation=False):
+    def mutate(root, info, slot_key, start, host_id, contact, notes=None, consultation=None, product_slug=None, domain_code=None, allow_cancellation=False, ticket_id=None):
         env = info.context['env']
         
         # === SECURITY: IP Check (logging only, not blocking) ===
@@ -957,6 +960,8 @@ class BookConsultingSlot(graphene.Mutation):
             'domain_code': domain_code or '',
             # Store teams info for email template access
             'teams_meeting_data': teams_data if isinstance(teams_data, dict) else {},
+            # v0.7: DTA ticket-id for consulting-loop traceability (empty if not provided)
+            'ticket_id': (ticket_id or '').strip(),
         }
         
         meeting_vals = {
