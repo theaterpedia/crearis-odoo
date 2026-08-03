@@ -14,12 +14,16 @@ from odoo.addons.graphql_theaterpedia.schemas.objects import (
 )
 
 def get_event(env, event_cid):
-    Event = env['event.event'].with_context().sudo()
+    # NOTE: no .sudo() here — get_event is only called from write-path
+    # (UpdateEvent.mutate), so ACL enforcement must happen. The read-path
+    # (resolve_event/resolve_events/get_event_list) uses its own sudo'd
+    # lookup so unauthenticated public reads keep working.
+    Event = env['event.event'].with_context()
     event = Event.search([('cid', '=', event_cid)], limit=1)
 
     if not event or not event.exists():
         raise GraphQLError(_('Event not found.'))
-    
+
     return event
 
 def get_search_order(sort):
@@ -246,7 +250,7 @@ class UpdateEvent(graphene.Mutation):
         if EventEvent.version != event['version']:
             raise GraphQLError(_('Event version mismatch. Please refresh the event and try again.'))
 
-        if not EventEvent.check_access_rights('write'):
+        if not EventEvent.check_access_rights('write', raise_exception=False):
             raise GraphQLError(_('You do not have permission to update this event.'))
 
         values = {}

@@ -5,7 +5,7 @@
 
 {
     'name': 'Theaterpedia-Vuestorefront',
-    'version': '16.0.1.1.0',
+    'version': '16.0.1.2.0',
     'summary': 'Theaterpedia & Vuestorefront: Shop, Blog, Event API',
     'description': """Theaterpedia & Vuestorefront, Shop Blogs, Event-Management API Integration: Event-Management on theaterpedia.org""",
     'category': 'Website/Crearis',

@@ -12,11 +12,13 @@ from odoo.addons.graphql_theaterpedia.schemas.objects import (
 )
 
 def get_post(env, cid):
-    BlogPost = env['blog.post'].with_context().sudo()
+    # NOTE: no .sudo() here — get_post is only called from write-path
+    # (UpdatePost.mutate), so ACL enforcement must happen. The read-path
+    # (resolve_post/resolve_posts) uses its own sudo'd lookup so
+    # unauthenticated public reads keep working.
+    BlogPost = env['blog.post'].with_context()
     post = BlogPost.search([('cid', '=', cid)], limit=1)
 
-    #TODO _07 check_access_rights('read') for post
-    # Validate if the blog-post exists and if the user has access to this address
     if not post or not post.exists():
         raise GraphQLError(_('BlogPost not found.'))
 
@@ -181,7 +183,11 @@ class AddPost(graphene.Mutation):
     @staticmethod
     def mutate(self, info, post):
         env = info.context["env"]
-        BlogPost = env['blog.post'].sudo().with_context(tracking_disable=True)
+        # No .sudo() — ACL must enforce that the caller can create blog.post
+        BlogPost = env['blog.post'].with_context(tracking_disable=True)
+
+        if not BlogPost.check_access_rights('create', raise_exception=False):
+            raise GraphQLError(_('You do not have permission to create a blog post.'))
 
         values = {
             'name': post.get('heading'),
@@ -193,18 +199,18 @@ class AddPost(graphene.Mutation):
             'published_date': post.get('publish_date'),
             'md': post.get('md'),
             'website_meta_keywords': post.get('meta_keywords'),
-            'website_meta_description': post.get('meta_description'),               
+            'website_meta_description': post.get('meta_description'),
         }
         #             'website_meta_title': post.get('meta_title'),
 
         # Create post entry
-        post = BlogPost.create(values)
+        new_post = BlogPost.create(values)
 
         # Invalidate cache to ensure fresh reads
-        new_post.invalidate_cache()
-        new_post = BlogPost.browse(new_post.id)        
+        new_post.invalidate_recordset()
+        new_post = BlogPost.browse(new_post.id)
 
-        return post
+        return new_post
     
 class UpdatePost(graphene.Mutation):
     class Arguments:
@@ -216,47 +222,38 @@ class UpdatePost(graphene.Mutation):
     def mutate(self, info, post):
         env = info.context["env"]
         BlogPost = get_post(env, post['cid'])
-        # print the current version
-        # print("Current Blog Post Version:", BlogPost.version)
-        # print the cid
-        # print("Current Blog Post CID:", BlogPost.cid)
 
         if BlogPost.version != post['version']:
             raise GraphQLError(_('Blog post version mismatch. Please refresh the blog post and try again.'))
 
-        values = {
-            'name': post.get('heading'),
-            # 'author_id': post.get('author_id'),
-            'description': post.get('teasertext'),
-            'blocks': post.get('blocks'),
-            'is_published': post.get('public'),
-            'published_date': post.get('publish_date'),
-            'md': post.get('md'),
-            'website_meta_keywords': post.get('meta_keywords'),
-            'website_meta_description': post.get('meta_description'),            
-        }
-        #             'website_meta_title': post.get('meta_title'),
+        if not BlogPost.check_access_rights('write', raise_exception=False):
+            raise GraphQLError(_('You do not have permission to update this blog post.'))
+
+        # Build values only from present-and-truthy keys — matches UpdateEvent's
+        # (correct) partial-update semantics. The prior implementation started
+        # with a full .get() dict which wrote None over every unsent field.
+        values = {}
 
         if post.get('heading'):
-            values.update({'name': post['heading']})
+            values['name'] = post['heading']
         # if post.get('author_id'):
-        #    values.update({'author_id': post['author_id']})
+        #    values['author_id'] = post['author_id']
         if post.get('teasertext'):
-            values.update({'description': post['teasertext']})
+            values['description'] = post['teasertext']
         if post.get('blocks'):
-            values.update({'blocks': post['blocks']})
+            values['blocks'] = post['blocks']
         if post.get('public'):
-            values.update({'is_published': post['public']})
+            values['is_published'] = post['public']
         if post.get('publish_date'):
-            values.update({'published_date': post['publish_date']})
+            values['published_date'] = post['publish_date']
         if post.get('md'):
-            values.update({'md': post['md']})
+            values['md'] = post['md']
         if post.get('meta_title'):
-            values.update({'website_meta_title': post['meta_title']})            
+            values['website_meta_title'] = post['meta_title']
         if post.get('meta_keywords'):
-            values.update({'website_meta_keywords': post['meta_keywords']})               
+            values['website_meta_keywords'] = post['meta_keywords']
         if post.get('meta_description'):
-            values.update({'website_meta_description': post['meta_description']})                 
+            values['website_meta_description'] = post['meta_description']                 
 
         if values:
             BlogPost.write(values)
