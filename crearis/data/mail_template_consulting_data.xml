@@ -391,26 +391,26 @@
         <record id="mail_template_email_inquiry_customer" model="mail.template">
             <field name="name">Email Inquiry: Customer Confirmation</field>
             <field name="model_id" ref="crm.model_crm_lead"/>
-            <field name="subject">Deine Anfrage ist eingegangen</field>
+            <field name="subject">Your inquiry has been received</field>
             <field name="email_from">{{ (object.user_id.email_formatted if object.user_id else object.company_id.email_formatted) or 'service@dasei.eu' }}</field>
             <field name="email_to">{{ object.email_from }}</field>
             <field name="body_html"><![CDATA[
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    
+
     <t t-set="contact_name" t-value="object.contact_name or object.partner_id.name or ''"/>
-    <t t-set="firstname" t-value="contact_name.split()[0] if contact_name else 'du'"/>
-    
-    <p>Hallo <strong><t t-out="firstname"/></strong>,</p>
-    
-    <p>schön, dass du dich gemeldet hast! Deine Anfrage ist erfasst.</p>
-    
+    <t t-set="firstname" t-value="contact_name.split()[0] if contact_name else 'there'"/>
+
+    <p>Hi <strong><t t-out="firstname"/></strong>,</p>
+
+    <p>great that you got in touch! Your inquiry has been recorded.</p>
+
     <!-- Ctype-specific header -->
     <t t-set="ctype" t-value="object.get_consulting_ctype() if hasattr(object, 'get_consulting_ctype') else 'general_inquiry'"/>
     <t t-set="header_config" t-value="{
-        'event_inquiry': {'overline': 'Anfrage zu', 'headline': 'Eingegangen!'},
-        'contact_inquiry': {'overline': 'Nachricht an', 'headline': 'Erhalten!'},
-        'purchase_consultation': {'overline': 'Beratung zu', 'headline': 'Wir melden uns!'},
-        'general_inquiry': {'overline': 'Anfrage', 'headline': 'Eingegangen!'},
+        'event_inquiry': {'overline': 'Inquiry about', 'headline': 'Received!'},
+        'contact_inquiry': {'overline': 'Message to', 'headline': 'Received!'},
+        'purchase_consultation': {'overline': 'Consultation about', 'headline': 'We will be in touch!'},
+        'general_inquiry': {'overline': 'Inquiry', 'headline': 'Received!'},
     }"/>
     <t t-set="header" t-value="header_config.get(ctype, header_config['general_inquiry'])"/>
     
@@ -425,17 +425,17 @@
     <!-- Original inquiry summary -->
     <t t-if="object.description">
     <div style="background: #fff; padding: 15px; border-left: 4px solid #0066cc; margin: 20px 0;">
-        <div style="color: #888; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">Deine Anfrage</div>
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">Your inquiry</div>
         <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; margin: 0; color: #333;"><t t-out="object.description"/></pre>
     </div>
     </t>
-    
-    <p>Wir melden uns innerhalb von <strong>2 Werktagen</strong> bei dir.</p>
-    
-    <p style="margin-top: 20px;"><strong>Bis bald!</strong></p>
-    
-    <p style="color: #666; font-size: 14px;">PS: Du darfst gerne einfach auf diese Email antworten 😊</p>
-    
+
+    <p>We will get back to you within <strong>2 working days</strong>.</p>
+
+    <p style="margin-top: 20px;"><strong>Best regards,</strong></p>
+
+    <p style="color: #666; font-size: 14px;">PS: Feel free to simply reply to this email 😊</p>
+
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px; text-align: center;">
         powered by <a href="https://theaterpedia.org" style="color: #888;">Theaterpedia</a>
