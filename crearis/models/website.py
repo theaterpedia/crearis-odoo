@@ -420,10 +420,21 @@ class Website(models.Model):
             '@@homedomain': email_domain,
         }
         
+        # 2026-08-04: substitute LONGEST placeholder first.
+        # '@homedomain' is a strict suffix of '@@homedomain'. Iterating in dict
+        # insertion order applied the shorter key first, so 'noreply@@homedomain'
+        # became 'noreply' + '@' + 'dasei' = 'noreply@dasei' -- the TLD was never
+        # appended because '@@homedomain' no longer matched. That malformed sender
+        # went out on 28 checkout notifications between 2026-05-04 and 2026-07-25.
+        # Sorting by length makes order-independence a property of the algorithm
+        # rather than of how the map above happens to be typed, so a future
+        # placeholder cannot silently reintroduce the same collision.
+        ordered_placeholders = sorted(replacements, key=len, reverse=True)
+
         def resolve_value(val):
             if isinstance(val, str):
-                for placeholder, replacement in replacements.items():
-                    val = val.replace(placeholder, replacement)
+                for placeholder in ordered_placeholders:
+                    val = val.replace(placeholder, replacements[placeholder])
                 return val
             elif isinstance(val, dict):
                 return {k: resolve_value(v) for k, v in val.items()}
