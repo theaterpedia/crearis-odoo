@@ -7,7 +7,7 @@
 # .po is valid and Odoo imports only the entries present.
 #
 # Tone follows the house style of crearis mail templates 39/40/42:
-# "Hallo <name>," / consistent du-form / "Bis bald!".
+# "Hallo <name>," / consistent du-form / closing "Liebe Grüße," (HM-2026-08-04).
 # QWeb expressions are intentionally identical to the source -- a translation
 # must not change behaviour.
 #
@@ -75,7 +75,7 @@ msgstr ""
 "    \n"
 "    <p>Wir freuen uns auf dich!</p>\n"
 "    \n"
-"    <p>Bis bald!<br>\n"
+"    <p>Liebe Grüße,<br>\n"
 "    {{ object.event_id.organizer_id.name or object.event_id.company_id.name }}</p>\n"
 "</div>\n"
 "            "
@@ -102,7 +102,7 @@ msgstr ""
 "    \n"
 "    <p>Wir hoffen, es war eine wertvolle Erfahrung für dich – und freuen uns, wenn wir dich wiedersehen.</p>\n"
 "    \n"
-"    <p>Bis bald!<br>\n"
+"    <p>Liebe Grüße,<br>\n"
 "    {{ object.event_id.organizer_id.name or object.event_id.company_id.name }}</p>\n"
 "</div>\n"
 "            "
@@ -159,7 +159,7 @@ msgstr ""
 "    \n"
 "    <p>Bitte bestätige deine Teilnahme einfach per Antwort auf diese Email, falls noch nicht geschehen.</p>\n"
 "    \n"
-"    <p>Bis bald!<br>\n"
+"    <p>Liebe Grüße,<br>\n"
 "    {{ object.event_id.organizer_id.name or object.event_id.company_id.name }}</p>\n"
 "</div>\n"
 "            "
