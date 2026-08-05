@@ -13,10 +13,10 @@
         2026-08-04: German landed in i18n/de.po (HM-ratified: .po is the
         long-term mechanism for ALL templates; some older crearis templates
         still carry German directly in the en_US source value, so the two
-        conventions coexist for now -- see _meta/hco/threads/2026-08_co-family).
+        conventions coexist for now · see _meta/hco/threads/2026-08_co-family).
         Because this file is noupdate="1", the .po/XML half only reaches fresh
         installs and the devbox; prod is updated by a direct DB write in the
-        same change. Do NOT drop noupdate to "propagate" -- that would let
+        same change. Do NOT drop noupdate to "propagate" · that would let
         upgrades clobber prod's customised templates.
         -->
         
