@@ -327,55 +327,56 @@
         <record id="mail_template_consulting_alert" model="mail.template">
             <field name="name">Consulting Booking: Consultant Alert</field>
             <field name="model_id" ref="calendar.model_calendar_event"/>
-            <field name="subject">⚠️ Unbestätigter Termin in 6h: {{ object.partner_ids[:1].name }}</field>
+            <field name="description">Internal alert to the assigned consultant when a consulting appointment is still unconfirmed 6h before it starts. Staff-facing; links into the Odoo backoffice.</field>
+            <field name="subject">⚠️ Unconfirmed appointment in 6h: {{ object.partner_ids[:1].name }}</field>
             <field name="email_from">{{ object.user_id.company_id.email_formatted or 'noreply@dasei.eu' }}</field>
             <field name="email_to">{{ object.user_id.email }}</field>
             <field name="body_html"><![CDATA[
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <t t-set="partner" t-value="object.partner_ids[:1]"/>
     <t t-set="exec_firstname" t-value="object.user_id.partner_id.firstname if hasattr(object.user_id.partner_id, 'firstname') and object.user_id.partner_id.firstname else (object.user_id.name.split()[0] if object.user_id.name else '')"/>
-    
+
     <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
-        <strong>⚠️ Achtung:</strong> Der Kunde hat den Beratungstermin noch nicht bestätigt.
+        <strong>⚠️ Attention:</strong> The customer has not yet confirmed the consulting appointment.
     </div>
-    
-    <p>Hallo <strong><t t-out="exec_firstname"/></strong>,</p>
-    
-    <p>Folgender Beratungstermin wurde noch nicht vom Kunden bestätigt:</p>
-    
+
+    <p>Hello <strong><t t-out="exec_firstname"/></strong>,</p>
+
+    <p>The following consulting appointment has not been confirmed by the customer:</p>
+
     <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f8f9fa;">
         <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Kunde:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd; width: 30%;"><strong>Customer:</strong></td>
             <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.name"/></td>
         </tr>
         <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>E-Mail:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Email:</strong></td>
             <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.email"/></td>
         </tr>
         <t t-if="partner.phone or partner.mobile">
         <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Telefon:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Phone:</strong></td>
             <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="partner.phone or partner.mobile"/></td>
         </tr>
         </t>
         <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Termin:</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y HH:mm', lang_code='de_DE')"/> Uhr</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Appointment:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #ddd;"><t t-out="format_datetime(object.start, tz='Europe/Berlin', dt_format='EEEE, d. MMMM y HH:mm', lang_code='de_DE')"/></td>
         </tr>
     </table>
-    
-    <p>Du solltest den Kunden ggf. direkt kontaktieren, um den Termin zu bestätigen oder abzusagen.</p>
-    
+
+    <p>You may want to contact the customer directly to confirm or cancel the appointment.</p>
+
     <p>
-        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=calendar.event&amp;view_type=form'" 
+        <a t-att-href="'https://service.dasei.eu/web#id=' + str(object.id) + '&amp;model=calendar.event&amp;view_type=form'"
            style="display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-            Termin in Odoo öffnen
+            Open appointment in Odoo
         </a>
     </p>
-    
+
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
     <p style="color: #888; font-size: 12px;">
-        Diese Warnung wurde automatisch generiert.
+        This alert was generated automatically.
     </p>
 </div>
 ]]></field>
