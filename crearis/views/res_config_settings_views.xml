@@ -26,7 +26,14 @@
                                 <label class="col-lg-3" string="DomainCode" for="domain_code"/>
                                 <field name="domain_code" title="Shortcode for the website-id: Used as prefix for data-ids + subdomain-name"/>
                             </div>
-                        </div>                   
+                            <!-- 2026-10-27: overwrite-option. Empty = consumers keep their hardcoded default. -->
+                            <div class="row mt8">
+                                <label class="col-lg-3" string="Public URL" for="crearis_public_url"/>
+                                <field name="crearis_public_url"
+                                       placeholder="empty = Odoo serves the public site"
+                                       title="Public web address when it DIFFERS from the Odoo domain (Odoo then acts as backoffice only). Example: https://dasei.eu while Odoo runs at service.dasei.eu. No trailing slash."/>
+                            </div>
+                        </div>
                         <div class="o_setting_left_pane mt8">
                             <field name="is_company_domain" attrs="{'readonly':True}"/>
                         </div>

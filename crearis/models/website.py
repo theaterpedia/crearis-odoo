@@ -11,8 +11,31 @@ class Website(models.Model):
     _inherit = 'website'
     _order = "domain_code"
 
-    domain_code = fields.Char('Domain-Code', help="Subdomain on theaterpedia.org / unique key-prefix for data-keys") 
+    domain_code = fields.Char('Domain-Code', help="Subdomain on theaterpedia.org / unique key-prefix for data-keys")
     _rec_name = "domain_code"
+
+    # 2026-10-27: OVERWRITE-OPTION, not a new source of truth.
+    # Leave it EMPTY and every consumer keeps its existing hardcoded literal --
+    # that is deliberate: the Odoo side is a frozen stable wall for CV/CN to code
+    # against, and an obvious hardcode is cheaper to refactor at the Odoo-19
+    # transition than an ambiguous derived value. Set it ONLY where a tenant's
+    # public site is genuinely a different host from its Odoo one.
+    # Revert path: clear the field (behaviour returns to the literal), or drop
+    # the field and restore the literal at the call sites listed below.
+    # Consumers: graphql_theaterpedia/schemas/consulting.py (CRM description +
+    # the consulting_data key read by mail_template 42).
+    public_url = fields.Char(
+        'Public URL',
+        help="Public web address of this website when it is a DIFFERENT domain "
+             "from the Odoo one (Odoo then acts purely as backoffice).\n\n"
+             "Leave EMPTY when Odoo serves the public site itself -- consumers "
+             "then keep their current hardcoded default.\n\n"
+             "Example: DAS Ei is reached by the public at https://dasei.eu, while "
+             "Odoo runs at service.dasei.eu -- so this field holds "
+             "'https://dasei.eu'. Utopia in Action is served by Odoo under its own "
+             "domain, so it stays empty.\n\n"
+             "Format: scheme + host, NO trailing slash (paths are appended)."
+    )
 
     is_hubsite = fields.Boolean('Hubsite')
     use_msteams = fields.Boolean('MS Teams')

@@ -958,6 +958,11 @@ class BookConsultingSlot(graphene.Mutation):
             },
             'call_type': call_type_val or 'video',
             'domain_code': domain_code or '',
+            # 2026-10-27: resolved here because mail_template 42 renders against
+            # calendar.event and has no website in its QWeb context. ADDITIVE key --
+            # empty string when website.public_url is unset, and the template then
+            # keeps its own hardcoded literal. Revert = drop this key.
+            'public_url': ((website.public_url or '').rstrip('/') if website else ''),
             # Store teams info for email template access
             'teams_meeting_data': teams_data if isinstance(teams_data, dict) else {},
             # v0.7: DTA ticket-id for consulting-loop traceability (empty if not provided)
@@ -1181,8 +1186,15 @@ class CreateEmailInquiry(graphene.Mutation):
                 if sel.option_links:
                     for link in sel.option_links:
                         # For CRM lead description, include URL in parens
+                        # 2026-10-27: website.public_url is an OVERWRITE-OPTION. Empty ->
+                        # the literal below is used, exactly as before. The option paths
+                        # are CN-owned paths on the tenant's PUBLIC site, which for DAS Ei
+                        # is not the Odoo host -- so website.domain must NOT be used here.
                         if link.url:
-                            option_labels.append(f"{link.label} (https://dasei.eu{link.url})")
+                            public_base = (website.public_url or '').rstrip('/') if website else ''
+                            option_labels.append(
+                                f"{link.label} ({public_base or 'https://dasei.eu'}{link.url})"
+                            )
                         else:
                             option_labels.append(link.label)
                 

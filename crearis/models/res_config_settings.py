@@ -18,6 +18,13 @@ class ResConfigSettings(models.TransientModel):
         help="Subdomain on theaterpedia.org / unique key-prefix for data-keys"
     )
 
+    # 2026-10-27: overwrite-option -- empty means "consumers keep their hardcoded default"
+    crearis_public_url = fields.Char(
+        'Public URL', related='website_id.public_url', readonly=False,
+        help="Public web address when it DIFFERS from the Odoo domain (Odoo as backoffice). "
+             "Leave empty if Odoo serves the public site. No trailing slash."
+    )
+
     crearis_is_hubsite = fields.Boolean('Hubsite', related='website_id.is_hubsite', readonly=False, default=False)
     crearis_use_msteams = fields.Boolean('MS Teams', related='website_id.use_msteams', readonly=False, default=False)
     crearis_use_jitsi = fields.Boolean('Jitsi Rooms', related='website_id.use_jitsi', readonly=False, default=False)

@@ -64,8 +64,12 @@
                 <t t-foreach="sel.get('options', [])" t-as="opt">
                     <t t-if="opt_index > 0">, </t>
                     <!-- 2026-03-13: Support URL-enabled options from CN -->
+                    <!-- 2026-10-27: website.public_url is an OVERWRITE-OPTION, carried in
+                         consulting_data because this template renders against calendar.event
+                         and has no website in context. Unset leaves the literal below in force.
+                         Revert = drop the override, keep 'https://dasei.eu'. -->
                     <t t-if="isinstance(opt, dict) and opt.get('url')">
-                        <a t-att-href="'https://dasei.eu' + opt.get('url')" style="color: #0066cc;"><t t-out="opt.get('label', opt)"/></a>
+                        <a t-att-href="(object.get_consulting_option('public_url', default='') or 'https://dasei.eu') + opt.get('url')" style="color: #0066cc;"><t t-out="opt.get('label', opt)"/></a>
                     </t>
                     <t t-elif="isinstance(opt, dict)">
                         <t t-out="opt.get('label', str(opt))"/>
